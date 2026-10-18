@@ -1,13 +1,9 @@
-# G-UNIFORM (Giabaco OMS) — Slice 1
+# G-UNIFORM (Giabaco OMS)
 
-Công cụ thu thập số đo và thử áo của học sinh cho dự án G Blazer: form nhập liệu (gợi ý cỡ từ bảng size tạm), dashboard thời gian thực, trang phụ huynh qua QR, export CSV/XLSX.
+Công cụ thu thập số đo và thử áo của học sinh cho dự án G Blazer: form nhập liệu, dashboard thời gian thực, trang phụ huynh qua QR, export CSV/XLSX.
 
 | Tài liệu | Nội dung |
 |---|---|
-| `docs/status.md` | Hiện trạng dự án: đã làm, đã kiểm chứng, còn thiếu |
-| `docs/runbook.md` | Chạy, kiểm thử, triển khai GCE + Cloudflare, checklist demo |
-| `docs/specs/SPEC.md` | Spec Slice 1 |
-| `docs/specs/api-contract.md` | Hợp đồng API |
 | `PRODUCT.md`, `DESIGN.md` | Định hướng sản phẩm và thiết kế UI |
 
 Stack: FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL 16 (backend, `uv`); Vite + React + TanStack Router/Query + shadcn/ui + Tailwind (frontend, `pnpm`); Docker Compose + Cloudflare Tunnel (production).
@@ -60,7 +56,3 @@ scripts/smoke.py             smoke chạy trong container
 ```
 
 Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `parent_size_choices` ghi `audit_logs`; không hard delete; không ghi PII vào log.
-
-## Triển khai
-
-Xem `docs/runbook.md` (Cloudflare Tunnel, GCE, snapshot, checklist demo). Tóm tắt: copy `.env.example` thành `.env`, điền biến (hash mật khẩu bằng `make hash`, bọc nháy đơn), rồi `make up` trên server.
