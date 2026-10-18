@@ -10,6 +10,8 @@ from collections.abc import Callable, MutableMapping
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Request
+from starlette.datastructures import Headers
+from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
@@ -121,6 +123,24 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+
+class HttpsRedirectMiddleware:
+    """Redirect proxied plain-HTTP requests to HTTPS: Secure session cookies are dropped over HTTP."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            headers = Headers(scope=scope)
+            host = headers.get("host")
+            if host and headers.get("x-forwarded-proto") == "http":
+                query = scope["query_string"].decode()
+                url = f"https://{host}{scope['path']}{'?' + query if query else ''}"
+                await RedirectResponse(url, status_code=308)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 def main(argv: list[str]) -> int:

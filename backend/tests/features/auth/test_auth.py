@@ -76,3 +76,20 @@ async def test_security_headers_and_healthz(anon_client: AsyncClient) -> None:
     assert r.headers["x-frame-options"] == "DENY"
     assert r.headers["referrer-policy"] == "no-referrer"
     assert r.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_https_redirect_for_proxied_http() -> None:
+    from httpx import ASGITransport
+    from starlette.responses import PlainTextResponse
+
+    from app.core.security import HttpsRedirectMiddleware
+
+    async def ok(scope, receive, send):  # type: ignore[no-untyped-def]
+        await PlainTextResponse("ok")(scope, receive, send)
+
+    transport = ASGITransport(app=HttpsRedirectMiddleware(ok))
+    async with AsyncClient(transport=transport, base_url="http://giabaco.test") as c:
+        r = await c.get("/students/new?a=1", headers={"x-forwarded-proto": "http"})
+        assert r.status_code == 308 and r.headers["location"] == "https://giabaco.test/students/new?a=1"
+        assert (await c.get("/x", headers={"x-forwarded-proto": "https"})).status_code == 200
+        assert (await c.get("/x")).status_code == 200

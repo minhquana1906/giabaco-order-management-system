@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.errors import ApiError, install_error_handlers
 from app.core.logging import RequestLogMiddleware, setup_logging
-from app.core.security import SecurityHeadersMiddleware
+from app.core.security import HttpsRedirectMiddleware, SecurityHeadersMiddleware
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.exports.router import router as exports_router
@@ -53,6 +53,8 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestLogMiddleware)
+    if settings.cookie_secure:
+        app.add_middleware(HttpsRedirectMiddleware)
 
     @app.get("/api/healthz")
     async def healthz() -> dict[str, str]:
