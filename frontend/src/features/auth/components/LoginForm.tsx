@@ -8,6 +8,8 @@ import { useLogin } from '../hooks'
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === 'session_not_stored')
+      return 'Trình duyệt không lưu được phiên đăng nhập. Hãy mở trang bằng địa chỉ https://.'
     if (error.code === 'invalid_credentials') return 'Tên đăng nhập hoặc mật khẩu không đúng.'
     if (error.code === 'rate_limited' || error.status === 429)
       return 'Đăng nhập sai quá nhiều lần. Thử lại sau 1 phút.'

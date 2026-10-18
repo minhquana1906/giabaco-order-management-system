@@ -1,5 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { ApiError } from '@/lib/http'
 import { authApi } from './api'
 
 export const authKeys = {
@@ -16,9 +17,16 @@ export function useMe() {
 export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: authApi.login,
-    onSuccess: (session) => {
-      queryClient.setQueryData(authKeys.me(), session)
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      await authApi.login(credentials)
+      try {
+        return await queryClient.fetchQuery({ ...meQueryOptions(), staleTime: 0 })
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          throw new ApiError(401, 'session_not_stored', error.message)
+        }
+        throw error
+      }
     },
   })
 }
