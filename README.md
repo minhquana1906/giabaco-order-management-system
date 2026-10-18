@@ -35,7 +35,7 @@ Thử QR trên điện thoại trong LAN: chạy `pnpm dev --host` trong `fronte
 ## Lệnh thường dùng
 
 | Lệnh | Việc |
-|---|---|
+| --- | --- |
 | `make help` | Liệt kê target |
 | `make test` | pytest (cần DB test, tự bật) + vitest |
 | `make lint` | ruff, mypy, eslint, tsc |
