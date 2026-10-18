@@ -1,0 +1,126 @@
+import os
+import uuid
+from collections.abc import AsyncIterator, Callable
+from pathlib import Path
+from typing import Any
+
+import psycopg
+import pytest
+import pytest_asyncio
+from alembic import command
+from alembic.config import Config
+from argon2 import PasswordHasher
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+TEST_DB_URL = "postgresql+psycopg://guniform:guniform_test@127.0.0.1:55433/guniform_test"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "test-password"
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+os.environ.update(
+    DATABASE_URL=TEST_DB_URL,
+    SESSION_SECRET="test-secret",
+    ADMIN_USERNAME=ADMIN_USERNAME,
+    ADMIN_PASSWORD_HASH=PasswordHasher().hash(ADMIN_PASSWORD),
+    PUBLIC_BASE_URL="http://testserver",
+    COOKIE_SECURE="false",
+)
+
+from app.core.db import SessionLocal  # noqa: E402
+from app.core.security import login_limiter, public_limiter  # noqa: E402
+from app.features.catalog.models import Product  # noqa: E402
+from app.features.catalog.seed import seed_catalog  # noqa: E402
+from app.main import app  # noqa: E402
+
+
+@pytest.fixture(scope="session", autouse=True)
+def migrated_db() -> None:
+    dsn = TEST_DB_URL.replace("+psycopg", "")
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("DROP SCHEMA public CASCADE")
+        conn.execute("CREATE SCHEMA public")
+    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    command.upgrade(cfg, "head")
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _seeded(migrated_db: None) -> None:
+    async with SessionLocal() as s:
+        await seed_catalog(s, BACKEND_DIR / "config" / "catalog.seed.yaml")
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clean() -> AsyncIterator[None]:
+    login_limiter.reset()
+    public_limiter.reset()
+    yield
+    async with SessionLocal() as s:
+        await s.execute(
+            text(
+                "TRUNCATE audit_logs, parent_size_choices, fitting_trials, students, "
+                "school_classes, schools"
+            )
+        )
+        await s.commit()
+
+
+@pytest_asyncio.fixture
+async def session() -> AsyncIterator[AsyncSession]:
+    async with SessionLocal() as s:
+        yield s
+
+
+@pytest_asyncio.fixture
+async def anon_client() -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+
+
+@pytest_asyncio.fixture
+async def client(anon_client: AsyncClient) -> AsyncClient:
+    r = await anon_client.post(
+        "/api/auth/login", json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+    )
+    assert r.status_code == 200
+    return anon_client
+
+
+@pytest_asyncio.fixture
+async def products(session: AsyncSession) -> dict[str, Product]:
+    return {p.code: p for p in (await session.scalars(select(Product))).all()}
+
+
+@pytest_asyncio.fixture
+async def school_class(client: AsyncClient) -> dict[str, Any]:
+    code = uuid.uuid4().hex[:6]
+    school = (await client.post("/api/schools", json={"name": "Trường A", "code": code})).json()
+    cls = (
+        await client.post(f"/api/schools/{school['id']}/classes", json={"grade": 2, "name": "2A1"})
+    ).json()
+    return {"school_id": school["id"], "class_id": cls["id"], "grade": 2}
+
+
+@pytest.fixture
+def student_payload(school_class: dict[str, Any]) -> Callable[..., dict[str, Any]]:
+    def make(**overrides: Any) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "school_id": school_class["school_id"],
+            "class_id": school_class["class_id"],
+            "full_name": "Nguyễn Minh Khang",
+            "dob": "2018-03-14",
+            "gender": "MALE",
+            "height_cm": 126.5,
+            "weight_kg": 24.0,
+            "parent_name": None,
+            "parent_phone": "0912345678",
+            "parent_email": None,
+            "trials": [],
+            "force": False,
+        }
+        payload.update(overrides)
+        return payload
+
+    return make

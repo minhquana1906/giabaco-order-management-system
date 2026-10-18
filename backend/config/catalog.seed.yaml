@@ -1,0 +1,19 @@
+size_guides:
+  provisional: &provisional_guide
+    - {size_label: "1", height_min_cm: 100, height_max_cm: 120, weight_min_kg: 15, weight_max_kg: 20}
+    - {size_label: "2", height_min_cm: 120, height_max_cm: 130, weight_min_kg: 20, weight_max_kg: 25}
+    - {size_label: "3", height_min_cm: 130, height_max_cm: 140, weight_min_kg: 25, weight_max_kg: 30}
+    - {size_label: "4", height_min_cm: 140, height_max_cm: 150, weight_min_kg: 30, weight_max_kg: 35}
+    - {size_label: "5", height_min_cm: 150, height_max_cm: 160, weight_min_kg: 35, weight_max_kg: 40}
+    - {size_label: "6", height_min_cm: 160, height_max_cm: 165, weight_min_kg: 40, weight_max_kg: 45}
+    - {size_label: "7", height_min_cm: 165, height_max_cm: null, weight_min_kg: 45, weight_max_kg: null}
+
+products:
+  - code: blazer
+    name: "Áo Blazer (Vest)"
+    sizes: ["1", "2", "3", "4", "5", "6", "7"]
+    size_guide: *provisional_guide
+  - code: gile
+    name: "Áo Gile"
+    sizes: ["1", "2", "3", "4", "5", "6", "7"]
+    size_guide: *provisional_guide
