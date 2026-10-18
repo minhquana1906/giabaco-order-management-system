@@ -1,0 +1,42 @@
+"""Parent portal schemas (no phone, email or dob)."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+from app.features.students.models import Fit
+
+
+class PublicTrial(BaseModel):
+    product_code: str
+    product_name: str
+    size_label: str
+    fit: Fit
+
+
+class PublicProduct(BaseModel):
+    code: str
+    name: str
+    sizes: list[str]
+
+
+class PublicStudent(BaseModel):
+    full_name: str
+    school_name: str
+    class_name: str
+    height_cm: float
+    weight_kg: float
+    measured_at: datetime
+    trials: list[PublicTrial]
+    products: list[PublicProduct]
+    choices: dict[str, str]
+
+
+class ChoiceIn(BaseModel):
+    size_label: str = Field(min_length=1)
+
+
+class ChoiceOut(BaseModel):
+    product_code: str
+    size_label: str
+    chosen_at: datetime
