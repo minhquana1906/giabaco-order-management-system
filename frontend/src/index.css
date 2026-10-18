@@ -1,0 +1,215 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource/be-vietnam-pro/latin-400.css";
+@import "@fontsource/be-vietnam-pro/latin-500.css";
+@import "@fontsource/be-vietnam-pro/latin-600.css";
+@import "@fontsource/be-vietnam-pro/latin-700.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-400.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-500.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-600.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-700.css";
+
+:root {
+  --navy: #1b2b4b;
+  --piping: #b8323c;
+  --brass: #c9a24a;
+  --ground: #fbfbfd;
+  --surface: #ffffff;
+  --hairline: #e3e6ec;
+  --ink: #16203a;
+  --lining: #5b6b86;
+  --size-first: #c5d0e6;
+  --size-last: #1b2b4b;
+  --unknown-ground: #eef0f4;
+  --unknown-stripe: #a9b2c3;
+
+  --radius: 0.5rem;
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--navy);
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f7;
+  --secondary-foreground: var(--navy);
+  --muted: #f1f3f7;
+  --muted-foreground: var(--lining);
+  --accent: #e9edf6;
+  --accent-foreground: var(--navy);
+  --destructive: var(--piping);
+  --border: var(--hairline);
+  --input: #c5ccda;
+  --ring: var(--navy);
+  --chart-1: #c5d0e6;
+  --chart-2: #7488b4;
+  --chart-3: #4f6598;
+  --chart-4: #344c82;
+  --chart-5: #1b2b4b;
+  --sidebar: var(--navy);
+  --sidebar-foreground: #d5dbe8;
+  --sidebar-primary: var(--brass);
+  --sidebar-primary-foreground: var(--navy);
+  --sidebar-accent: rgb(255 255 255 / 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.12);
+  --sidebar-ring: var(--brass);
+}
+
+@theme inline {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-navy: var(--navy);
+  --color-piping: var(--piping);
+  --color-brass: var(--brass);
+  --color-lining: var(--lining);
+  --color-hairline: var(--hairline);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: #b6bfd1 transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  input,
+  textarea,
+  select {
+    caret-color: var(--navy);
+  }
+
+  ::selection {
+    background: rgb(27 43 75 / 0.16);
+    color: var(--ink);
+  }
+
+  .on-navy ::selection {
+    background: rgb(201 162 74 / 0.35);
+    color: #ffffff;
+  }
+
+  :where(:focus-visible) {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .on-navy {
+    --ring: var(--brass);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #b6bfd1;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--lining);
+    background-clip: content-box;
+    border: 2px solid transparent;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+}
+
+.hatch-unknown {
+  background-color: var(--unknown-ground);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--unknown-stripe) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+.woven-label {
+  position: relative;
+  background: var(--navy);
+  color: var(--brass);
+}
+
+.woven-label::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px dashed rgb(201 162 74 / 0.6);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
