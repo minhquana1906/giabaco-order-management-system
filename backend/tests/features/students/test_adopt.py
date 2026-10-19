@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -399,3 +400,116 @@ async def test_claim_racing_an_admin_adopt_neither_clashes_nor_duplicates(
     assert adopt.status_code == 201 and adopt.json()["id"] == declared_id
     assert await student_count(session) == 1
     assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2
+
+
+async def test_admin_edit_of_a_declared_record_takes_ownership(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    mother = await make_parent()
+    declared_id = await declare(mother, school_class)
+    await mother.put(
+        f"/api/parent/children/{declared_id}/size-choices/blazer", json={"size_label": "3"}
+    )
+    before = (await client.get(f"/api/students/{declared_id}")).json()
+
+    r = await client.put(
+        f"/api/students/{declared_id}",
+        json=student_payload(
+            full_name="Nguyen Van An", height_cm=126.5, weight_kg=24, trials=[TRIAL]
+        ),
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["data_source"] == "ADMIN_MEASURED"
+    assert body["portal_token"] == before["portal_token"]
+    assert body["measured_at"] > before["measured_at"]
+    assert [p["parent_id"] for p in body["linked_parents"]] == [mother.parent_id]
+    assert [(c["product_code"], c["size_label"]) for c in body["parent_choices"]] == [
+        ("blazer", "3")
+    ]
+    log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
+    assert log is not None and log.actor == "admin"
+    assert log.before is not None and log.after is not None
+    assert (log.before["data_source"], log.after["data_source"]) == (
+        "PARENT_DECLARED",
+        "ADMIN_MEASURED",
+    )
+    edit = await mother.put(
+        f"/api/parent/children/{declared_id}",
+        json={
+            "class_id": school_class["class_id"],
+            "gender": "MALE",
+            "height_cm": 100,
+            "weight_kg": 15,
+            "parent_phone": "0912345678",
+        },
+    )
+    assert edit.status_code == 409 and edit.json()["error"]["code"] == "measured_locked"
+
+
+@pytest.mark.parametrize("same_class", [True, False])
+async def test_renaming_into_a_declared_identity_is_a_duplicate_unless_forced(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+    same_class: bool,
+) -> None:
+    class_id = None if same_class else await other_class(client, school_class)
+    await declare(await make_parent(), school_class, class_id=class_id)
+    other = (
+        await client.post("/api/students", json=student_payload(full_name="Trần Văn Bình"))
+    ).json()
+    renamed = student_payload(full_name="Nguyễn Văn An")
+
+    refused = await client.put(f"/api/students/{other['id']}", json=renamed)
+
+    assert refused.status_code == 409 and refused.json()["error"]["code"] == "duplicate_student"
+    stored = await session.get(Student, uuid.UUID(other["id"]))
+    assert stored is not None and stored.full_name == "Trần Văn Bình"
+    forced = await client.put(f"/api/students/{other['id']}", json={**renamed, "force": True})
+    assert forced.status_code == 200 and forced.json()["full_name"] == "Nguyễn Văn An"
+
+
+async def test_rename_racing_a_parent_create_of_the_same_identity_never_duplicates(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    other = (
+        await client.post("/api/students", json=student_payload(full_name="Trần Văn Bình"))
+    ).json()
+    parent = await make_parent()
+
+    rename, create = await asyncio.gather(
+        client.put(f"/api/students/{other['id']}", json=student_payload(full_name="Nguyễn Văn An")),
+        parent.post(
+            "/api/parent/children",
+            json={
+                "school_id": school_class["school_id"],
+                "class_id": school_class["class_id"],
+                "full_name": "Nguyen Van An",
+                "dob": "2018-03-14",
+                "gender": "MALE",
+                "height_cm": 120,
+                "weight_kg": 20,
+                "parent_phone": "0912345678",
+            },
+        ),
+    )
+
+    assert (rename.status_code, create.status_code) in {(200, 409), (409, 201)}
+    same_identity = await session.scalar(
+        select(func.count())
+        .select_from(Student)
+        .where(Student.full_name.in_(["Nguyễn Văn An", "Nguyen Van An"]))
+    )
+    assert same_identity == 1

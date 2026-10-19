@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,20 +112,33 @@ async def _check_class(session: AsyncSession, payload: StudentIn) -> None:
 
 
 async def _check_duplicate(
-    session: AsyncSession, payload: StudentIn, exclude_id: uuid.UUID | None
+    session: AsyncSession,
+    payload: StudentIn,
+    exclude_id: uuid.UUID | None,
+    *,
+    include_declared: bool = False,
 ) -> None:
-    query = select(Student.id).where(
+    """409 when another live record has this identity; a declared one counts in any class."""
+    same_class_measured = and_(
+        Student.class_id == payload.class_id, Student.data_source == DataSource.ADMIN_MEASURED
+    )
+    clash = (
+        or_(same_class_measured, Student.data_source == DataSource.PARENT_DECLARED)
+        if include_declared
+        else same_class_measured
+    )
+    query = select(Student.class_id).where(
         Student.school_id == payload.school_id,
-        Student.class_id == payload.class_id,
         name_key(Student.full_name) == name_key(payload.full_name),
         Student.dob == payload.dob,
-        Student.data_source == DataSource.ADMIN_MEASURED,
+        clash,
         Student.deleted_at.is_(None),
     )
     if exclude_id is not None:
         query = query.where(Student.id != exclude_id)
-    if await session.scalar(query.limit(1)) is not None:
-        school_class = await session.get(SchoolClass, payload.class_id)
+    clash_class_id = await session.scalar(query.limit(1))
+    if clash_class_id is not None:
+        school_class = await session.get(SchoolClass, clash_class_id)
         class_name = school_class.name if school_class else ""
         raise ApiError(
             409,
@@ -264,13 +277,18 @@ async def update_student(
     session: AsyncSession, student_id: uuid.UUID, payload: StudentIn, actor: str
 ) -> None:
     """Update student; trials with id update, without id insert, missing are soft-deleted."""
-    student = await _load_student(session, student_id)
+    await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
+    student = await session.scalar(
+        select(Student).where(Student.id == student_id).with_for_update()
+    )
+    if student is None or student.deleted_at is not None:
+        raise _not_found()
     await _check_class(session, payload)
     products = await _products_by_code(session)
     code_by_id = {p.id: p.code for p in products.values()}
     resolved = _validate_trials(payload.trials, products)
     if not payload.force:
-        await _check_duplicate(session, payload, student.id)
+        await _check_duplicate(session, payload, student.id, include_declared=True)
 
     existing = {t.id: t for t in await _active_trials(session, student.id)}
     for i, (trial_in, _) in enumerate(resolved):
@@ -294,6 +312,9 @@ async def update_student(
     await session.flush()
 
     _apply_fields(student, payload)
+    if student.data_source is DataSource.PARENT_DECLARED:
+        student.data_source = DataSource.ADMIN_MEASURED
+        student.measured_at = now
     for trial_in, product in resolved:
         if trial_in.id is None:
             trial = FittingTrial(student_id=student.id, product_id=product.id, fit=trial_in.fit)

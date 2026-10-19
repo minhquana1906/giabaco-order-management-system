@@ -361,9 +361,9 @@ async def test_admin_cannot_set_data_source(
     assert updated.status_code == 200 and updated.json()["data_source"] == "ADMIN_MEASURED"
 
     declared_id = await parent_child(await make_parent(), school_class)
-    body = student_payload(full_name="Lê Minh Anh", dob="2017-09-01", data_source="ADMIN_MEASURED")
-    kept = await client.put(f"/api/students/{declared_id}", json=body)
-    assert kept.status_code == 200 and kept.json()["data_source"] == "PARENT_DECLARED"
+    body = student_payload(full_name="Lê Minh Anh", dob="2017-09-01", data_source="PARENT_DECLARED")
+    promoted = await client.put(f"/api/students/{declared_id}", json=body)
+    assert promoted.status_code == 200 and promoted.json()["data_source"] == "ADMIN_MEASURED"
 
 
 async def test_detail_lists_linked_parents_and_declared_choices(
