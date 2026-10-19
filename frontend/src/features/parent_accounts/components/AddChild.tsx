@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { DobSelects } from '@/components/DobSelects'
 import { Field } from '@/components/Field'
+import { NativeSelect } from '@/components/NativeSelect'
 import { ContactActions, Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { dobFromIso, dobToIso } from '@/lib/dob'
 import { formatDate } from '@/lib/format'
 import { requestErrorMessage } from '@/lib/requestError'
 import {
@@ -53,6 +55,8 @@ function SearchStep({
 }) {
   const schools = useParentSchools()
   const [errors, setErrors] = useState<ChildKeyErrors>({})
+  const [dob, setDob] = useState(() => dobFromIso(value.dob))
+  const formRef = useRef<HTMLFormElement>(null)
 
   const set = (key: keyof ChildKey, next: string) => {
     onChange({ ...value, [key]: next })
@@ -63,7 +67,10 @@ function SearchStep({
     event.preventDefault()
     const found = validateChildKey(value, todayIso())
     setErrors(found)
-    if (Object.values(found).some(Boolean)) return
+    if (Object.values(found).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      return
+    }
     onSubmit()
   }
 
@@ -97,7 +104,7 @@ function SearchStep({
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
       {notice ? (
         <p role="status" className="rounded-md border border-hairline bg-secondary px-4 py-3 text-[15px] text-navy">
           {notice}
@@ -105,26 +112,19 @@ function SearchStep({
       ) : null}
       <Field id="school_id" label="Trường" error={errors.school_id}>
         {(control) => (
-          <Select value={value.school_id} onValueChange={(v) => set('school_id', v)}>
-            <SelectTrigger {...control} className="h-12 w-full text-[17px]">
-              <SelectValue placeholder="Chọn trường của con" />
-            </SelectTrigger>
-            <SelectContent>
-              {schools.data.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="min-h-11 text-base">
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NativeSelect {...control} className="h-12 text-[17px]" value={value.school_id} onChange={(e) => set('school_id', e.target.value)}>
+            <option value="">Chọn trường của con</option>
+            {schools.data.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </NativeSelect>
         )}
       </Field>
-      <p className="-mt-3 text-[15px] text-muted-foreground">
-        Không thấy trường của con? Liên hệ Giabaco:{' '}
-        <a className="inline-flex min-h-11 items-center font-semibold text-navy underline" href="tel:0835352004">
-          0835352004
-        </a>
-      </p>
+      <div className="-mt-3">
+        <Hotline lead="Không thấy trường của con? Liên hệ Giabaco." />
+      </div>
       <Field id="full_name" label="Họ và tên của con" error={errors.full_name}>
         {(control) => (
           <Input
@@ -137,19 +137,16 @@ function SearchStep({
           />
         )}
       </Field>
-      <Field id="dob" label="Ngày sinh của con" error={errors.dob}>
-        {(control) => (
-          <Input
-            {...control}
-            name="child-dob"
-            type="date"
-            max={todayIso()}
-            className="h-12 text-[17px]"
-            value={value.dob}
-            onChange={(e) => set('dob', e.target.value)}
-          />
-        )}
-      </Field>
+      <DobSelects
+        value={dob}
+        error={errors.dob}
+        legendClassName="text-base"
+        selectClassName="h-12 text-[17px]"
+        onChange={(next) => {
+          setDob(next)
+          set('dob', dobToIso(next) ?? '')
+        }}
+      />
       {error ? (
         <p role="alert" className="font-medium text-destructive">
           {requestErrorMessage(error, 'Chưa tìm được hồ sơ. Vui lòng thử lại.')}
@@ -336,7 +333,7 @@ export function AddChild() {
   }
 
   return (
-    <ParentShell onBack={() => void navigate({ to: '/parent' })}>
+    <ParentShell onBack={() => void navigate({ to: '/parent' })} focusKey={step}>
       {body}
     </ParentShell>
   )

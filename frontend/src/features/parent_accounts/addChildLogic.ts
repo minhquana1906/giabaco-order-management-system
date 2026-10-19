@@ -1,5 +1,6 @@
 import { ApiError } from '@/lib/http'
 import { requestErrorMessage } from '@/lib/requestError'
+import { EMAIL_PATTERN, isValidPhone } from './authLogic'
 import type { ChildKey, CreateChildBody, DeclaredBody, Gender, LookupResponse } from './api'
 
 export type AddChildStep = 'search' | 'confirm' | 'declare' | 'contact'
@@ -39,8 +40,7 @@ export function validateChildKey(values: ChildKey, today: string): ChildKeyError
   const errors: ChildKeyErrors = {}
   if (!values.school_id) errors.school_id = 'Vui lòng chọn trường của con.'
   if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên của con.'
-  if (!values.dob) errors.dob = 'Vui lòng nhập ngày sinh của con.'
-  else if (Number.isNaN(Date.parse(values.dob)) || values.dob > today) errors.dob = 'Ngày sinh không hợp lệ.'
+  if (!values.dob || values.dob > today) errors.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
   return errors
 }
 
@@ -53,6 +53,9 @@ export interface DeclaredValues {
   gender: Gender | ''
   height: string
   weight: string
+  parent_phone: string
+  parent_name: string
+  parent_email: string
 }
 
 export type DeclaredErrors = Partial<Record<keyof DeclaredValues, string>>
@@ -78,6 +81,11 @@ export function validateDeclared(values: DeclaredValues): DeclaredErrors {
   if (height) errors.height = height
   const weight = measureError(values.weight, 'cân nặng', 'kg', WEIGHT_RANGE)
   if (weight) errors.weight = weight
+  const phone = values.parent_phone.trim()
+  if (!phone) errors.parent_phone = 'Nhập số điện thoại phụ huynh.'
+  else if (!isValidPhone(phone)) errors.parent_phone = 'Số điện thoại chưa đúng định dạng.'
+  const email = values.parent_email.trim()
+  if (email && !EMAIL_PATTERN.test(email)) errors.parent_email = 'Email chưa đúng định dạng.'
   return errors
 }
 
@@ -87,6 +95,9 @@ export function toDeclaredBody(values: DeclaredValues): DeclaredBody {
     gender: values.gender as Gender,
     height_cm: parseMeasure(values.height)!,
     weight_kg: parseMeasure(values.weight)!,
+    parent_phone: values.parent_phone.trim(),
+    parent_name: values.parent_name.trim() || null,
+    parent_email: values.parent_email.trim() || null,
   }
 }
 
@@ -98,7 +109,7 @@ export function fieldErrorsFromApi(error: unknown): Record<string, string> {
   return error instanceof ApiError && error.status === 422 && error.fields ? error.fields : {}
 }
 
-const DECLARED_API_FIELDS = ['class_id', 'gender', 'height_cm', 'weight_kg']
+const DECLARED_API_FIELDS = ['class_id', 'gender', 'height_cm', 'weight_kg', 'parent_phone', 'parent_name', 'parent_email']
 
 export function childErrorMessage(error: unknown, fallback: string): string | null {
   if (!error) return null

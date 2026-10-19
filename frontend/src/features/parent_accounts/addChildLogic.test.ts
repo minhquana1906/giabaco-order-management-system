@@ -67,25 +67,42 @@ describe('validateChildKey', () => {
 })
 
 describe('validateDeclared', () => {
-  const ok = { class_id: 'c1', gender: 'MALE' as const, height: '126,5', weight: '24' }
+  const ok = {
+    class_id: 'c1',
+    gender: 'MALE' as const,
+    height: '126,5',
+    weight: '24',
+    parent_phone: '0912 345 678',
+    parent_name: '',
+    parent_email: '',
+  }
   it('accepts comma decimals within range', () => {
     expect(validateDeclared(ok)).toEqual({})
     expect(parseMeasure('126,5')).toBe(126.5)
   })
   it('rejects values outside 90-190 cm and 10-90 kg, and empty fields', () => {
-    const errors = validateDeclared({ class_id: '', gender: '', height: '89', weight: '91' })
-    expect(Object.keys(errors).sort()).toEqual(['class_id', 'gender', 'height', 'weight'])
+    const errors = validateDeclared({ ...ok, class_id: '', gender: '', height: '89', weight: '91', parent_phone: '' })
+    expect(Object.keys(errors).sort()).toEqual(['class_id', 'gender', 'height', 'parent_phone', 'weight'])
     expect(validateDeclared({ ...ok, height: '190', weight: '10' })).toEqual({})
     expect(validateDeclared({ ...ok, height: 'abc' }).height).toBeDefined()
+  })
+  it('requires a valid parent phone and accepts +84 form', () => {
+    expect(validateDeclared({ ...ok, parent_phone: '12345' }).parent_phone).toBeDefined()
+    expect(validateDeclared({ ...ok, parent_phone: '+84912345678' })).toEqual({})
+  })
+  it('treats parent email as optional but validates it when given', () => {
+    expect(validateDeclared({ ...ok, parent_email: 'lan@' }).parent_email).toBeDefined()
+    expect(validateDeclared({ ...ok, parent_email: 'lan@example.com' })).toEqual({})
   })
 })
 
 describe('toCreateBody', () => {
+  const ok = { class_id: 'c1', gender: 'MALE' as const, height: '126,5', weight: '24', parent_phone: '0912 345 678', parent_name: '', parent_email: '' }
   it('collapses name spacing and parses numbers', () => {
     expect(
       toCreateBody(
         { school_id: 's1', full_name: '  Nguyễn   Văn An ', dob: '2018-03-14' },
-        toDeclaredBody({ class_id: 'c1', gender: 'FEMALE', height: '126,5', weight: '24' }),
+        toDeclaredBody({ ...ok, gender: 'FEMALE', parent_name: ' Lan ', parent_email: '' }),
       ),
     ).toEqual({
       school_id: 's1',
@@ -95,6 +112,9 @@ describe('toCreateBody', () => {
       gender: 'FEMALE',
       height_cm: 126.5,
       weight_kg: 24,
+      parent_phone: '0912 345 678',
+      parent_name: 'Lan',
+      parent_email: null,
     })
   })
 })

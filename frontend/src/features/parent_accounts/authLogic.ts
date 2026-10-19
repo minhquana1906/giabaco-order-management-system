@@ -11,7 +11,7 @@ export type RegisterErrors = Partial<Record<keyof RegisterValues, string>>
 
 export const MIN_PASSWORD_LENGTH = 8
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function isValidPhone(raw: string): boolean {
   let cleaned = raw.replace(/[\s.\-()]/g, '')

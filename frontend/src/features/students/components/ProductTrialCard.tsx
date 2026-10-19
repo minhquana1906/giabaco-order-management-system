@@ -7,7 +7,7 @@ import { FitChoice } from '@/components/FitChoice'
 import { SizeLabel } from '@/components/SizeLabel'
 import type { Fit } from '@/lib/fit'
 import { NOTE_MAX, derivedSize, trialErrorKey, type TrialRow } from './formLogic'
-import { NativeSelect } from './NativeSelect'
+import { NativeSelect } from '@/components/NativeSelect'
 
 interface ProductTrialCardProps {
   product: Product

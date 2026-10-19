@@ -28,12 +28,22 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
         <Skeleton className="h-12 w-full" />
       </div>
     )
-  } else if (!child) {
+  } else if (children.isError) {
     body = (
       <div role="alert" className="flex flex-col gap-4">
         <p className="font-medium text-destructive">Chưa tải được thông tin của con.</p>
         <Button size="lg" className={PARENT_BTN} onClick={() => void children.refetch()}>
           Thử lại
+        </Button>
+        <Hotline />
+      </div>
+    )
+  } else if (!child) {
+    body = (
+      <div role="alert" className="flex flex-col gap-4">
+        <p className="font-medium text-destructive">Hồ sơ này không còn trong tài khoản của bạn.</p>
+        <Button size="lg" className={PARENT_BTN} onClick={onClose}>
+          Quay lại
         </Button>
         <Hotline />
       </div>
@@ -54,6 +64,9 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
             gender: child.gender,
             height: student.height_cm == null ? '' : String(student.height_cm),
             weight: student.weight_kg == null ? '' : String(student.weight_kg),
+            parent_phone: child.parent_phone ?? '',
+            parent_name: child.parent_name ?? '',
+            parent_email: child.parent_email ?? '',
           }}
           submitLabel="Lưu thông tin"
           pendingLabel="Đang lưu…"

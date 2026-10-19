@@ -1,3 +1,4 @@
+import { dobToIso } from '@/lib/dob'
 import type { Fit } from '@/lib/fit'
 import type { Product } from '@/features/catalog/api'
 import type { Gender, StudentDetail, StudentIn } from '../api'
@@ -87,16 +88,7 @@ export function parseMeasure(text: string, range: { min: number; max: number }):
   return n >= range.min && n <= range.max ? n : null
 }
 
-function dobIso(v: FormValues): string | null {
-  const d = Number(v.day)
-  const m = Number(v.month)
-  const y = Number(v.year)
-  if (!d || !m || !y) return null
-  const date = new Date(y, m - 1, d)
-  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null
-  if (date.getTime() > Date.now()) return null
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
+const dobIso = (v: FormValues) => dobToIso(v)
 
 export const trialErrorKey = (rowKey: string) => `trial:${rowKey}`
 

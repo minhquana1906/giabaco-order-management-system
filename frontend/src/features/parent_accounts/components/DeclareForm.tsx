@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Field } from '@/components/Field'
+import { FormSection } from '@/components/FormSection'
+import { GenderToggle } from '@/components/GenderToggle'
+import { NativeSelect } from '@/components/NativeSelect'
+import { UnitInput } from '@/components/UnitInput'
 import { Hotline, PARENT_BTN } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import {
   childErrorMessage,
   fieldErrorsFromApi,
@@ -16,15 +18,20 @@ import {
   type DeclaredErrors,
   type DeclaredValues,
 } from '../addChildLogic'
-import type { DeclaredBody, Gender } from '../api'
+import type { DeclaredBody } from '../api'
 import { useParentClasses } from '../hooks'
 
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: 'MALE', label: 'Nam' },
-  { value: 'FEMALE', label: 'Nữ' },
-]
+const CONTROL = 'h-12 text-[17px]'
 
-export const EMPTY_DECLARED: DeclaredValues = { class_id: '', gender: '', height: '', weight: '' }
+export const EMPTY_DECLARED: DeclaredValues = {
+  class_id: '',
+  gender: '',
+  height: '',
+  weight: '',
+  parent_phone: '',
+  parent_name: '',
+  parent_email: '',
+}
 
 interface DeclareFormProps {
   schoolId: string
@@ -50,6 +57,7 @@ export function DeclareForm({
   const classes = useParentClasses(schoolId)
   const [values, setValues] = useState<DeclaredValues>(initial)
   const [clientErrors, setClientErrors] = useState<DeclaredErrors>({})
+  const formRef = useRef<HTMLFormElement>(null)
 
   const set = <K extends keyof DeclaredValues>(key: K, value: DeclaredValues[K]) => {
     setValues((v) => ({ ...v, [key]: value }))
@@ -60,7 +68,10 @@ export function DeclareForm({
     event.preventDefault()
     const errors = validateDeclared(values)
     setClientErrors(errors)
-    if (Object.values(errors).some(Boolean)) return
+    if (Object.values(errors).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      return
+    }
     onSubmit(toDeclaredBody(values))
   }
 
@@ -70,6 +81,9 @@ export function DeclareForm({
     gender: api.gender,
     height: api.height_cm,
     weight: api.weight_kg,
+    parent_phone: api.parent_phone,
+    parent_name: api.parent_name,
+    parent_email: api.parent_email,
     ...clientErrors,
   }
   const formError = childErrorMessage(error, 'Chưa lưu được thông tin. Vui lòng thử lại.')
@@ -96,85 +110,105 @@ export function DeclareForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
       <Field id="class_id" label="Lớp" error={errors.class_id}>
         {(control) => (
-          <Select value={values.class_id} onValueChange={(v) => set('class_id', v)}>
-            <SelectTrigger {...control} className="h-12 w-full text-[17px]">
-              <SelectValue placeholder="Chọn lớp của con" />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.data.map((c) => (
-                <SelectItem key={c.id} value={c.id} className="min-h-11 text-base">
-                  Lớp {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NativeSelect {...control} className={CONTROL} value={values.class_id} onChange={(e) => set('class_id', e.target.value)}>
+            <option value="">Chọn lớp của con</option>
+            {classes.data.map((c) => (
+              <option key={c.id} value={c.id}>
+                Lớp {c.name}
+              </option>
+            ))}
+          </NativeSelect>
         )}
       </Field>
-      <fieldset className="flex flex-col gap-2" aria-describedby={errors.gender ? 'gender-error' : undefined}>
-        <legend className="mb-2 text-base font-medium leading-none">Giới tính</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {GENDERS.map((g) => {
-            const on = values.gender === g.value
-            return (
-              <label
-                key={g.value}
-                className={cn(
-                  'flex min-h-[52px] cursor-pointer items-center justify-center rounded-md border px-3 text-lg font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                  on ? 'border-2 border-navy bg-navy text-white' : 'border-input bg-card hover:bg-accent',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="gender"
-                  className="sr-only"
-                  value={g.value}
-                  checked={on}
-                  onChange={() => set('gender', g.value)}
-                />
-                {g.label}
-              </label>
-            )
-          })}
+      <FormSection title="Học sinh">
+        <GenderToggle
+          value={values.gender}
+          error={errors.gender}
+          legendClassName="text-base"
+          optionClassName="min-h-[52px] text-lg font-semibold"
+          onChange={(g) => set('gender', g)}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Field id="height" label="Chiều cao (cm)" error={errors.height}>
+            {(control) => (
+              <UnitInput
+                {...control}
+                name="height"
+                unit="cm"
+                placeholder={`${HEIGHT_RANGE.min}–${HEIGHT_RANGE.max}`}
+                className={CONTROL}
+                value={values.height}
+                onChange={(e) => set('height', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field id="weight" label="Cân nặng (kg)" error={errors.weight}>
+            {(control) => (
+              <UnitInput
+                {...control}
+                name="weight"
+                unit="kg"
+                placeholder={`${WEIGHT_RANGE.min}–${WEIGHT_RANGE.max}`}
+                className={CONTROL}
+                value={values.weight}
+                onChange={(e) => set('weight', e.target.value)}
+              />
+            )}
+          </Field>
         </div>
-        {errors.gender ? (
-          <p id="gender-error" role="alert" className="text-[15px] font-medium text-destructive">
-            {errors.gender}
-          </p>
-        ) : null}
-      </fieldset>
-      <div className="grid grid-cols-2 gap-3">
-        <Field id="height" label="Chiều cao (cm)" error={errors.height}>
+      </FormSection>
+      <FormSection title="Phụ huynh">
+        <Field
+          id="parent_phone"
+          label="Số điện thoại phụ huynh"
+          hint="Có thể nhập +84; hệ thống tự chuẩn hóa về dạng 0xxxxxxxxx."
+          error={errors.parent_phone}
+        >
           {(control) => (
             <Input
               {...control}
-              name="height"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder={`${HEIGHT_RANGE.min}–${HEIGHT_RANGE.max}`}
-              className="h-12 text-[17px]"
-              value={values.height}
-              onChange={(e) => set('height', e.target.value)}
+              name="tel"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              className={CONTROL}
+              value={values.parent_phone}
+              onChange={(e) => set('parent_phone', e.target.value)}
             />
           )}
         </Field>
-        <Field id="weight" label="Cân nặng (kg)" error={errors.weight}>
+        <Field id="parent_name" label="Họ tên phụ huynh (không bắt buộc)" error={errors.parent_name}>
           {(control) => (
             <Input
               {...control}
-              name="weight"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder={`${WEIGHT_RANGE.min}–${WEIGHT_RANGE.max}`}
-              className="h-12 text-[17px]"
-              value={values.weight}
-              onChange={(e) => set('weight', e.target.value)}
+              name="name"
+              autoComplete="name"
+              className={CONTROL}
+              value={values.parent_name}
+              onChange={(e) => set('parent_name', e.target.value)}
             />
           )}
         </Field>
-      </div>
+        <Field id="parent_email" label="Email (không bắt buộc)" error={errors.parent_email}>
+          {(control) => (
+            <Input
+              {...control}
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              className={CONTROL}
+              value={values.parent_email}
+              onChange={(e) => set('parent_email', e.target.value)}
+            />
+          )}
+        </Field>
+      </FormSection>
       {formError ? (
         <p role="alert" className="font-medium text-destructive">
           {formError}
