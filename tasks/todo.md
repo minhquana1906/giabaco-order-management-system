@@ -38,7 +38,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 
 ## Phase 2: Identity
 
-- [ ] **T4: Phụ huynh đăng ký, đăng nhập, me, đăng xuất** (M)
+- [x] **T4: Phụ huynh đăng ký, đăng nhập, me, đăng xuất** (M)
   - Mô tả: `/api/parent/auth/{register,login,logout,me}`. Đăng ký xong đăng nhập luôn. Định danh email hoặc SĐT. Đăng nhập băm giả khi không có tài khoản.
   - Acceptance:
     - [ ] Đăng ký bằng email, và bằng SĐT (`+84…` → `0…`), đăng nhập lại đúng định danh → 200
@@ -50,7 +50,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T2, T3
   - Files: `backend/app/features/parent_accounts/{router,schemas,handler}.py`, `backend/app/main.py`, `backend/tests/features/parent_accounts/test_auth.py`
 
-- [ ] **T5: Tra cứu và nhận con** (M)
+- [x] **T5: Tra cứu và nhận con** (M)
   - Mô tả: `POST /api/parent/children/lookup` và `/claim`. Khớp `school_id` + tên chuẩn hóa (hoa/thường, dấu, khoảng trắng) + `dob` trên học sinh chưa xóa mềm. `claim` tự khớp lại, không nhận `student_id`.
   - Acceptance:
     - [ ] "nguyen van an " khớp "Nguyễn Văn An"; tên có `Đ` khớp đúng
@@ -63,7 +63,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T4
   - Files: `backend/app/features/parent_accounts/{router,schemas,handler}.py`, `backend/tests/features/parent_accounts/test_claim.py`
 
-- [ ] **T6: Tự tạo con, danh sách con, danh mục trường/lớp** (M)
+- [x] **T6: Tự tạo con, danh sách con, danh mục trường/lớp** (M)
   - Mô tả: `POST /api/parent/children` (tạo `PARENT_DECLARED` + link `CREATED`), `GET /api/parent/children`, `GET /api/parent/schools`, `GET /api/parent/schools/{id}/classes`. Publish topic `students`.
   - Acceptance:
     - [ ] Tạo con hợp lệ → 201, `data_source = PARENT_DECLARED`, có `portal_token`, không có `fitting_trials`
@@ -75,7 +75,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T4
   - Files: `backend/app/features/parent_accounts/{router,schemas,handler}.py`, `backend/tests/features/parent_accounts/test_children.py`
 
-- [ ] **T6b: Phụ huynh sửa hồ sơ tự khai** (S)
+- [x] **T6b: Phụ huynh sửa hồ sơ tự khai** (S)
   - Mô tả: `PUT /api/parent/children/{student_id}` `{class_id, gender, height_cm, weight_kg}`. Chỉ khi `PARENT_DECLARED`.
   - Acceptance:
     - [ ] Con tự khai đã link → 200, audit `student.update` có `before/after`, actor `parent:<id>`
@@ -90,7 +90,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 
 ## Phase 3: Chọn cỡ qua tài khoản và cách ly dữ liệu
 
-- [ ] **T7: Chọn và đổi cỡ theo liên kết tài khoản** (M)
+- [x] **T7: Chọn và đổi cỡ theo liên kết tài khoản** (M)
   - Mô tả: `GET /api/parent/children/{id}`, `PUT` và `DELETE .../size-choices/{product_code}`. Tách hàm chọn cỡ theo `student` dùng chung với đường QR. Actor `parent:<id>` cho đường tài khoản, giữ `parent` cho QR.
   - Acceptance:
     - [ ] Con đã link: xem được (cùng schema `/public/students/{token}`, không SĐT/email/dob) và chọn, đổi, xóa cỡ
@@ -103,7 +103,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T4, T2
   - Files: `backend/app/features/parent_portal/{router,handler,schemas}.py`, `backend/tests/features/parent_portal/test_portal_account.py`
 
-- [ ] **T8: Tách số liệu đo và số liệu đơn** (M)
+- [x] **T8: Tách số liệu đo và số liệu đơn** (M)
   - Mô tả: lọc `data_source = ADMIN_MEASURED` ở `overview`, `size-distribution`, `class-matrix`, `export/trials`. Thêm `GET /api/stats/orders` đếm `parent_size_choices` (mọi `data_source`, bỏ học sinh xóa mềm). `export/students` thêm `data_source` và hai cột lựa chọn mỗi sản phẩm.
   - Acceptance:
     - [ ] Tạo một `PARENT_DECLARED` kèm lựa chọn cỡ: ba endpoint đo không đổi số nào; `/stats/orders` tăng đúng cỡ đó
@@ -113,7 +113,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T2
   - Files: `backend/app/features/stats/{router,schemas,handler}.py`, `backend/app/features/exports/handler.py`, `backend/tests/features/stats/test_stats.py`, `backend/tests/features/exports/test_exports.py`
 
-- [ ] **T9: API admin trả `data_source` và `linked_parents`** (S)
+- [x] **T9: API admin trả `data_source` và `linked_parents`** (S)
   - Mô tả: `StudentListItem` và `StudentDetail` có `data_source`. `StudentDetail` có `linked_parents` (đọc model `ParentStudentLink`, `ParentAccount`). Admin không gửi được `data_source`.
   - Acceptance:
     - [ ] `GET /students` và `/students/{id}` trả `data_source`; chi tiết trả đúng các phụ huynh đã link
@@ -123,7 +123,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T2
   - Files: `backend/app/features/students/schemas.py`, `backend/app/features/students/handler.py`, `backend/tests/features/students/test_students_api.py`
 
-- [ ] **T9b: Admin nhận lại hồ sơ tự khai khi tạo học sinh** (M)
+- [x] **T9b: Admin nhận lại hồ sơ tự khai khi tạo học sinh** (M)
   - Mô tả: `create_student` khi `force = false`: (1) `_check_duplicate` chỉ xét `ADMIN_MEASURED`, khớp tên bằng `name_key`; (2) đúng một `PARENT_DECLARED` cùng trường + `name_key` + `dob` (bỏ lớp) → cập nhật chính bản đó (lớp, số đo, thông tin phụ huynh, trials, `measured_at = now()`, `data_source = ADMIN_MEASURED`), giữ `id`, `portal_token`, link, lựa chọn cỡ. Audit `student.adopt`.
   - Acceptance:
     - [ ] Kịch bản Success Criteria 19 đạt: không có bản thứ hai, lựa chọn cỡ còn, sau đó `claim` không `ambiguous_match`
@@ -133,7 +133,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T1, T2, T6
   - Files: `backend/app/features/students/handler.py`, `backend/tests/features/students/test_adopt.py`
 
-- [ ] **T9c: Admin gỡ liên kết phụ huynh** (S)
+- [x] **T9c: Admin gỡ liên kết phụ huynh** (S)
   - Mô tả: `DELETE /api/students/{id}/parents/{parent_id}` (`require_admin`). Route nằm trong slice `parent_accounts` vì slice này sở hữu bảng link; `students` chỉ đọc.
   - Acceptance:
     - [ ] 204, audit `parent_student_link.delete` có `before`; phụ huynh đó gọi `/api/parent/children/{id}` → 404; lựa chọn cỡ giữ nguyên
