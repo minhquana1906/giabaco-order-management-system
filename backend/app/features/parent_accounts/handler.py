@@ -1,19 +1,33 @@
 """Parent account use cases."""
 
 import uuid
+from collections import defaultdict
 
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.core import audit
 from app.core.errors import ApiError
+from app.core.events import bus
+from app.core.names import name_key
 from app.core.phone import normalize_phone
 from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, verify_password
-from app.features.parent_accounts.models import ParentAccount
-from app.features.parent_accounts.schemas import LoginIn, ParentAccountOut, RegisterIn
+from app.features.catalog.models import Product, School, SchoolClass
+from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
+from app.features.parent_accounts.schemas import (
+    ChildKeyIn,
+    ChildSummary,
+    LoginIn,
+    LookupOut,
+    ParentAccountOut,
+    RegisterIn,
+)
+from app.features.parent_portal.models import ParentSizeChoice
+from app.features.students.models import Student
 
 
 def _unauthorized() -> ApiError:
@@ -86,3 +100,114 @@ async def login(session: AsyncSession, request: Request, payload: LoginIn) -> Pa
         raise ApiError(401, "invalid_credentials", "Sai thông tin đăng nhập")
     request.session[PARENT_SESSION_KEY] = str(parent.id)
     return parent
+
+
+async def children(
+    session: AsyncSession, parent_id: uuid.UUID, student_id: uuid.UUID | None = None
+) -> list[ChildSummary]:
+    """Linked, live students of one parent with their current size choices."""
+    query = (
+        select(Student, School.name, SchoolClass.name)
+        .join(ParentStudentLink, ParentStudentLink.student_id == Student.id)
+        .join(School, School.id == Student.school_id)
+        .join(SchoolClass, SchoolClass.id == Student.class_id)
+        .where(ParentStudentLink.parent_id == parent_id, Student.deleted_at.is_(None))
+        .order_by(ParentStudentLink.created_at, ParentStudentLink.id)
+    )
+    if student_id is not None:
+        query = query.where(Student.id == student_id)
+    rows = (await session.execute(query)).all()
+    choices: dict[uuid.UUID, dict[str, str]] = defaultdict(dict)
+    if rows:
+        chosen = await session.execute(
+            select(ParentSizeChoice.student_id, Product.code, ParentSizeChoice.size_label)
+            .join(Product, Product.id == ParentSizeChoice.product_id)
+            .where(ParentSizeChoice.student_id.in_([s.id for s, _, _ in rows]), Product.active)
+        )
+        for sid, code, label in chosen:
+            choices[sid][code] = label
+    return [
+        ChildSummary(
+            student_id=s.id,
+            full_name=s.full_name,
+            school_id=s.school_id,
+            school_name=school_name,
+            class_id=s.class_id,
+            class_name=class_name,
+            gender=s.gender,
+            data_source=s.data_source,
+            choices=choices[s.id],
+        )
+        for s, school_name, class_name in rows
+    ]
+
+
+async def child(session: AsyncSession, parent_id: uuid.UUID, student_id: uuid.UUID) -> ChildSummary:
+    """One linked child; a student gone since the request began reads as not found."""
+    found = await children(session, parent_id, student_id)
+    if not found:
+        raise ApiError(404, "not_found", "Không tìm thấy học sinh")
+    return found[0]
+
+
+async def _matches(session: AsyncSession, key: ChildKeyIn) -> list[Student]:
+    """Live students sharing school, normalized name and dob; two rows are enough to see a clash."""
+    result = await session.scalars(
+        select(Student)
+        .where(
+            Student.school_id == key.school_id,
+            name_key(Student.full_name) == name_key(key.full_name),
+            Student.dob == key.dob,
+            Student.deleted_at.is_(None),
+        )
+        .order_by(Student.created_at, Student.id)
+        .limit(2)
+    )
+    return list(result)
+
+
+async def lookup(session: AsyncSession, key: ChildKeyIn) -> LookupOut:
+    """Tell a parent whether a record matches, without any measurement or contact detail."""
+    matches = await _matches(session, key)
+    if not matches:
+        return LookupOut(found=False)
+    if len(matches) > 1:
+        return LookupOut(found=True, ambiguous=True)
+    student = matches[0]
+    school = await session.get(School, student.school_id)
+    school_class = await session.get(SchoolClass, student.class_id)
+    assert school is not None and school_class is not None
+    return LookupOut(
+        found=True,
+        ambiguous=False,
+        full_name=student.full_name,
+        school_name=school.name,
+        class_name=school_class.name,
+    )
+
+
+async def claim(session: AsyncSession, parent: ParentAccount, key: ChildKeyIn) -> ChildSummary:
+    """Link the parent to the single matching student; repeating the claim changes nothing."""
+    matches = await _matches(session, key)
+    if not matches:
+        raise ApiError(404, "no_match", "Không tìm thấy hồ sơ phù hợp")
+    if len(matches) > 1:
+        raise ApiError(
+            409, "ambiguous_match", "Có nhiều hồ sơ trùng khớp, vui lòng liên hệ Giabaco"
+        )
+    student = matches[0]
+    link_id = await session.scalar(
+        pg_insert(ParentStudentLink)
+        .values(parent_id=parent.id, student_id=student.id, origin=LinkOrigin.CLAIMED)
+        .on_conflict_do_nothing(index_elements=["parent_id", "student_id"])
+        .returning(ParentStudentLink.id)
+    )
+    if link_id is not None:
+        await audit.record(
+            session, parent_actor(parent.id), "parent_student_link.create", "parent_student_link",
+            link_id, None,
+            {"parent_id": str(parent.id), "student_id": str(student.id), "origin": "CLAIMED"},
+        )  # fmt: skip
+        await session.commit()
+        bus.publish("students")
+    return await child(session, parent.id, student.id)

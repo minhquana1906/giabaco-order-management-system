@@ -3,31 +3,32 @@
 import re
 import unicodedata
 import uuid
+from datetime import date
+from typing import Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 from app.core.phone import normalize_phone
+from app.features.students.models import DataSource, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-def _clean(value: str) -> str:
-    return unicodedata.normalize("NFC", value.strip())
+def _non_blank_name(value: str) -> str:
+    value = unicodedata.normalize("NFC", value.strip())
+    if not value:
+        raise ValueError("Không được để trống")
+    return value
+
+
+FullName = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_non_blank_name)]
 
 
 class RegisterIn(BaseModel):
-    full_name: str = Field(min_length=1, max_length=200)
+    full_name: FullName
     email: str | None = Field(default=None, max_length=200)
     phone: str | None = None
     password: str = Field(min_length=8, max_length=128)
-
-    @field_validator("full_name")
-    @classmethod
-    def _full_name(cls, v: str) -> str:
-        v = _clean(v)
-        if not v:
-            raise ValueError("Không được để trống")
-        return v
 
     @field_validator("email")
     @classmethod
@@ -55,3 +56,31 @@ class ParentAccountOut(BaseModel):
     full_name: str
     email: str | None
     phone: str | None
+
+
+class ChildKeyIn(BaseModel):
+    """The three facts a parent must know to find a child's record."""
+
+    school_id: uuid.UUID
+    full_name: FullName
+    dob: date
+
+
+class LookupOut(BaseModel):
+    found: bool
+    ambiguous: bool | None = None
+    full_name: str | None = None
+    school_name: str | None = None
+    class_name: str | None = None
+
+
+class ChildSummary(BaseModel):
+    student_id: uuid.UUID
+    full_name: str
+    school_id: uuid.UUID
+    school_name: str
+    class_id: uuid.UUID
+    class_name: str
+    gender: Gender
+    data_source: DataSource
+    choices: dict[str, str]
