@@ -14,6 +14,7 @@ import type { PortalSource, PublicProduct, PublicStudent } from '../api'
 import { derivedSize, initialStep } from '../choices'
 import { usePortalStudent, useSaveChoices, type ChoiceChanges } from '../hooks'
 import { SIZE_CHARTS } from '../sizeCharts'
+import { ProductImageButton } from './ProductImageButton'
 
 const NONE = '__none__'
 
@@ -194,13 +195,13 @@ function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => v
   )
 }
 
-function SizeChartButton({ product, selected }: { product: PublicProduct; selected?: string }) {
+function SizeChartButton({ product, selected, className }: { product: PublicProduct; selected?: string; className?: string }) {
   const chart = SIZE_CHARTS[product.code]
   if (!chart) return null
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" className="h-11 self-start">
+        <Button type="button" variant="outline" className={cn('h-11 self-start', className)}>
           <Ruler /> Xem bảng thông số
         </Button>
       </DialogTrigger>
@@ -294,7 +295,10 @@ function Choose({
                 Gợi ý theo bảng cỡ: <span className="font-semibold text-navy">Cỡ {guide}</span>
               </p>
             ) : null}
-            <SizeChartButton product={p} selected={picked[p.code]} />
+            <div className="grid grid-cols-2 gap-2">
+              <SizeChartButton product={p} selected={picked[p.code]} className="w-full px-2 text-sm" />
+              <ProductImageButton product={p} gender={s.gender} className="w-full px-2 text-sm" />
+            </div>
             <div role="radiogroup" aria-labelledby={labelId} className="grid grid-cols-3 gap-2">
               {p.sizes.map((size) => {
                 const on = picked[p.code] === size
@@ -378,7 +382,10 @@ function SelectionCard({ s, choices }: { s: PublicStudent; choices: Record<strin
               key={p.code}
               className="flex items-center justify-between gap-3 border-b border-hairline py-3 last:border-0"
             >
-              <span>{p.name}</span>
+              <span className="flex flex-col items-start gap-1">
+                {p.name}
+                <ProductImageButton product={p} gender={s.gender} className="h-11 px-3 text-sm" />
+              </span>
               {size ? <SizeLabel label={size} scale="lg" /> : <span className="text-muted-foreground">Không đăng ký</span>}
             </li>
           )
