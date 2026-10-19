@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import { ApiError } from '@/lib/http'
 import type { PortalSource } from './api'
 
-export const portalStudentQueryOptions = (source: PortalSource) =>
+const portalStudentQueryOptions = (source: PortalSource) =>
   queryOptions({
     queryKey: source.key,
     queryFn: ({ signal }) => source.get(signal),

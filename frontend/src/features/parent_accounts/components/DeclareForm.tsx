@@ -22,7 +22,7 @@ import {
 import type { DeclaredBody } from '../api'
 import { useParentClasses } from '../hooks'
 
-export const EMPTY_DECLARED: DeclaredValues = {
+const EMPTY_DECLARED: DeclaredValues = {
   class_id: '',
   gender: '',
   height: '',
