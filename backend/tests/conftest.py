@@ -29,7 +29,12 @@ os.environ.update(
 )
 
 from app.core.db import SessionLocal  # noqa: E402
-from app.core.security import login_limiter, public_limiter  # noqa: E402
+from app.core.security import (  # noqa: E402
+    login_limiter,
+    parent_auth_limiter,
+    parent_match_limiter,
+    public_limiter,
+)
 from app.features.catalog.models import Product  # noqa: E402
 from app.features.catalog.seed import seed_catalog  # noqa: E402
 from app.main import app  # noqa: E402
@@ -56,12 +61,14 @@ async def _seeded(migrated_db: None) -> None:
 async def _clean() -> AsyncIterator[None]:
     login_limiter.reset()
     public_limiter.reset()
+    parent_auth_limiter.reset()
+    parent_match_limiter.reset()
     yield
     async with SessionLocal() as s:
         await s.execute(
             text(
-                "TRUNCATE audit_logs, parent_size_choices, fitting_trials, students, "
-                "school_classes, schools"
+                "TRUNCATE audit_logs, parent_student_links, parent_accounts, parent_size_choices, "
+                "fitting_trials, students, school_classes, schools"
             )
         )
         await s.commit()

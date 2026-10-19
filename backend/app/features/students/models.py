@@ -37,6 +37,11 @@ class Fit(enum.StrEnum):
     TOO_LOOSE = "TOO_LOOSE"
 
 
+class DataSource(enum.StrEnum):
+    ADMIN_MEASURED = "ADMIN_MEASURED"
+    PARENT_DECLARED = "PARENT_DECLARED"
+
+
 class Student(Base):
     __tablename__ = "students"
     __table_args__ = (
@@ -66,6 +71,11 @@ class Student(Base):
     parent_phone: Mapped[str | None] = mapped_column(Text)
     parent_email: Mapped[str | None] = mapped_column(Text)
     portal_token: Mapped[str] = mapped_column(Text, unique=True)
+    data_source: Mapped[DataSource] = mapped_column(
+        Enum(DataSource, name="data_source", native_enum=False, length=20),
+        default=DataSource.ADMIN_MEASURED,
+        server_default=DataSource.ADMIN_MEASURED.value,
+    )
     measured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
