@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
-import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import {
   normalizeChildKey,
   outcomeAfterClaimError,
@@ -32,14 +32,6 @@ interface Match {
 
 function todayIso() {
   return new Date().toLocaleDateString('en-CA')
-}
-
-function requestError(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
-    if (error.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau 1 phút.'
-    if (error.status === 0) return error.message
-  }
-  return fallback
 }
 
 function SearchStep({
@@ -158,7 +150,7 @@ function SearchStep({
       </Field>
       {error ? (
         <p role="alert" className="font-medium text-destructive">
-          {requestError(error, 'Chưa tìm được hồ sơ. Vui lòng thử lại.')}
+          {requestErrorMessage(error, 'Chưa tìm được hồ sơ. Vui lòng thử lại.')}
         </p>
       ) : null}
       <Button type="submit" size="lg" className={`${PARENT_BTN} mt-auto`} disabled={pending}>
@@ -195,7 +187,7 @@ function ConfirmStep({
       </div>
       {error ? (
         <p role="alert" className="font-medium text-destructive">
-          {requestError(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại.')}
+          {requestErrorMessage(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại.')}
         </p>
       ) : null}
       <div className="mt-auto flex flex-col gap-3">

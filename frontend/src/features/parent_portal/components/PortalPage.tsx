@@ -4,6 +4,7 @@ import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg, formatNumber } from '@/lib/format'
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import { cn } from '@/lib/utils'
 import { ContactActions as Contact, Hotline, PARENT_BTN as primaryBtn, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
@@ -54,12 +55,7 @@ function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
       </>
     )
   }
-  const text =
-    status === 429
-      ? 'Thao tác quá nhanh, vui lòng thử lại sau ít phút.'
-      : status === 0
-        ? 'Không kết nối được. Kiểm tra mạng rồi thử lại.'
-        : 'Có lỗi xảy ra, vui lòng thử lại.'
+  const text = requestErrorMessage(error, 'Có lỗi xảy ra, vui lòng thử lại.')
   return (
     <div role="alert" className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold text-navy">Chưa tải được trang</h1>
@@ -406,11 +402,7 @@ function Review({
       <SelectionCard s={s} choices={choices} />
       {error ? (
         <p role="alert" className="font-medium text-destructive">
-          {error instanceof ApiError && error.status === 429
-            ? 'Thao tác quá nhanh, vui lòng thử lại sau ít phút.'
-            : error instanceof ApiError && error.status === 0
-              ? error.message
-              : 'Chưa lưu được lựa chọn. Vui lòng thử lại.'}
+          {requestErrorMessage(error, 'Chưa lưu được lựa chọn. Vui lòng thử lại.')}
         </p>
       ) : null}
       <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-3 border-t border-hairline bg-background/95 px-4 py-3 backdrop-blur">
