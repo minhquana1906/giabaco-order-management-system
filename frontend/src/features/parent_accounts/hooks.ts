@@ -33,26 +33,23 @@ async function confirmSession(queryClient: QueryClient): Promise<ParentAccount> 
   }
 }
 
-export function useParentLogin() {
+function useSignIn<B>(signIn: (body: B) => Promise<ParentAccount>) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: Parameters<typeof parentAuthApi.login>[0]) => {
+    mutationFn: async (body: B) => {
       queryClient.removeQueries({ queryKey: parentKeys.all })
-      await parentAuthApi.login(body)
+      await signIn(body)
       return confirmSession(queryClient)
     },
   })
 }
 
+export function useParentLogin() {
+  return useSignIn(parentAuthApi.login)
+}
+
 export function useParentRegister() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: Parameters<typeof parentAuthApi.register>[0]) => {
-      queryClient.removeQueries({ queryKey: parentKeys.all })
-      await parentAuthApi.register(body)
-      return confirmSession(queryClient)
-    },
-  })
+  return useSignIn(parentAuthApi.register)
 }
 
 export function useParentLogout() {
