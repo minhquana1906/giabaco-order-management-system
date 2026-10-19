@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ApiError } from '@/lib/http'
 import { cn } from '@/lib/utils'
 import {
+  childErrorMessage,
   fieldErrorsFromApi,
   HEIGHT_RANGE,
   toDeclaredBody,
@@ -35,17 +35,6 @@ interface DeclareFormProps {
   error: unknown
   onSubmit: (body: DeclaredBody) => void
   secondary?: { label: string; onClick: () => void }
-}
-
-function submitErrorMessage(error: unknown): string | null {
-  if (!error) return null
-  if (error instanceof ApiError) {
-    if (error.code === 'measured_locked') return error.message
-    if (error.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau 1 phút.'
-    if (error.status === 0) return error.message
-    if (error.status === 422 && Object.keys(error.fields ?? {}).length > 0) return null
-  }
-  return 'Chưa lưu được thông tin. Vui lòng thử lại.'
 }
 
 export function DeclareForm({
@@ -83,7 +72,7 @@ export function DeclareForm({
     weight: api.weight_kg,
     ...clientErrors,
   }
-  const formError = submitErrorMessage(error)
+  const formError = childErrorMessage(error, 'Chưa lưu được thông tin. Vui lòng thử lại.')
 
   if (classes.isPending) {
     return (

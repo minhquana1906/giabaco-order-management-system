@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
 import { requestErrorMessage } from '@/lib/requestError'
 import {
+  childErrorMessage,
   normalizeChildKey,
   outcomeAfterClaimError,
   outcomeAfterCreateError,
@@ -17,6 +18,7 @@ import {
   validateChildKey,
   type AddChildStep,
   type ChildKeyErrors,
+  type StepOutcome,
 } from '../addChildLogic'
 import type { ChildKey, DeclaredBody } from '../api'
 import { useClaimChild, useCreateChild, useLookupChild, useParentSchools } from '../hooks'
@@ -187,7 +189,7 @@ function ConfirmStep({
       </div>
       {error ? (
         <p role="alert" className="font-medium text-destructive">
-          {requestErrorMessage(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại.')}
+          {childErrorMessage(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại.')}
         </p>
       ) : null}
       <div className="mt-auto flex flex-col gap-3">
@@ -231,12 +233,16 @@ export function AddChild() {
   const [match, setMatch] = useState<Match | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const goBackToSearch = (next: string | null = null) => {
-    lookup.reset()
+  const applyOutcome = (outcome: StepOutcome) => {
     claim.reset()
     create.reset()
-    setNotice(next)
-    setStep('search')
+    setNotice(outcome.notice)
+    setStep(outcome.step)
+  }
+
+  const goBackToSearch = (notice: string | null = null) => {
+    lookup.reset()
+    applyOutcome({ step: 'search', notice })
   }
 
   const openChild = (studentId: string) =>
@@ -246,6 +252,8 @@ export function AddChild() {
     const normalized = normalizeChildKey(key)
     setKey(normalized)
     setNotice(null)
+    claim.reset()
+    create.reset()
     lookup.mutate(normalized, {
       onSuccess: (result) => {
         setMatch(result.found && !result.ambiguous ? result : null)
@@ -259,10 +267,7 @@ export function AddChild() {
       onSuccess: (child) => openChild(child.student_id),
       onError: (error) => {
         const outcome = outcomeAfterClaimError(error)
-        if (outcome) {
-          setNotice(outcome.notice)
-          setStep(outcome.step)
-        }
+        if (outcome) applyOutcome(outcome)
       },
     })
 
@@ -271,10 +276,7 @@ export function AddChild() {
       onSuccess: (child) => openChild(child.student_id),
       onError: (error) => {
         const outcome = outcomeAfterCreateError(error)
-        if (outcome) {
-          setNotice(outcome.notice)
-          setStep(outcome.step)
-        }
+        if (outcome) applyOutcome(outcome)
       },
     })
 

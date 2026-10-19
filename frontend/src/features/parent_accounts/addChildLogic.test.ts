@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '@/lib/http'
 import {
+  childErrorMessage,
   fieldErrorsFromApi,
   outcomeAfterClaimError,
   outcomeAfterCreateError,
@@ -104,5 +105,25 @@ describe('fieldErrorsFromApi', () => {
       height_cm: 'bad',
     })
     expect(fieldErrorsFromApi(new ApiError(409, 'child_exists', 'x'))).toEqual({})
+  })
+})
+
+describe('childErrorMessage', () => {
+  const fieldsError = (fields: Record<string, string>) => new ApiError(422, 'validation_error', 'x', fields)
+
+  it('shows the server message for the child limit and measured lock', () => {
+    expect(childErrorMessage(new ApiError(409, 'child_limit', 'Tối đa 5 hồ sơ'), 'fb')).toBe('Tối đa 5 hồ sơ')
+    expect(childErrorMessage(new ApiError(409, 'measured_locked', 'Đã khoá'), 'fb')).toBe('Đã khoá')
+  })
+  it('leaves 422 to the inline field errors when a known field is flagged', () => {
+    expect(childErrorMessage(fieldsError({ height_cm: 'bad' }), 'fb')).toBeNull()
+  })
+  it('still shows a generic message for 422 with only unmapped fields', () => {
+    expect(childErrorMessage(fieldsError({ unknown_field: 'bad' }), 'fb')).toBe('fb')
+    expect(childErrorMessage(fieldsError({}), 'fb')).toBe('fb')
+  })
+  it('returns null without an error and the fallback for unrelated errors', () => {
+    expect(childErrorMessage(null, 'fb')).toBeNull()
+    expect(childErrorMessage(new ApiError(500, 'boom', 'x'), 'fb')).toBe('fb')
   })
 })

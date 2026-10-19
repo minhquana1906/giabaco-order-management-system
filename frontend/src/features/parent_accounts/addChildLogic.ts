@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import type { ChildKey, CreateChildBody, DeclaredBody, Gender, LookupResponse } from './api'
 
 export type AddChildStep = 'search' | 'confirm' | 'declare' | 'contact'
@@ -95,4 +96,15 @@ export function toCreateBody(key: ChildKey, declared: DeclaredBody): CreateChild
 
 export function fieldErrorsFromApi(error: unknown): Record<string, string> {
   return error instanceof ApiError && error.status === 422 && error.fields ? error.fields : {}
+}
+
+const DECLARED_API_FIELDS = ['class_id', 'gender', 'height_cm', 'weight_kg']
+
+export function childErrorMessage(error: unknown, fallback: string): string | null {
+  if (!error) return null
+  if (error instanceof ApiError) {
+    if (error.code === 'measured_locked' || error.code === 'child_limit') return error.message
+    if (error.status === 422 && DECLARED_API_FIELDS.some((key) => error.fields?.[key])) return null
+  }
+  return requestErrorMessage(error, fallback)
 }
