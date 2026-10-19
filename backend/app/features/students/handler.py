@@ -22,7 +22,13 @@ from app.features.catalog.models import Product, School, SchoolClass
 from app.features.parent_accounts.models import ParentAccount, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
-from app.features.students.models import DataSource, Fit, FittingTrial, Student
+from app.features.students.models import (
+    DataSource,
+    Fit,
+    FittingTrial,
+    Student,
+    student_snapshot,
+)
 from app.features.students.schemas import (
     ClassRef,
     LinkedParentOut,
@@ -56,23 +62,6 @@ def _trial_snapshot(trial: FittingTrial, code: str) -> dict[str, Any]:
         "fit": trial.fit.value,
         "note": trial.note,
         "deleted_at": trial.deleted_at.isoformat() if trial.deleted_at else None,
-    }
-
-
-def _student_snapshot(student: Student) -> dict[str, Any]:
-    return {
-        "school_id": str(student.school_id),
-        "class_id": str(student.class_id),
-        "full_name": student.full_name,
-        "dob": student.dob.isoformat(),
-        "gender": student.gender.value,
-        "height_cm": float(student.height_cm),
-        "weight_kg": float(student.weight_kg),
-        "parent_name": student.parent_name,
-        "parent_phone": student.parent_phone,
-        "parent_email": student.parent_email,
-        "data_source": student.data_source.value,
-        "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
     }
 
 
@@ -237,7 +226,7 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
         await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
         await _check_duplicate(session, payload, None)
         adopted = await _declared_match(session, payload)
-    before = _student_snapshot(adopted) if adopted else None
+    before = student_snapshot(adopted) if adopted else None
     student = adopted or Student(portal_token=new_portal_token())
     _apply_fields(student, payload, keep_contact=adopted is not None)
     if adopted:
@@ -261,7 +250,7 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
     await session.flush()
     await audit.record(
         session, actor, "student.adopt" if adopted else "student.create", "student", student.id,
-        before, _student_snapshot(student),
+        before, student_snapshot(student),
     )  # fmt: skip
     for trial, code in trials:
         await audit.record(
@@ -299,7 +288,7 @@ async def update_student(
                 "Lần thử không thuộc học sinh",
                 {f"trials.{i}.id": "Lần thử không tồn tại"},
             )
-    before = _student_snapshot(student)
+    before = student_snapshot(student)
     now = datetime.now(UTC)
     kept_ids = {t.id for t, _ in resolved if t.id is not None}
     trial_audits: list[tuple[str, FittingTrial, dict[str, Any] | None]] = []
@@ -342,7 +331,7 @@ async def update_student(
             None if action == "trial.delete" else new,
         )  # fmt: skip
     await audit.record(
-        session, actor, "student.update", "student", student.id, before, _student_snapshot(student)
+        session, actor, "student.update", "student", student.id, before, student_snapshot(student)
     )
     await _commit(session)
     bus.publish("students")
@@ -351,10 +340,10 @@ async def update_student(
 async def delete_student(session: AsyncSession, student_id: uuid.UUID, actor: str) -> None:
     """Soft delete a student."""
     student = await _load_student(session, student_id)
-    before = _student_snapshot(student)
+    before = student_snapshot(student)
     student.deleted_at = datetime.now(UTC)
     await audit.record(
-        session, actor, "student.delete", "student", student.id, before, _student_snapshot(student)
+        session, actor, "student.delete", "student", student.id, before, student_snapshot(student)
     )
     await _commit(session)
     bus.publish("students")

@@ -5,7 +5,6 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
@@ -34,7 +33,7 @@ from app.features.parent_accounts.schemas import (
     RegisterIn,
 )
 from app.features.parent_portal.models import ParentSizeChoice
-from app.features.students.models import DataSource, Student
+from app.features.students.models import DataSource, Student, student_snapshot
 
 MAX_CHILDREN = 10
 
@@ -258,23 +257,6 @@ async def check_class(session: AsyncSession, school_id: uuid.UUID, class_id: uui
         )
 
 
-def _student_snapshot(student: Student) -> dict[str, Any]:
-    return {
-        "school_id": str(student.school_id),
-        "class_id": str(student.class_id),
-        "full_name": student.full_name,
-        "dob": student.dob.isoformat(),
-        "gender": student.gender.value,
-        "height_cm": float(student.height_cm),
-        "weight_kg": float(student.weight_kg),
-        "parent_name": student.parent_name,
-        "parent_phone": student.parent_phone,
-        "parent_email": student.parent_email,
-        "data_source": student.data_source.value,
-        "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
-    }
-
-
 async def _linked_count(session: AsyncSession, parent_id: uuid.UUID) -> int:
     count = await session.scalar(
         select(func.count())
@@ -329,7 +311,7 @@ async def create_child(
     await session.flush()
     actor = parent_actor(parent.id)
     await audit.record(
-        session, actor, "student.create", "student", student.id, None, _student_snapshot(student)
+        session, actor, "student.create", "student", student.id, None, student_snapshot(student)
     )
     await audit.record(
         session, actor, "parent_student_link.create", "parent_student_link", link.id, None,
@@ -359,7 +341,7 @@ async def update_child(
     if student.data_source is not DataSource.PARENT_DECLARED:
         raise ApiError(409, "measured_locked", "Hồ sơ đã được Giabaco đo, không thể sửa")
     await check_class(session, student.school_id, payload.class_id)
-    before = _student_snapshot(student)
+    before = student_snapshot(student)
     student.class_id = payload.class_id
     student.gender = payload.gender
     student.height_cm = payload.height_cm
@@ -371,7 +353,7 @@ async def update_child(
     await session.flush()
     await audit.record(
         session, parent_actor(parent.id), "student.update", "student", student.id, before,
-        _student_snapshot(student),
+        student_snapshot(student),
     )  # fmt: skip
     await session.commit()
     bus.publish("students")
