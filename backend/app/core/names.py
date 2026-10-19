@@ -11,7 +11,8 @@ def name_key(value: Any) -> ColumnElement[str]:
 
     Apply it to both the column and the bound value so SQL and Python never diverge.
     """
-    expr = value if isinstance(value, ColumnElement) else literal(value)
+    is_sql = isinstance(value, ColumnElement) or hasattr(value, "__clause_element__")
+    expr = value if is_sql else literal(value)
     nfc = func.normalize(expr)
     collapsed = func.regexp_replace(func.trim(nfc), r"\s+", " ", "g")
     return func.lower(func.unaccent(collapsed))
