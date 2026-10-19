@@ -11,6 +11,7 @@ from app.core.security import (
     PARENT_SESSION_KEY,
     limit_parent_auth,
     limit_parent_match,
+    require_admin,
     require_parent,
 )
 from app.features.parent_accounts import handler
@@ -29,6 +30,7 @@ from app.features.parent_accounts.schemas import (
 )
 
 router = APIRouter(prefix="/api/parent")
+admin_router = APIRouter(prefix="/api/students")
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
@@ -115,3 +117,14 @@ async def list_schools(session: Session) -> list[SchoolOut]:
 )
 async def list_classes(school_id: uuid.UUID, session: Session) -> list[ClassOut]:
     return [ClassOut.model_validate(c) for c in await handler.list_classes(session, school_id)]
+
+
+@admin_router.delete("/{student_id}/parents/{parent_id}", status_code=204)
+async def unlink_parent(
+    student_id: uuid.UUID,
+    parent_id: uuid.UUID,
+    session: Session,
+    actor: Annotated[str, Depends(require_admin)],
+) -> Response:
+    await handler.unlink(session, student_id, parent_id, actor)
+    return Response(status_code=204)

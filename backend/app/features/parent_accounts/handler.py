@@ -332,3 +332,27 @@ async def update_child(
     await session.commit()
     bus.publish("students")
     return await child(session, parent.id, student.id)
+
+
+async def unlink(
+    session: AsyncSession, student_id: uuid.UUID, parent_id: uuid.UUID, actor: str
+) -> None:
+    """Admin removes a parent's link; size choices already made stay."""
+    link = await session.scalar(
+        select(ParentStudentLink).where(
+            ParentStudentLink.student_id == student_id, ParentStudentLink.parent_id == parent_id
+        )
+    )
+    if link is None:
+        raise ApiError(404, "not_found", "Không tìm thấy liên kết")
+    before = {
+        "parent_id": str(link.parent_id),
+        "student_id": str(link.student_id),
+        "origin": link.origin.value,
+    }
+    await session.delete(link)
+    await audit.record(
+        session, actor, "parent_student_link.delete", "parent_student_link", link.id, before, None
+    )
+    await session.commit()
+    bus.publish("students")
