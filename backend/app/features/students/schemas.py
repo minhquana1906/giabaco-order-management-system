@@ -9,22 +9,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.phone import normalize_phone
 from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, Fit, Gender
 
-_PHONE_RE = re.compile(r"^0\d{9}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-def normalize_phone(raw: str) -> str:
-    """Normalize +84/84 prefixes to 0xxxxxxxxx; raise ValueError when malformed."""
-    cleaned = re.sub(r"[\s.\-()]", "", raw)
-    if cleaned.startswith("+84"):
-        cleaned = "0" + cleaned[3:]
-    elif cleaned.startswith("84") and len(cleaned) == 11:
-        cleaned = "0" + cleaned[2:]
-    if not _PHONE_RE.match(cleaned):
-        raise ValueError("Số điện thoại không hợp lệ")
-    return cleaned
 
 
 def clean_text(value: str) -> str:

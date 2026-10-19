@@ -1,6 +1,6 @@
 import pytest
 
-from app.features.students.schemas import normalize_phone
+from app.core.phone import normalize_phone
 
 
 @pytest.mark.parametrize(
