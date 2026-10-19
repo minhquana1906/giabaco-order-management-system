@@ -198,7 +198,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T6b, T13
   - Files: `frontend/src/features/parent_accounts/components/AddChild.tsx` (tách form dùng lại), `frontend/src/routes/parent/children/$studentId.tsx`, `frontend/src/features/parent_accounts/{api,hooks}.ts`
 
-- [ ] **T14: Phía admin: nhãn tự khai, phụ huynh đã link, gỡ link, thông báo ghép** (M)
+- [x] **T14: Phía admin: nhãn tự khai, phụ huynh đã link, gỡ link, thông báo ghép** (M)
   - Mô tả: nhãn "Phụ huynh tự khai" ở danh sách và chi tiết. Chi tiết liệt kê `linked_parents` kèm nút "Gỡ liên kết" (xác nhận trước khi gỡ). Form nhập liệu: phản hồi tạo có `linked_parents` không rỗng → màn hình xác nhận hiện "Đã ghép với hồ sơ phụ huynh tự khai".
   - Acceptance:
     - [ ] Nhãn hiện đúng; học sinh admin đo không có nhãn
@@ -208,7 +208,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T9, T9b, T9c
   - Files: `frontend/src/features/students/api.ts`, `frontend/src/features/students/hooks.ts`, `frontend/src/features/students/components/StudentList.tsx`, `frontend/src/features/students/components/StudentDetailView.tsx`, `frontend/src/features/students/components/NewStudent.tsx`
 
-- [ ] **T14b: Thẻ dashboard "Đơn đặt may theo cỡ"** (S)
+- [x] **T14b: Thẻ dashboard "Đơn đặt may theo cỡ"** (S)
   - Mô tả: thẻ mới trên `/dashboard` đọc `/stats/orders`, lọc theo trường, invalidate khi SSE `choices` tới. Ghi chú "Lựa chọn của phụ huynh, khác cỡ vừa suy ra".
   - Acceptance:
     - [ ] Phụ huynh chọn cỡ ở máy khác → thẻ cập nhật trong dưới 2 giây
