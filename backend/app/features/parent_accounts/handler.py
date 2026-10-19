@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,7 @@ from starlette.requests import Request
 from app.core import audit
 from app.core.errors import ApiError
 from app.core.events import bus
-from app.core.names import name_key
+from app.core.names import lock_identity, name_key
 from app.core.phone import normalize_phone
 from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, verify_password
 from app.features.catalog.models import Product, School, SchoolClass
@@ -265,11 +265,7 @@ async def create_child(
 ) -> ChildSummary:
     """Create a self-declared record and link it to the parent, unless the child already exists."""
     await check_class(session, payload.school_id, payload.class_id)
-    # Serialize creators of one identity so two parents cannot both pass the duplicate check.
-    identity = func.concat(
-        str(payload.school_id), "|", name_key(payload.full_name), "|", payload.dob.isoformat()
-    )
-    await session.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(identity, 0))))
+    await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
     if await _matches(session, payload):
         await session.rollback()
         raise ApiError(

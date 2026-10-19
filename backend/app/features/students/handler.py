@@ -17,11 +17,12 @@ from app.core import audit
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.events import bus
+from app.core.names import lock_identity, name_key
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.parent_accounts.models import ParentAccount, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
-from app.features.students.models import Fit, FittingTrial, Student
+from app.features.students.models import DataSource, Fit, FittingTrial, Student
 from app.features.students.schemas import (
     ClassRef,
     LinkedParentOut,
@@ -70,6 +71,7 @@ def _student_snapshot(student: Student) -> dict[str, Any]:
         "parent_name": student.parent_name,
         "parent_phone": student.parent_phone,
         "parent_email": student.parent_email,
+        "data_source": student.data_source.value,
         "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
     }
 
@@ -115,8 +117,9 @@ async def _check_duplicate(
     query = select(Student.id).where(
         Student.school_id == payload.school_id,
         Student.class_id == payload.class_id,
-        func.lower(func.trim(Student.full_name)) == payload.full_name.lower(),
+        name_key(Student.full_name) == name_key(payload.full_name),
         Student.dob == payload.dob,
+        Student.data_source == DataSource.ADMIN_MEASURED,
         Student.deleted_at.is_(None),
     )
     if exclude_id is not None:
@@ -188,16 +191,46 @@ async def _commit(session: AsyncSession) -> None:
         raise
 
 
+async def _declared_match(session: AsyncSession, payload: StudentIn) -> Student | None:
+    """The one parent-declared record for this child (class ignored), locked for update."""
+    result = await session.scalars(
+        select(Student)
+        .where(
+            Student.school_id == payload.school_id,
+            name_key(Student.full_name) == name_key(payload.full_name),
+            Student.dob == payload.dob,
+            Student.data_source == DataSource.PARENT_DECLARED,
+            Student.deleted_at.is_(None),
+        )
+        .limit(2)
+        .with_for_update()
+    )
+    matches = result.all()
+    return matches[0] if len(matches) == 1 else None
+
+
 async def create_student(session: AsyncSession, payload: StudentIn, actor: str) -> uuid.UUID:
-    """Create a student with trials in a single transaction."""
+    """Create a student with trials in a single transaction.
+
+    Unless forced, a single matching parent-declared record is adopted instead: it becomes
+    admin-measured and keeps its id, portal token, parent links and size choices.
+    """
     await _check_class(session, payload)
     products = await _products_by_code(session)
     resolved = _validate_trials(payload.trials, products)
+    adopted: Student | None = None
     if not payload.force:
+        await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
         await _check_duplicate(session, payload, None)
-    student = Student(portal_token=new_portal_token())
+        adopted = await _declared_match(session, payload)
+    before = _student_snapshot(adopted) if adopted else None
+    student = adopted or Student(portal_token=new_portal_token())
     _apply_fields(student, payload)
-    session.add(student)
+    if adopted:
+        student.data_source = DataSource.ADMIN_MEASURED
+        student.measured_at = datetime.now(UTC)
+    else:
+        session.add(student)
     await session.flush()
     trials: list[tuple[FittingTrial, str]] = []
     for trial_in, product in resolved:
@@ -213,8 +246,9 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
         trials.append((trial, product.code))
     await session.flush()
     await audit.record(
-        session, actor, "student.create", "student", student.id, None, _student_snapshot(student)
-    )
+        session, actor, "student.adopt" if adopted else "student.create", "student", student.id,
+        before, _student_snapshot(student),
+    )  # fmt: skip
     for trial, code in trials:
         await audit.record(
             session, actor, "trial.create", "fitting_trial", trial.id, None,
