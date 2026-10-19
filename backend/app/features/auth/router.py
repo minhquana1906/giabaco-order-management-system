@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.core.config import get_settings
-from app.core.security import limit_login, require_admin
+from app.core.security import SESSION_KEY, limit_login, require_admin
 from app.features.auth import handler
 from app.features.auth.schemas import LoginIn, UserOut
 
@@ -17,7 +17,7 @@ async def login(payload: LoginIn, request: Request) -> UserOut:
 
 @router.post("/logout", status_code=204)
 async def logout(request: Request) -> Response:
-    request.session.clear()
+    request.session.pop(SESSION_KEY, None)
     return Response(status_code=204)
 
 

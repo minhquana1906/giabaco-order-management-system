@@ -11,7 +11,18 @@ from typing import Any
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 PII_KEYS = frozenset(
-    {"full_name", "parent_name", "parent_phone", "parent_email", "dob", "phone", "email", "name"}
+    {
+        "full_name",
+        "parent_name",
+        "parent_phone",
+        "parent_email",
+        "dob",
+        "phone",
+        "email",
+        "name",
+        "identifier",
+        "password",
+    }
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _PHONE = re.compile(r"(?<!\d)(?:\+?84|0)(?:[\s.-]?\d){9}(?!\d)")

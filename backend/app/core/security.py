@@ -1,9 +1,11 @@
-"""Admin auth, rate limiting, client IP and security headers."""
+"""Admin and parent auth, rate limiting, client IP and security headers."""
 
+import functools
 import getpass
 import secrets
 import sys
 import time
+import uuid
 from collections import defaultdict, deque
 from collections.abc import Callable, MutableMapping
 
@@ -19,6 +21,7 @@ from app.core.errors import ApiError
 
 ADMIN_ACTOR = "admin"
 SESSION_KEY = "username"
+PARENT_SESSION_KEY = "parent_id"
 _hasher = PasswordHasher()
 
 
@@ -38,11 +41,39 @@ def verify_credentials(username: str, password: str) -> bool:
     return password_ok and user_ok
 
 
+@functools.cache
+def _dummy_hash() -> str:
+    return _hasher.hash(secrets.token_hex(16))
+
+
+def verify_password(password_hash: str | None, password: str) -> bool:
+    """Verify a stored hash; hash a dummy when there is no account so timing does not leak it."""
+    try:
+        ok: bool = _hasher.verify(password_hash or _dummy_hash(), password)
+    except (VerificationError, InvalidHashError):
+        return False
+    return ok and password_hash is not None
+
+
 def require_admin(request: Request) -> str:
     """Dependency: return actor or raise 401."""
     if request.session.get(SESSION_KEY) != get_settings().admin_username:
         raise ApiError(401, "unauthorized", "Cần đăng nhập")
     return ADMIN_ACTOR
+
+
+def require_parent(request: Request) -> uuid.UUID:
+    """Dependency: return the signed-in parent id or raise 401. Ignores the admin key."""
+    raw = request.session.get(PARENT_SESSION_KEY)
+    try:
+        return uuid.UUID(raw)
+    except (TypeError, ValueError):
+        raise ApiError(401, "unauthorized", "Cần đăng nhập") from None
+
+
+def parent_actor(parent_id: uuid.UUID) -> str:
+    """Audit actor for a parent account."""
+    return f"parent:{parent_id}"
 
 
 def client_ip(request: Request) -> str:
@@ -82,6 +113,8 @@ class RateLimiter:
 
 login_limiter = RateLimiter(5)
 public_limiter = RateLimiter(60)
+parent_auth_limiter = RateLimiter(10)
+parent_match_limiter = RateLimiter(10)
 
 
 def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
@@ -94,6 +127,8 @@ def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
 
 limit_login = _limit(login_limiter)
 limit_public = _limit(public_limiter)
+limit_parent_auth = _limit(parent_auth_limiter)
+limit_parent_match = _limit(parent_match_limiter)
 
 _BASE_HEADERS = [
     (b"x-content-type-options", b"nosniff"),

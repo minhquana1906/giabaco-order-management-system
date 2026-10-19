@@ -33,3 +33,10 @@ def test_json_formatter_masks_message_and_ctx() -> None:
     assert "0912345678" not in out["message"]
     assert out["parent_email"] == "***"
     assert out["status"] == 200
+
+
+def test_mask_value_masks_parent_credentials() -> None:
+    assert mask_value({"identifier": "a@b.vn", "password": "secret-123"}) == {
+        "identifier": "***",
+        "password": "***",
+    }
