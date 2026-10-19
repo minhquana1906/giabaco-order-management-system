@@ -161,7 +161,7 @@ class SecurityHeadersMiddleware:
 
 
 class HttpsRedirectMiddleware:
-    """Redirect proxied plain-HTTP requests to HTTPS: Secure session cookies are dropped over HTTP."""
+    """Redirect proxied plain-HTTP requests to HTTPS: HTTP drops Secure session cookies."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
