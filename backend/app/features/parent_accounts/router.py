@@ -19,6 +19,7 @@ from app.features.parent_accounts.schemas import (
     ChildIn,
     ChildKeyIn,
     ChildSummary,
+    ChildUpdateIn,
     ClassOut,
     LoginIn,
     LookupOut,
@@ -88,6 +89,13 @@ async def create_child(
     payload: ChildIn, session: Session, parent: CurrentParent, _limit: MatchLimit
 ) -> ChildSummary:
     return await handler.create_child(session, parent, payload)
+
+
+@router.put("/children/{student_id}", response_model=ChildSummary)
+async def update_child(
+    student_id: uuid.UUID, payload: ChildUpdateIn, session: Session, parent: CurrentParent
+) -> ChildSummary:
+    return await handler.update_child(session, parent, student_id, payload)
 
 
 @router.get("/children", response_model=list[ChildSummary])

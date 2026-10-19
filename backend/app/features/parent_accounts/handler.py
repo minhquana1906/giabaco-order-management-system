@@ -25,6 +25,7 @@ from app.features.parent_accounts.schemas import (
     ChildIn,
     ChildKeyIn,
     ChildSummary,
+    ChildUpdateIn,
     LoginIn,
     LookupOut,
     ParentAccountOut,
@@ -297,6 +298,40 @@ async def create_child(
     await audit.record(
         session, actor, "parent_student_link.create", "parent_student_link", link.id, None,
         {"parent_id": str(parent.id), "student_id": str(student.id), "origin": "CREATED"},
+    )  # fmt: skip
+    await session.commit()
+    bus.publish("students")
+    return await child(session, parent.id, student.id)
+
+
+async def update_child(
+    session: AsyncSession, parent: ParentAccount, student_id: uuid.UUID, payload: ChildUpdateIn
+) -> ChildSummary:
+    """Edit a linked, self-declared record; admin-measured records are locked."""
+    student = await session.scalar(
+        select(Student)
+        .join(ParentStudentLink, ParentStudentLink.student_id == Student.id)
+        .where(
+            Student.id == student_id,
+            ParentStudentLink.parent_id == parent.id,
+            Student.deleted_at.is_(None),
+        )
+        .with_for_update(of=Student)
+    )
+    if student is None:
+        raise ApiError(404, "not_found", "Không tìm thấy học sinh")
+    if student.data_source is not DataSource.PARENT_DECLARED:
+        raise ApiError(409, "measured_locked", "Hồ sơ đã được Giabaco đo, không thể sửa")
+    await check_class(session, student.school_id, payload.class_id)
+    before = _student_snapshot(student)
+    student.class_id = payload.class_id
+    student.gender = payload.gender
+    student.height_cm = payload.height_cm
+    student.weight_kg = payload.weight_kg
+    await session.flush()
+    await audit.record(
+        session, parent_actor(parent.id), "student.update", "student", student.id, before,
+        _student_snapshot(student),
     )  # fmt: skip
     await session.commit()
     bus.publish("students")
