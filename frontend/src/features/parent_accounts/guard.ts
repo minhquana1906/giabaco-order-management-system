@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { ApiError } from '@/lib/http'
+import { safeParentRedirect } from './authLogic'
 import { parentMeQueryOptions } from './hooks'
 
 export async function requireParentSession(queryClient: QueryClient, href: string) {
@@ -12,4 +13,13 @@ export async function requireParentSession(queryClient: QueryClient, href: strin
     }
     throw error
   }
+}
+
+export function parentRedirectSearch(search: Record<string, unknown>): { redirect?: string } {
+  return { redirect: safeParentRedirect(search.redirect) }
+}
+
+export async function redirectWhenSignedIn(queryClient: QueryClient, target: string | undefined) {
+  const account = await queryClient.ensureQueryData(parentMeQueryOptions()).catch(() => null)
+  if (account) throw redirect({ href: target ?? '/parent' })
 }

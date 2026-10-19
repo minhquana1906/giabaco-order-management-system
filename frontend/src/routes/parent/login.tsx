@@ -1,17 +1,11 @@
 import { useEffect } from 'react'
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
-import { safeParentRedirect } from '@/features/parent_accounts/authLogic'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ParentLoginForm } from '@/features/parent_accounts/components/ParentLoginForm'
-import { parentMeQueryOptions } from '@/features/parent_accounts/hooks'
+import { parentRedirectSearch, redirectWhenSignedIn } from '@/features/parent_accounts/guard'
 
 export const Route = createFileRoute('/parent/login')({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: safeParentRedirect(search.redirect),
-  }),
-  beforeLoad: async ({ context, search }) => {
-    const account = await context.queryClient.ensureQueryData(parentMeQueryOptions()).catch(() => null)
-    if (account) throw redirect({ href: search.redirect ?? '/parent' })
-  },
+  validateSearch: parentRedirectSearch,
+  beforeLoad: ({ context, search }) => redirectWhenSignedIn(context.queryClient, search.redirect),
   component: LoginPage,
 })
 
