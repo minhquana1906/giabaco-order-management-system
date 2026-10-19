@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -95,6 +96,14 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </Button>
         </form>
+        <p className="mt-4 text-center">
+          <Link
+            to="/parent/login"
+            className="inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-brass"
+          >
+            Phụ huynh đăng nhập tại đây
+          </Link>
+        </p>
       </div>
     </main>
   )
