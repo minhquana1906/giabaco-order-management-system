@@ -143,7 +143,6 @@ class SchoolOut(BaseModel):
 
     id: uuid.UUID
     name: str
-    code: str
 
 
 class ClassOut(BaseModel):

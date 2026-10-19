@@ -1,7 +1,7 @@
 """Admin and parent auth, rate limiting, client IP and security headers."""
 
-import functools
 import getpass
+import ipaddress
 import secrets
 import sys
 import time
@@ -41,15 +41,13 @@ def verify_credentials(username: str, password: str) -> bool:
     return password_ok and user_ok
 
 
-@functools.cache
-def _dummy_hash() -> str:
-    return _hasher.hash(secrets.token_hex(16))
+_DUMMY_HASH = _hasher.hash(secrets.token_hex(16))
 
 
 def verify_password(password_hash: str | None, password: str) -> bool:
     """Verify a stored hash; hash a dummy when there is no account so timing does not leak it."""
     try:
-        ok: bool = _hasher.verify(password_hash or _dummy_hash(), password)
+        ok: bool = _hasher.verify(password_hash or _DUMMY_HASH, password)
     except (VerificationError, InvalidHashError):
         return False
     return ok and password_hash is not None
@@ -76,12 +74,22 @@ def parent_actor(parent_id: uuid.UUID) -> str:
     return f"parent:{parent_id}"
 
 
+def _ip_key(raw: str) -> str | None:
+    try:
+        ip = ipaddress.ip_address(raw.strip())
+    except ValueError:
+        return None
+    if isinstance(ip, ipaddress.IPv4Address):
+        return str(ip)
+    if ip.ipv4_mapped:
+        return str(ip.ipv4_mapped)
+    return f"{ipaddress.IPv6Address(int(ip) >> 64 << 64)}/64"
+
+
 def client_ip(request: Request) -> str:
-    """Prefer CF-Connecting-IP, fall back to the peer address."""
-    forwarded = request.headers.get("cf-connecting-ip")
-    if forwarded:
-        return forwarded.strip()
-    return request.client.host if request.client else "unknown"
+    """Rate-limit key: CF-Connecting-IP else the peer, with IPv6 grouped by /64."""
+    peer = request.client.host if request.client else "unknown"
+    return _ip_key(request.headers.get("cf-connecting-ip", "")) or _ip_key(peer) or peer
 
 
 class RateLimiter:
@@ -94,10 +102,12 @@ class RateLimiter:
         self.window_s = window_s
         self._clock = clock
         self._hits: MutableMapping[str, deque[float]] = defaultdict(deque)
+        self._next_sweep = clock() + window_s
 
     def allow(self, key: str) -> bool:
         """Record a hit; return False when over the limit."""
         now = self._clock()
+        self._sweep(now)
         hits = self._hits[key]
         while hits and now - hits[0] >= self.window_s:
             hits.popleft()
@@ -105,6 +115,15 @@ class RateLimiter:
             return False
         hits.append(now)
         return True
+
+    def _sweep(self, now: float) -> None:
+        """Once per window drop keys with no hit left in it, so idle clients do not pile up."""
+        if now < self._next_sweep:
+            return
+        self._next_sweep = now + self.window_s
+        stale = [k for k, hits in self._hits.items() if not hits or now - hits[-1] >= self.window_s]
+        for key in stale:
+            del self._hits[key]
 
     def reset(self) -> None:
         """Forget all hits."""

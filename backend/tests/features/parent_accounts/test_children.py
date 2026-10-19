@@ -298,9 +298,7 @@ async def test_catalog_lists_for_parents(
     missing = await parent.get("/api/parent/schools/00000000-0000-0000-0000-000000000000/classes")
 
     assert schools.status_code == 200
-    assert schools.json() == [
-        {"id": school_class["school_id"], "name": "Trường A", "code": schools.json()[0]["code"]}
-    ]
+    assert schools.json() == [{"id": school_class["school_id"], "name": "Trường A"}]
     assert classes.json() == [
         {
             "id": school_class["class_id"],
