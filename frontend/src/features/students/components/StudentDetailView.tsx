@@ -79,6 +79,8 @@ function UnlinkDialog({
   onClose: () => void
 }) {
   const unlink = useUnlinkParent(studentId)
+  const [shown, setShown] = useState(parent)
+  if (parent && parent !== shown) setShown(parent)
   return (
     <Dialog
       open={parent !== null}
@@ -91,7 +93,7 @@ function UnlinkDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Gỡ liên kết với {parent?.full_name}?</DialogTitle>
+          <DialogTitle>Gỡ liên kết với {shown?.full_name}?</DialogTitle>
           <DialogDescription>
             Tài khoản này sẽ không còn thấy hồ sơ của học sinh. Có thể liên kết lại khi phụ huynh nhận lại hồ sơ.
           </DialogDescription>
@@ -102,7 +104,7 @@ function UnlinkDialog({
           </p>
         ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" disabled={unlink.isPending} onClick={onClose}>
             Giữ liên kết
           </Button>
           <Button

@@ -1,4 +1,3 @@
-import { DataSourceBadge } from './DataSourceBadge'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, MessageSquareText, Plus } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
@@ -13,6 +12,7 @@ import { ExportMenu } from '@/features/exports/components/ExportMenu'
 import { formatNumber } from '@/lib/format'
 import { STUDENTS_PAGE_SIZE, type StudentListItem, type StudentListParams } from '../api'
 import { useStudents } from '../hooks'
+import { DataSourceBadge } from './DataSourceBadge'
 import { StudentFilters, hasActiveFilters, type SearchPatch } from './StudentFilters'
 
 interface StudentListProps {

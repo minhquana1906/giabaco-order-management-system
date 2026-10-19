@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { safeParentRedirect } from '@/features/parent_accounts/authLogic'
 import { ParentLoginForm } from '@/features/parent_accounts/components/ParentLoginForm'
 import { parentMeQueryOptions } from '@/features/parent_accounts/hooks'
@@ -10,16 +10,16 @@ export const Route = createFileRoute('/parent/login')({
   }),
   beforeLoad: async ({ context, search }) => {
     const account = await context.queryClient.ensureQueryData(parentMeQueryOptions()).catch(() => null)
-    if (account) throw redirect({ to: search.redirect ?? '/parent' })
+    if (account) throw redirect({ href: search.redirect ?? '/parent' })
   },
   component: LoginPage,
 })
 
 function LoginPage() {
   const { redirect: target } = Route.useSearch()
-  const navigate = useNavigate()
+  const router = useRouter()
   useEffect(() => {
     document.title = 'Đăng nhập phụ huynh · G-UNIFORM'
   }, [])
-  return <ParentLoginForm redirect={target} onSuccess={() => void navigate({ to: target ?? '/parent' })} />
+  return <ParentLoginForm redirect={target} onSuccess={() => router.history.push(target ?? '/parent')} />
 }

@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
 import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { validateLogin, type LoginErrors } from '../authLogic'
 import { useParentLogin } from '../hooks'
 import { authErrorMessage } from './authErrors'
 
@@ -13,8 +14,17 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
 
+  const [errors, setErrors] = useState<LoginErrors>({})
+  const formRef = useRef<HTMLFormElement>(null)
+
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    const found = validateLogin({ identifier, password })
+    setErrors(found)
+    if (Object.values(found).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      return
+    }
     login.mutate({ identifier: identifier.trim(), password }, { onSuccess })
   }
 
@@ -26,8 +36,8 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
           Xem số đo và chọn cỡ áo cho con bằng tài khoản của bạn.
         </p>
       </div>
-      <form onSubmit={submit} className="flex flex-col gap-5">
-        <Field id="identifier" label="Email hoặc số điện thoại">
+      <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
+        <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>
           {(control) => (
             <Input
               {...control}
@@ -36,23 +46,27 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              required
               className="h-12 text-[17px]"
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => {
+                setIdentifier(e.target.value)
+                setErrors((v) => ({ ...v, identifier: undefined }))
+              }}
             />
           )}
         </Field>
-        <Field id="password" label="Mật khẩu">
+        <Field id="password" label="Mật khẩu" error={errors.password}>
           {(control) => (
             <PasswordInput
               {...control}
               name="password"
               autoComplete="current-password"
-              required
               className="h-12 text-[17px]"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setErrors((v) => ({ ...v, password: undefined }))
+              }}
             />
           )}
         </Field>

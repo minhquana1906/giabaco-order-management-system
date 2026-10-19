@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { safeParentRedirect, toRegisterBody, validateRegister } from './authLogic'
+import { safeParentRedirect, toRegisterBody, validateLogin, validateRegister } from './authLogic'
 
 const valid = { full_name: 'Nguyễn Thị Lan', email: 'lan@example.com', phone: '', password: 'matkhau123' }
 
@@ -45,5 +45,12 @@ describe('safeParentRedirect', () => {
     expect(safeParentRedirect('/parentx')).toBeUndefined()
     expect(safeParentRedirect('https://evil.com/parent')).toBeUndefined()
     expect(safeParentRedirect(undefined)).toBeUndefined()
+  })
+})
+
+describe('validateLogin', () => {
+  it('requires both fields', () => {
+    expect(Object.keys(validateLogin({ identifier: ' ', password: '' })).sort()).toEqual(['identifier', 'password'])
+    expect(validateLogin({ identifier: 'lan@example.com', password: 'x' })).toEqual({})
   })
 })

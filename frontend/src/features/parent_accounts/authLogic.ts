@@ -35,6 +35,15 @@ export function validateRegister(values: RegisterValues): RegisterErrors {
   return errors
 }
 
+export type LoginErrors = Partial<Record<'identifier' | 'password', string>>
+
+export function validateLogin(values: { identifier: string; password: string }): LoginErrors {
+  const errors: LoginErrors = {}
+  if (!values.identifier.trim()) errors.identifier = 'Nhập email hoặc số điện thoại.'
+  if (!values.password) errors.password = 'Nhập mật khẩu.'
+  return errors
+}
+
 export function toRegisterBody(values: RegisterValues): RegisterBody {
   const email = values.email.trim()
   const phone = values.phone.trim()

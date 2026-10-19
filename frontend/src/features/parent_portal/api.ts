@@ -20,6 +20,7 @@ export interface PublicStudent {
   full_name: string
   school_name: string
   class_name: string
+  gender: 'MALE' | 'FEMALE'
   data_source: DataSource
   height_cm: number | null
   weight_kg: number | null

@@ -44,13 +44,23 @@ function StepDots({ n }: { n: 1 | 2 | 3 }) {
   )
 }
 
-function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+export interface NotFoundCopy {
+  title: string
+  text: string
+}
+
+const LINK_NOT_FOUND: NotFoundCopy = {
+  title: 'Liên kết không hợp lệ',
+  text: 'Liên kết này không đúng hoặc đã hết hiệu lực. Vui lòng liên hệ nhân viên Giabaco.',
+}
+
+function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFoundCopy; onRetry: () => void }) {
   const status = error instanceof ApiError ? error.status : 0
   if (status === 404) {
     return (
       <>
-        <h1 className="text-2xl font-semibold text-navy">Liên kết không hợp lệ</h1>
-        <p>Liên kết này không đúng hoặc đã hết hiệu lực. Vui lòng liên hệ nhân viên Giabaco.</p>
+        <h1 className="text-2xl font-semibold text-navy">{notFound.title}</h1>
+        <p>{notFound.text}</p>
         <Contact />
       </>
     )
@@ -525,11 +535,12 @@ function SuccessDialog({ success, onClose }: { success: Success | null; onClose:
 interface PortalPageProps {
   source: PortalSource
   skipIdentity?: boolean
+  notFound?: NotFoundCopy
   onBack?: () => void
   onEdit?: () => void
 }
 
-export function PortalPage({ source, skipIdentity = false, onBack, onEdit }: PortalPageProps) {
+export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_FOUND, onBack, onEdit }: PortalPageProps) {
   const query = usePortalStudent(source)
   const save = useSaveChoices(source)
   const [stepState, setStep] = useState<Step | null>(null)
@@ -580,7 +591,7 @@ export function PortalPage({ source, skipIdentity = false, onBack, onEdit }: Por
       </div>
     )
   } else if (query.isError || !s) {
-    body = <Problem error={query.error} onRetry={() => void query.refetch()} />
+    body = <Problem error={query.error} notFound={notFound} onRetry={() => void query.refetch()} />
   } else if (step === 'help') {
     body = <Help onBack={() => setStep('identity')} />
   } else if (step === 'identity') {
@@ -622,7 +633,7 @@ export function PortalPage({ source, skipIdentity = false, onBack, onEdit }: Por
   }
 
   return (
-    <ParentShell onBack={onBack}>
+    <ParentShell onBack={onBack} focusKey={step}>
       {body}
       <SuccessDialog success={success} onClose={() => setSuccess(null)} />
     </ParentShell>

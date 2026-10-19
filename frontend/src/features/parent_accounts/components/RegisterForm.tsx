@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
 import { PARENT_BTN, ParentShell } from '@/components/ParentShell'
@@ -27,6 +27,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
   const register = useParentRegister()
   const [values, setValues] = useState<RegisterValues>(EMPTY)
   const [clientErrors, setClientErrors] = useState<RegisterErrors>({})
+  const formRef = useRef<HTMLFormElement>(null)
 
   const set = (key: keyof RegisterValues) => (value: string) => {
     setValues((v) => ({ ...v, [key]: value }))
@@ -37,7 +38,10 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
     event.preventDefault()
     const errors = validateRegister(values)
     setClientErrors(errors)
-    if (Object.values(errors).some(Boolean)) return
+    if (Object.values(errors).some(Boolean)) {
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      return
+    }
     register.mutate(toRegisterBody(values), { onSuccess })
   }
 
@@ -56,7 +60,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
           Dùng tài khoản này để xem số đo và chọn cỡ áo cho con.
         </p>
       </div>
-      <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
         <Field id="full_name" label="Họ và tên của bạn" error={errors.full_name}>
           {(control) => (
             <Input

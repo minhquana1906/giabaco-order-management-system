@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { topicsToQueryKeys } from './topics'
 
 const MIN_DELAY_MS = 1_000
 const MAX_DELAY_MS = 30_000
@@ -18,10 +17,9 @@ export function useRealtime() {
     const connect = () => {
       const es = new EventSource('/api/events', { withCredentials: true })
       source = es
-      es.addEventListener('changed', (event) => {
-        for (const queryKey of topicsToQueryKeys((event as MessageEvent).data)) {
-          void queryClient.invalidateQueries({ queryKey: [...queryKey] })
-        }
+      es.addEventListener('changed', () => {
+        void queryClient.invalidateQueries({ queryKey: ['students'] })
+        void queryClient.invalidateQueries({ queryKey: ['stats'] })
       })
       es.onopen = () => {
         delay = MIN_DELAY_MS

@@ -11,6 +11,15 @@ export const Route = createFileRoute('/parent/_parent/children/$studentId')({
 
 function Page() {
   const { studentId } = Route.useParams()
+  return <ChildPage key={studentId} studentId={studentId} />
+}
+
+const CHILD_NOT_FOUND = {
+  title: 'Không tìm thấy hồ sơ',
+  text: 'Hồ sơ này không còn trong tài khoản của bạn',
+}
+
+function ChildPage({ studentId }: { studentId: string }) {
   const navigate = useNavigate()
   const source = useMemo(() => childPortalSource(studentId), [studentId])
   const student = usePortalStudent(source)
@@ -34,6 +43,7 @@ function Page() {
     <PortalPage
       source={source}
       skipIdentity
+      notFound={CHILD_NOT_FOUND}
       onBack={() => void navigate({ to: '/parent' })}
       onEdit={locked ? undefined : () => setEditing(true)}
     />
