@@ -1,6 +1,6 @@
 import os
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +93,40 @@ async def client(anon_client: AsyncClient) -> AsyncClient:
     )
     assert r.status_code == 200
     return anon_client
+
+
+class ParentClient(AsyncClient):
+    """Client with its own cookie jar, signed in as one parent account."""
+
+    parent_id: str
+
+
+@pytest_asyncio.fixture
+async def make_parent() -> AsyncIterator[Callable[..., Awaitable[ParentClient]]]:
+    clients: list[ParentClient] = []
+
+    async def make(
+        *,
+        email: str | None = None,
+        phone: str | None = None,
+        full_name: str = "Phụ Huynh",
+        password: str = "mat-khau-123",
+    ) -> ParentClient:
+        parent = ParentClient(transport=ASGITransport(app=app), base_url="http://test")
+        clients.append(parent)
+        if email is None and phone is None:
+            email = f"{uuid.uuid4().hex[:10]}@example.com"
+        r = await parent.post(
+            "/api/parent/auth/register",
+            json={"full_name": full_name, "email": email, "phone": phone, "password": password},
+        )
+        assert r.status_code == 201, r.text
+        parent.parent_id = r.json()["id"]
+        return parent
+
+    yield make
+    for parent in clients:
+        await parent.aclose()
 
 
 @pytest_asyncio.fixture
