@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Check, CheckCircle2, Ruler } from 'lucide-react'
+import { ContactActions, Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg, formatNumber } from '@/lib/format'
 import { ApiError } from '@/lib/http'
 import { requestErrorMessage } from '@/lib/requestError'
 import { cn } from '@/lib/utils'
-import { ContactActions as Contact, Hotline, PARENT_BTN as primaryBtn, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -62,7 +62,7 @@ function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFo
       <>
         <h1 className="text-2xl font-semibold text-navy">{notFound.title}</h1>
         <p>{notFound.text}</p>
-        <Contact />
+        <ContactActions />
       </>
     )
   }
@@ -71,7 +71,7 @@ function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFo
     <div role="alert" className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold text-navy">Chưa tải được trang</h1>
       <p>{text}</p>
-      <Button size="lg" className={primaryBtn} onClick={onRetry}>
+      <Button size="lg" className={PARENT_BTN} onClick={onRetry}>
         Thử lại
       </Button>
       <Hotline />
@@ -110,10 +110,10 @@ function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onN
       </div>
       <StudentTag s={s} />
       <div className="mt-auto flex flex-col gap-3">
-        <Button size="lg" className={primaryBtn} onClick={onYes}>
+        <Button size="lg" className={PARENT_BTN} onClick={onYes}>
           Đúng, tiếp tục
         </Button>
-        <Button variant="outline" size="lg" className={primaryBtn} onClick={onNo}>
+        <Button variant="outline" size="lg" className={PARENT_BTN} onClick={onNo}>
           Không phải con tôi
         </Button>
       </div>
@@ -127,8 +127,8 @@ function Help({ onBack }: { onBack: () => void }) {
       <h1 className="text-xl font-semibold text-navy">Vui lòng liên hệ nhân viên Giabaco để được hỗ trợ</h1>
       <p className="text-muted-foreground">Chúng tôi sẽ kiểm tra và gửi lại đúng liên kết cho bạn.</p>
       <div className="mt-auto flex flex-col gap-3">
-        <Contact />
-        <Button variant="ghost" size="lg" className={primaryBtn} onClick={onBack}>
+        <ContactActions />
+        <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
           Quay lại
         </Button>
       </div>
@@ -182,11 +182,11 @@ function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => v
         ))
       )}
       <div className="mt-auto">
-        <Button size="lg" className={primaryBtn} onClick={onNext}>
+        <Button size="lg" className={PARENT_BTN} onClick={onNext}>
           Tiếp tục
         </Button>
         {onEdit ? (
-          <Button variant="outline" size="lg" className={`${primaryBtn} mt-3`} onClick={onEdit}>
+          <Button variant="outline" size="lg" className={`${PARENT_BTN} mt-3`} onClick={onEdit}>
             Sửa thông tin
           </Button>
         ) : null}
@@ -423,10 +423,10 @@ function Review({
         </p>
       ) : null}
       <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-3 border-t border-hairline bg-background/95 px-4 py-3 backdrop-blur">
-        <Button size="lg" className={primaryBtn} disabled={pending} onClick={onConfirm}>
+        <Button size="lg" className={PARENT_BTN} disabled={pending} onClick={onConfirm}>
           {pending ? 'Đang lưu…' : 'Xác nhận đăng ký'}
         </Button>
-        <Button variant="outline" size="lg" className={primaryBtn} disabled={pending} onClick={onBack}>
+        <Button variant="outline" size="lg" className={PARENT_BTN} disabled={pending} onClick={onBack}>
           Quay lại sửa
         </Button>
       </div>
@@ -499,11 +499,11 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
         </dl>
       </section>
       <div className="mt-auto flex flex-col gap-3">
-        <Button size="lg" className={primaryBtn} onClick={onChange}>
+        <Button size="lg" className={PARENT_BTN} onClick={onChange}>
           Đổi lựa chọn
         </Button>
         {onEdit ? (
-          <Button variant="outline" size="lg" className={primaryBtn} onClick={onEdit}>
+          <Button variant="outline" size="lg" className={PARENT_BTN} onClick={onEdit}>
             Sửa thông tin
           </Button>
         ) : null}
@@ -530,7 +530,7 @@ function SuccessDialog({ success, onClose }: { success: Success | null; onClose:
           </p>
         ) : null}
         <DialogClose asChild>
-          <Button size="lg" className={primaryBtn}>
+          <Button size="lg" className={PARENT_BTN}>
             Xem thông tin đăng ký
           </Button>
         </DialogClose>
@@ -565,6 +565,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
 
   const s = query.data
   const step = stepState ?? (s ? initialStep(Object.keys(s.choices).length > 0, skipIdentity) : 'identity')
+  const editDeclared = s?.data_source === 'PARENT_DECLARED' ? onEdit : undefined
 
   const submit = () => {
     if (!s || !picked) return
@@ -604,13 +605,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
   } else if (step === 'identity') {
     body = <Identity s={s} onYes={() => setStep('measure')} onNo={() => setStep('help')} />
   } else if (step === 'measure') {
-    body = (
-      <Measurements
-        s={s}
-        onNext={() => setStep('choose')}
-        onEdit={onEdit && s.data_source === 'PARENT_DECLARED' ? onEdit : undefined}
-      />
-    )
+    body = <Measurements s={s} onNext={() => setStep('choose')} onEdit={editDeclared} />
   } else if (step === 'choose') {
     body = (
       <Choose
@@ -636,7 +631,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
       />
     )
   } else {
-    body = <Overview s={s} onChange={edit} onEdit={onEdit && s.data_source === 'PARENT_DECLARED' ? onEdit : undefined} />
+    body = <Overview s={s} onChange={edit} onEdit={editDeclared} />
   }
 
   return (
