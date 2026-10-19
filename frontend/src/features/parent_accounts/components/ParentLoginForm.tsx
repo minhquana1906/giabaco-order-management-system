@@ -5,6 +5,7 @@ import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { focusFirstInvalid } from '@/lib/formFocus'
 import { validateLogin, type LoginErrors } from '../authLogic'
 import { useParentLogin } from '../hooks'
 import { authErrorMessage } from './authErrors'
@@ -22,7 +23,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
     const found = validateLogin({ identifier, password })
     setErrors(found)
     if (Object.values(found).some(Boolean)) {
-      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      focusFirstInvalid(formRef)
       return
     }
     login.mutate({ identifier: identifier.trim(), password }, { onSuccess })

@@ -5,6 +5,7 @@ import { PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { focusFirstInvalid } from '@/lib/formFocus'
 import { ApiError } from '@/lib/http'
 import { MIN_PASSWORD_LENGTH, toRegisterBody, validateRegister, type RegisterErrors, type RegisterValues } from '../authLogic'
 import { useParentRegister } from '../hooks'
@@ -39,7 +40,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
     const errors = validateRegister(values)
     setClientErrors(errors)
     if (Object.values(errors).some(Boolean)) {
-      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      focusFirstInvalid(formRef)
       return
     }
     register.mutate(toRegisterBody(values), { onSuccess })

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { dobFromIso, dobToIso } from '@/lib/dob'
+import { focusFirstInvalid } from '@/lib/formFocus'
 import { formatDate } from '@/lib/format'
 import { requestErrorMessage } from '@/lib/requestError'
 import {
@@ -68,7 +69,7 @@ function SearchStep({
     const found = validateChildKey(value, todayIso())
     setErrors(found)
     if (Object.values(found).some(Boolean)) {
-      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      focusFirstInvalid(formRef)
       return
     }
     onSubmit()

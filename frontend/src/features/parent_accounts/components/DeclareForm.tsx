@@ -8,6 +8,7 @@ import { Hotline, PARENT_BTN } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { focusFirstInvalid } from '@/lib/formFocus'
 import {
   childErrorMessage,
   fieldErrorsFromApi,
@@ -69,7 +70,7 @@ export function DeclareForm({
     const errors = validateDeclared(values)
     setClientErrors(errors)
     if (Object.values(errors).some(Boolean)) {
-      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      focusFirstInvalid(formRef)
       return
     }
     onSubmit(toDeclaredBody(values))
