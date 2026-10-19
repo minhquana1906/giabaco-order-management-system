@@ -25,7 +25,7 @@ export function ProductImageButton({ product, gender, className }: ProductImageB
           <Image /> Xem ảnh sản phẩm
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[92dvh] gap-3 p-4 sm:max-w-3xl sm:p-6">
+      <DialogContent className="max-h-[90dvh] min-w-0 gap-3 p-4 sm:max-w-3xl sm:p-6">
         <DialogTitle className="px-8 text-center text-lg text-navy">{product.name}</DialogTitle>
         <DialogDescription className="text-center">
           Ảnh tham khảo. Chọn cỡ ở bước này không bao gồm màu sắc.
@@ -63,7 +63,7 @@ export function ProductImageButton({ product, gender, className }: ProductImageB
             tabIndex={0}
             role="region"
             aria-label={`Ảnh ${product.name}, cuộn để xem thêm`}
-            className="max-h-[56dvh] overflow-auto rounded-md border border-hairline outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="max-h-[60dvh] min-w-0 overflow-auto rounded-md border border-hairline outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <img
               key={src}

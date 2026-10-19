@@ -33,12 +33,18 @@ describe('useParentLogout', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
     const { client, wrapper } = setup()
     client.setQueryData(parentKeys.children(), [{ student_id: 's1' }])
+    let duringNavigate: { me: unknown; children: unknown } | null = null
+    navigate.mockImplementationOnce(async () => {
+      duringNavigate = { me: client.getQueryData(parentKeys.me()), children: client.getQueryData(parentKeys.children()) }
+    })
     const { result } = renderHook(() => useParentLogout(), { wrapper })
 
     await act(() => result.current.mutateAsync())
 
-    expect(client.getQueryData(parentKeys.children())).toBeUndefined()
     expect(navigate).toHaveBeenCalledWith({ to: '/parent/login', search: {} })
+    expect(duringNavigate).toEqual({ me: null, children: [{ student_id: 's1' }] })
+    expect(client.getQueryData(parentKeys.children())).toBeUndefined()
+    expect(client.getQueryData(parentKeys.me())).toBeUndefined()
   })
 
   it('treats an already-expired session as logged out', async () => {

@@ -59,7 +59,7 @@ export function ParentShell({ children, actions, onBack, backLabel = 'Các con c
       <header className="border-b border-hairline bg-white">
         <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3">
           <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto shrink-0" />
-          <span className="whitespace-nowrap text-base font-semibold tracking-[0.18em] text-navy">G-UNIFORM</span>
+          <span className="whitespace-nowrap text-sm font-semibold tracking-[0.18em] sm:text-base text-navy">G-UNIFORM</span>
           {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
         </div>
       </header>

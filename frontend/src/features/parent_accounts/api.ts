@@ -1,6 +1,8 @@
-import type { School, SchoolClass } from '@/features/catalog/api'
+import type { School as AdminSchool, SchoolClass } from '@/features/catalog/api'
 import type { DataSource } from '@/features/parent_portal/api'
 import { http } from '@/lib/http'
+
+export type School = Pick<AdminSchool, 'id' | 'name'>
 
 export interface ParentAccount {
   id: string

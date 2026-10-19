@@ -67,8 +67,9 @@ export function useParentLogout() {
       }
     },
     onSuccess: async () => {
-      queryClient.removeQueries({ queryKey: parentKeys.all })
+      queryClient.setQueryData(parentKeys.me(), null)
       await navigate({ to: '/parent/login', search: {} })
+      queryClient.removeQueries({ queryKey: parentKeys.all })
     },
     onError: (error) => toast.error(requestErrorMessage(error, 'Chưa đăng xuất được. Vui lòng thử lại.')),
   })
