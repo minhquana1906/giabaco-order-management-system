@@ -8,7 +8,7 @@ export interface SessionExpiryDeps {
   redirectToLogin: (area: 'parent' | 'admin') => void
 }
 
-export function handleQueryError(error: unknown, query: Query, { queryClient, redirectToLogin }: SessionExpiryDeps) {
+export function handleQueryError(error: unknown, query: Query<unknown, unknown, unknown, readonly unknown[]>, { queryClient, redirectToLogin }: SessionExpiryDeps) {
   if (!(error instanceof ApiError) || error.status !== 401) return
   // A query dropped by logout must not trigger a redirect that fights the logout navigation.
   if (queryClient.getQueryCache().find({ queryKey: query.queryKey, exact: true }) !== query) return
