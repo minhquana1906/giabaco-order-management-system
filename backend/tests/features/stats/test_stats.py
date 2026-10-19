@@ -333,15 +333,18 @@ async def test_declared_students_never_reach_any_measurement_filter_variant(
     ]
     before = {url: (await client.get(url)).json() for url in urls}
 
-    for name, klass, school, gender in [
-        ("Khai Một", extra_class, school_class["school_id"], Gender.MALE),
-        ("Khai Hai", other_class, other.id, Gender.FEMALE),
+    same_class = uuid.UUID(school_class["class_id"])
+    for name, school, class_id, gender, blazer, gile in [
+        ("Khai Một", school_class["school_id"], extra_class.id, Gender.MALE, "2", "6"),
+        ("Khai Hai", other.id, other_class.id, Gender.FEMALE, "2", "6"),
+        ("Khai Ba", school_class["school_id"], same_class, Gender.MALE, "7", "6"),
+        ("Khai Tư", other.id, other_class.id, Gender.FEMALE, "7", "7"),
     ]:
         declared = await make_student(
             name,
-            [("blazer", "2", "FITS", "2"), ("gile", "6", "FITS", "6")],
+            [("blazer", blazer, "FITS", blazer), ("gile", gile, "FITS", gile)],
             school_id=school,
-            class_id=klass.id,
+            class_id=class_id,
             gender=gender,
             data_source=DataSource.PARENT_DECLARED,
         )

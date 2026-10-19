@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from openpyxl import load_workbook
 
-from app.features.exports.handler import STUDENT_HEADERS, TRIAL_HEADERS
+from app.features.exports.handler import STUDENT_HEADERS, TRIAL_HEADERS, to_csv, to_xlsx
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, Gender
 
@@ -311,3 +311,46 @@ async def test_trials_exports_never_carry_declared_students(
     assert "đo tại trường" in cells
     for declared_marker in ("khai báo của phụ huynh", "Lê Tự Khai", "6", "TOO_LOOSE", "FEMALE"):
         assert declared_marker not in cells
+
+
+CRAFTED_ROW = ["=SUM(A1)", "\tcmd", "\rcmd", "+1", "-1", "@a", "plain", "Ánh", 5, -3, 2.5, None]
+
+
+def test_to_csv_prefixes_only_formula_triggering_text() -> None:
+    rows = read_csv(to_csv(["h"], [CRAFTED_ROW]))
+
+    assert rows[1] == [
+        "'=SUM(A1)",
+        "'\tcmd",
+        "'\rcmd",
+        "'+1",
+        "'-1",
+        "'@a",
+        "plain",
+        "Ánh",
+        "5",
+        "-3",
+        "2.5",
+        "",
+    ]
+
+
+def test_to_xlsx_prefixes_text_and_keeps_numbers_and_empty_cells() -> None:
+    content = to_xlsx({"S": (["=h"], [CRAFTED_ROW])})
+
+    sheet = load_workbook(io.BytesIO(content))["S"]
+    header, row = list(sheet.iter_rows())
+    assert header[0].value == "'=h" and header[0].data_type == "s"
+    assert [c.value for c in row[:8]] == [
+        "'=SUM(A1)",
+        "'\tcmd",
+        "'\ncmd",  # XML turns the stored CR into LF on read; the quote prefix is what matters
+        "'+1",
+        "'-1",
+        "'@a",
+        "plain",
+        "Ánh",
+    ]
+    assert all(c.data_type == "s" for c in row[:8])
+    assert [(c.value, c.data_type) for c in row[8:11]] == [(5, "n"), (-3, "n"), (2.5, "n")]
+    assert len(row) == 11

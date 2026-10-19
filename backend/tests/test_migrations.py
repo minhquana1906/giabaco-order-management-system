@@ -6,10 +6,18 @@ import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from tests.conftest import BACKEND_DIR, TEST_DB_URL
 
 SERVER_DSN = TEST_DB_URL.replace("+psycopg", "")
+
+
+def scalar(dsn: str, sql: str) -> object:
+    with psycopg.connect(dsn, autocommit=True) as db:
+        row = db.execute(sql).fetchone()
+    assert row is not None
+    return row[0]
 
 
 async def test_upgrade_marks_existing_students_as_admin_measured(
@@ -19,16 +27,24 @@ async def test_upgrade_marks_existing_students_as_admin_measured(
     scratch_dsn = SERVER_DSN.rsplit("/", 1)[0] + f"/{name}"
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    head = ScriptDirectory.from_config(cfg).get_current_head()
     monkeypatch.setattr(
         "app.core.config.get_settings",
         lambda: SimpleNamespace(
             database_url=scratch_dsn.replace("postgresql://", "postgresql+psycopg://")
         ),
     )
+    shared_students = scalar(SERVER_DSN, "SELECT count(*) FROM students")
     with psycopg.connect(SERVER_DSN, autocommit=True) as server:
         server.execute(f'CREATE DATABASE "{name}"')
     try:
         await asyncio.to_thread(command.upgrade, cfg, "0001")
+        assert scalar(scratch_dsn, "SELECT version_num FROM alembic_version") == "0001"
+        has_column = (
+            "SELECT count(*) FROM information_schema.columns "
+            "WHERE table_name = 'students' AND column_name = 'data_source'"
+        )
+        assert scalar(scratch_dsn, has_column) == 0
         with psycopg.connect(scratch_dsn, autocommit=True) as db:
             school_id = db.execute(
                 "INSERT INTO schools (name, code) VALUES ('Trường cũ', 'OLD') RETURNING id"
@@ -49,9 +65,12 @@ async def test_upgrade_marks_existing_students_as_admin_measured(
 
         await asyncio.to_thread(command.upgrade, cfg, "head")
 
+        assert scalar(scratch_dsn, "SELECT version_num FROM alembic_version") == head
         with psycopg.connect(scratch_dsn) as db:
             rows = db.execute("SELECT full_name, data_source FROM students").fetchall()
         assert rows == [("Học Sinh Cũ", "ADMIN_MEASURED")]
+        assert scalar(SERVER_DSN, "SELECT count(*) FROM students") == shared_students
+        assert scalar(SERVER_DSN, "SELECT version_num FROM alembic_version") == head
     finally:
         with psycopg.connect(SERVER_DSN, autocommit=True) as server:
             server.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
