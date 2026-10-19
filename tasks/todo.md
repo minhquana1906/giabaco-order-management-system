@@ -223,7 +223,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 
 ## Phase 5: Demo ready
 
-- [ ] **T15: Smoke, tài liệu, nghiệm thu** (S)
+- [x] **T15: Smoke, tài liệu, nghiệm thu** (S)
   - Mô tả: `scripts/smoke.py` thêm luồng phụ huynh (đăng ký, `me`, 401 chéo loại). Cập nhật `docs/agent/status.md` và README (đường vào `/parent`, rủi ro xác minh yếu, giới hạn đặt lại năm sau và quên mật khẩu). Chạy nghiệm thu Success Criteria 14–23.
   - Acceptance:
     - [ ] `make smoke` xanh kèm luồng phụ huynh
