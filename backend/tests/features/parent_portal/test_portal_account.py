@@ -51,6 +51,7 @@ async def test_linked_child_has_the_public_schema_without_pii(
     for secret in ("0912345678", "ph@example.com", "2018-03-14", "dob", "parent_", "bí mật"):
         assert secret not in r.text
     assert r.json()["data_source"] == "ADMIN_MEASURED"
+    assert r.json()["gender"] == "MALE"
 
 
 async def test_public_view_suggests_sizes_from_the_size_guide(
@@ -65,12 +66,14 @@ async def test_public_view_suggests_sizes_from_the_size_guide(
         "gender": "FEMALE",
         "height_cm": 140,
         "weight_kg": 32,
+        "parent_phone": "0912345678",
     }
     created = (await parent.post(CHILDREN, json=body)).json()
 
     r = await parent.get(f"{CHILDREN}/{created['student_id']}")
 
     assert r.json()["data_source"] == "PARENT_DECLARED"
+    assert r.json()["gender"] == "FEMALE"
     assert r.json()["suggested_sizes"] == {"blazer": "4", "gile": "4"}
     assert r.json()["trials"] == []
     assert (r.json()["height_cm"], r.json()["weight_kg"]) == (140.0, 32.0)
@@ -84,6 +87,7 @@ async def test_qr_view_also_carries_data_source_and_suggestions(
     body = (await client.get(f"/api/public/students/{created['portal_token']}")).json()
 
     assert body["data_source"] == "ADMIN_MEASURED"
+    assert body["gender"] == "MALE"
     assert set(body["suggested_sizes"]) == {"blazer", "gile"}
 
 

@@ -29,6 +29,7 @@ def child_body(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]
         "gender": "FEMALE",
         "height_cm": 128.5,
         "weight_kg": 25.0,
+        "parent_phone": "0912345678",
     }
     body.update(overrides)
     return body
@@ -59,12 +60,19 @@ async def test_create_child_is_declared_and_linked(
         "class_name": "2A1",
         "gender": "FEMALE",
         "data_source": "PARENT_DECLARED",
+        "parent_name": None,
+        "parent_phone": "0912345678",
+        "parent_email": None,
         "choices": {},
     }
     student = await session.get(Student, uuid.UUID(body["student_id"]))
     assert student is not None and student.data_source is DataSource.PARENT_DECLARED
     assert student.portal_token and (student.height_cm, student.weight_kg) == (128.5, 25.0)
-    assert (student.parent_phone, student.parent_email, student.parent_name) == (None, None, None)
+    assert (student.parent_phone, student.parent_email, student.parent_name) == (
+        "0912345678",
+        None,
+        None,
+    )
     assert await session.scalar(select(func.count()).select_from(FittingTrial)) == 0
     link = await session.scalar(select(ParentStudentLink))
     assert link is not None and link.origin is LinkOrigin.CREATED
@@ -328,6 +336,7 @@ def edit_body(class_id: str, **overrides: Any) -> dict[str, Any]:
         "gender": "MALE",
         "height_cm": 131.0,
         "weight_kg": 27.5,
+        "parent_phone": "0912345678",
     }
     body.update(overrides)
     return body
@@ -474,3 +483,185 @@ async def test_edit_rejects_admin_sessions(
     r = await client.put(f"{CHILDREN}/{uuid.uuid4()}", json=edit_body(school_class["class_id"]))
 
     assert r.status_code == 401
+
+
+async def test_create_child_stores_normalised_parent_contact(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+
+    r = await parent.post(
+        CHILDREN,
+        json=child_body(
+            school_class,
+            parent_phone="+84 912 345 678",
+            parent_name="  Trần Thị Hoa ",
+            parent_email=" Hoa@Example.COM ",
+        ),
+    )
+
+    assert r.status_code == 201
+    contact = ("Trần Thị Hoa", "0912345678", "hoa@example.com")
+    body = r.json()
+    assert (body["parent_name"], body["parent_phone"], body["parent_email"]) == contact
+    student = await session.get(Student, uuid.UUID(body["student_id"]))
+    assert student is not None
+    assert (student.parent_name, student.parent_phone, student.parent_email) == contact
+    log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.create"))
+    assert log is not None and log.after is not None
+    after = log.after
+    assert (after["parent_name"], after["parent_phone"], after["parent_email"]) == contact
+
+
+async def test_create_child_requires_parent_phone(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+    body = child_body(school_class)
+    del body["parent_phone"]
+
+    r = await parent.post(CHILDREN, json=body)
+
+    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
+    assert await student_count(session) == 0
+
+
+@pytest.mark.parametrize("phone", [None, "", "   ", "12345", "0912-abc-678", "09123456789"])
+async def test_create_child_rejects_blank_or_invalid_parent_phone(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession, phone: str | None
+) -> None:
+    parent = await make_parent()
+
+    r = await parent.post(CHILDREN, json=child_body(school_class, parent_phone=phone))
+
+    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
+    assert await student_count(session) == 0
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("parent_email", "not-an-email"),
+        ("parent_email", "a\x00@b.vn"),
+        ("parent_email", "a@b.vn" + "x" * 200),
+        ("parent_name", "Mẹ\x00An"),
+        ("parent_name", "Mẹ\nAn"),
+        ("parent_name", "x" * 201),
+    ],
+)
+async def test_create_child_rejects_bad_optional_contact(
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+    field: str,
+    value: str,
+) -> None:
+    parent = await make_parent()
+
+    r = await parent.post(CHILDREN, json=child_body(school_class, **{field: value}))
+
+    assert r.status_code == 422 and field in r.json()["error"]["fields"]
+    assert await student_count(session) == 0
+
+
+async def test_blank_optional_contact_is_stored_as_null(
+    make_parent: MakeParent, school_class: dict[str, Any]
+) -> None:
+    parent = await make_parent()
+
+    r = await parent.post(
+        CHILDREN, json=child_body(school_class, parent_name="  ", parent_email="")
+    )
+
+    assert r.status_code == 201
+    assert (r.json()["parent_name"], r.json()["parent_email"]) == (None, None)
+
+
+async def test_parent_edit_updates_contact_and_audits_the_change(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+    created = (await parent.post(CHILDREN, json=child_body(school_class))).json()
+
+    r = await parent.put(
+        f"{CHILDREN}/{created['student_id']}",
+        json=edit_body(
+            school_class["class_id"],
+            parent_phone="+84 987 654 321",
+            parent_name="Ba của An",
+            parent_email="BA@example.com",
+        ),
+    )
+
+    assert r.status_code == 200
+    assert (r.json()["parent_name"], r.json()["parent_phone"], r.json()["parent_email"]) == (
+        "Ba của An",
+        "0987654321",
+        "ba@example.com",
+    )
+    log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
+    assert log is not None and log.before is not None and log.after is not None
+    assert (log.before["parent_phone"], log.after["parent_phone"]) == ("0912345678", "0987654321")
+    assert (log.before["parent_email"], log.after["parent_email"]) == (None, "ba@example.com")
+
+
+@pytest.mark.parametrize("phone", [None, "", "abc"])
+async def test_edit_requires_a_valid_parent_phone(
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+    phone: str | None,
+) -> None:
+    parent = await make_parent()
+    created = (await parent.post(CHILDREN, json=child_body(school_class))).json()
+
+    r = await parent.put(
+        f"{CHILDREN}/{created['student_id']}",
+        json=edit_body(school_class["class_id"], parent_phone=phone),
+    )
+
+    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
+    student = await session.get(Student, uuid.UUID(created["student_id"]))
+    assert student is not None and student.parent_phone == "0912345678"
+
+
+async def test_claimant_sees_declared_contact_but_never_admin_entered_contact(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+) -> None:
+    owner, claimer = await make_parent(), await make_parent()
+    await owner.post(
+        CHILDREN,
+        json=child_body(school_class, parent_name="Mẹ An", parent_email="me@example.com"),
+    )
+    await client.post(
+        "/api/students",
+        json=student_payload(
+            full_name="Nguyễn Minh Khang",
+            parent_name="Admin Entered",
+            parent_phone="0900000001",
+            parent_email="admin@example.com",
+        ),
+    )
+    for name, dob in [("Lê Minh Anh", "2017-09-01"), ("Nguyễn Minh Khang", "2018-03-14")]:
+        key = {"school_id": school_class["school_id"], "full_name": name, "dob": dob}
+        assert (await claimer.post(f"{CHILDREN}/claim", json=key)).status_code == 200
+
+    listing = await claimer.get(CHILDREN)
+
+    by_name = {c["full_name"]: c for c in listing.json()}
+    declared, measured = by_name["Lê Minh Anh"], by_name["Nguyễn Minh Khang"]
+    assert (declared["parent_name"], declared["parent_phone"], declared["parent_email"]) == (
+        "Mẹ An",
+        "0912345678",
+        "me@example.com",
+    )
+    assert (measured["parent_name"], measured["parent_phone"], measured["parent_email"]) == (
+        None,
+        None,
+        None,
+    )
+    for secret in ("Admin Entered", "0900000001", "admin@example.com"):
+        assert secret not in listing.text

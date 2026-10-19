@@ -173,6 +173,9 @@ async def test_claim_creates_one_link_and_is_idempotent(
             "class_name": "2A1",
             "gender": "MALE",
             "data_source": "ADMIN_MEASURED",
+            "parent_name": None,
+            "parent_phone": None,
+            "parent_email": None,
             "choices": {},
         }
     )

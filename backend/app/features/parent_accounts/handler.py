@@ -131,6 +131,7 @@ async def children(
         )
         for sid, code, label in chosen:
             choices[sid][code] = label
+    declared = DataSource.PARENT_DECLARED
     return [
         ChildSummary(
             student_id=s.id,
@@ -141,6 +142,9 @@ async def children(
             class_name=class_name,
             gender=s.gender,
             data_source=s.data_source,
+            parent_name=s.parent_name if s.data_source is declared else None,
+            parent_phone=s.parent_phone if s.data_source is declared else None,
+            parent_email=s.parent_email if s.data_source is declared else None,
             choices=choices[s.id],
         )
         for s, school_name, class_name in rows
@@ -255,6 +259,9 @@ def _student_snapshot(student: Student) -> dict[str, Any]:
         "gender": student.gender.value,
         "height_cm": float(student.height_cm),
         "weight_kg": float(student.weight_kg),
+        "parent_name": student.parent_name,
+        "parent_phone": student.parent_phone,
+        "parent_email": student.parent_email,
         "data_source": student.data_source.value,
         "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
     }
@@ -279,6 +286,9 @@ async def create_child(
         gender=payload.gender,
         height_cm=payload.height_cm,
         weight_kg=payload.weight_kg,
+        parent_name=payload.parent_name,
+        parent_phone=payload.parent_phone,
+        parent_email=payload.parent_email,
         portal_token=secrets.token_urlsafe(16),
         data_source=DataSource.PARENT_DECLARED,
     )
@@ -324,6 +334,9 @@ async def update_child(
     student.gender = payload.gender
     student.height_cm = payload.height_cm
     student.weight_kg = payload.weight_kg
+    student.parent_name = payload.parent_name
+    student.parent_phone = payload.parent_phone
+    student.parent_email = payload.parent_email
     await session.flush()
     await audit.record(
         session, parent_actor(parent.id), "student.update", "student", student.id, before,

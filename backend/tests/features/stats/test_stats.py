@@ -282,6 +282,7 @@ async def test_declared_child_with_a_choice_only_shows_up_in_orders(
                 "gender": "FEMALE",
                 "height_cm": 128.5,
                 "weight_kg": 25,
+                "parent_phone": "0912345678",
             },
         )
     ).json()

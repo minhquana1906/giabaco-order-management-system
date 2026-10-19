@@ -89,6 +89,7 @@ async def get_public_student(session: AsyncSession, student: Student) -> PublicS
         full_name=student.full_name,
         school_name=school.name,
         class_name=school_class.name,
+        gender=student.gender,
         data_source=student.data_source,
         height_cm=float(student.height_cm),
         weight_kg=float(student.weight_kg),

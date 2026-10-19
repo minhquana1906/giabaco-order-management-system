@@ -217,6 +217,7 @@ async def test_exports_neutralise_formula_cells_from_parent_names(
                 "gender": "FEMALE",
                 "height_cm": 128.5,
                 "weight_kg": 25.0,
+                "parent_phone": "0912345678",
             },
         )
         assert r.status_code == 201, r.text

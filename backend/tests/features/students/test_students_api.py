@@ -322,6 +322,7 @@ async def parent_child(parent: Any, school_class: dict[str, Any], name: str = "L
             "gender": "FEMALE",
             "height_cm": 128.5,
             "weight_kg": 25,
+            "parent_phone": "0912345678",
         },
     )
     assert r.status_code == 201, r.text

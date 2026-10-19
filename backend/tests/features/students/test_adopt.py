@@ -23,6 +23,7 @@ async def declare(
     school_class: dict[str, Any],
     class_id: str | None = None,
     name: str = "Nguyen Van An",
+    **overrides: Any,
 ) -> str:
     r = await parent.post(
         "/api/parent/children",
@@ -34,6 +35,8 @@ async def declare(
             "gender": "MALE",
             "height_cm": 120,
             "weight_kg": 20,
+            "parent_phone": "0912345678",
+            **overrides,
         },
     )
     assert r.status_code == 201, r.text
@@ -113,7 +116,13 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
     assert claim.status_code == 200 and claim.json()["student_id"] == declared_id
     edit = await mother.put(
         f"/api/parent/children/{declared_id}",
-        json={"class_id": class_2a2, "gender": "MALE", "height_cm": 100, "weight_kg": 15},
+        json={
+            "class_id": class_2a2,
+            "gender": "MALE",
+            "height_cm": 100,
+            "weight_kg": 15,
+            "parent_phone": "0912345678",
+        },
     )
     assert edit.status_code == 409 and edit.json()["error"]["code"] == "measured_locked"
 
@@ -297,3 +306,66 @@ async def test_invalid_trials_leave_the_declared_record_untouched(
     declared = await session.get(Student, uuid.UUID(declared_id))
     assert declared is not None and declared.data_source is DataSource.PARENT_DECLARED
     assert declared.height_cm == 120
+
+
+async def test_adoption_keeps_parent_contact_when_admin_supplies_none(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+) -> None:
+    mother = await make_parent()
+    declared_id = await declare(
+        mother, school_class, parent_name="Mẹ An", parent_email="me@example.com"
+    )
+
+    r = await client.post(
+        "/api/students",
+        json=student_payload(
+            full_name="Nguyễn Văn An",
+            parent_name=None,
+            parent_phone=None,
+            parent_email=None,
+        ),
+    )
+
+    assert r.status_code == 201 and r.json()["id"] == declared_id
+    assert (r.json()["parent_name"], r.json()["parent_phone"], r.json()["parent_email"]) == (
+        "Mẹ An",
+        "0912345678",
+        "me@example.com",
+    )
+    own_view = (await mother.get("/api/parent/children")).json()[0]
+    assert (own_view["parent_name"], own_view["parent_phone"], own_view["parent_email"]) == (
+        None,
+        None,
+        None,
+    )
+
+
+async def test_adoption_overwrites_only_the_contact_fields_admin_supplies(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+) -> None:
+    declared_id = await declare(
+        await make_parent(), school_class, parent_name="Mẹ An", parent_email="me@example.com"
+    )
+
+    r = await client.post(
+        "/api/students",
+        json=student_payload(
+            full_name="Nguyễn Văn An",
+            parent_name=None,
+            parent_phone="0987654321",
+            parent_email=None,
+        ),
+    )
+
+    assert r.status_code == 201 and r.json()["id"] == declared_id
+    assert (r.json()["parent_name"], r.json()["parent_phone"], r.json()["parent_email"]) == (
+        "Mẹ An",
+        "0987654321",
+        "me@example.com",
+    )

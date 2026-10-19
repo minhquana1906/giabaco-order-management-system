@@ -162,7 +162,7 @@ def _validate_trials(
     return resolved
 
 
-def _apply_fields(student: Student, payload: StudentIn) -> None:
+def _apply_fields(student: Student, payload: StudentIn, *, keep_contact: bool = False) -> None:
     student.school_id = payload.school_id
     student.class_id = payload.class_id
     student.full_name = payload.full_name
@@ -170,9 +170,10 @@ def _apply_fields(student: Student, payload: StudentIn) -> None:
     student.gender = payload.gender
     student.height_cm = payload.height_cm
     student.weight_kg = payload.weight_kg
-    student.parent_name = payload.parent_name
-    student.parent_phone = payload.parent_phone
-    student.parent_email = payload.parent_email
+    for field in ("parent_name", "parent_phone", "parent_email"):
+        value = getattr(payload, field)
+        if value is not None or not keep_contact:
+            setattr(student, field, value)
 
 
 def _suggestion(student: Student, product: Product) -> str | None:
@@ -225,7 +226,7 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
         adopted = await _declared_match(session, payload)
     before = _student_snapshot(adopted) if adopted else None
     student = adopted or Student(portal_token=new_portal_token())
-    _apply_fields(student, payload)
+    _apply_fields(student, payload, keep_contact=adopted is not None)
     if adopted:
         student.data_source = DataSource.ADMIN_MEASURED
         student.measured_at = datetime.now(UTC)
