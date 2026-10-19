@@ -149,7 +149,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 
 ## Phase 4: Frontend
 
-- [ ] **T10: `PortalPage` dùng chung cho QR và tài khoản** (M)
+- [x] **T10: `PortalPage` dùng chung cho QR và tài khoản** (M)
   - Mô tả: `PortalPage` nhận một `PortalSource` (`get`, `choose`, `remove`) thay vì `token`, cộng prop `skipIdentity` và `onBack`. Route `/p/$token` truyền source theo token. Khi `data_source = PARENT_DECLARED`: hiện "Ngày khai" thay "Ngày đo", hiện "Phụ huynh tự khai" thay danh sách lần thử trống.
   - Acceptance:
     - [ ] `/p/:token` chạy y như trước (xem tay: xác nhận con, chọn, xác nhận, đổi)
@@ -159,7 +159,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: không
   - Files: `frontend/src/features/parent_portal/components/PortalPage.tsx`, `frontend/src/features/parent_portal/api.ts`, `frontend/src/features/parent_portal/hooks.ts`, `frontend/src/routes/p/$token.tsx`
 
-- [ ] **T11: Đăng ký và đăng nhập phụ huynh** (M)
+- [x] **T11: Đăng ký và đăng nhập phụ huynh** (M)
   - Mô tả: `/parent/register` và `/parent/login`, tiếng Việt, mobile-first. Ghi chú trên form: "Nhập email hoặc số điện thoại, dùng để đăng nhập lần sau". Dùng `http` client chung.
   - Acceptance:
     - [ ] Đăng ký thành công thì vào `/parent`; trùng → hiện thông báo từ `message`
@@ -170,7 +170,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T4
   - Files: `frontend/src/features/parent_accounts/api.ts`, `frontend/src/features/parent_accounts/hooks.ts`, `frontend/src/features/parent_accounts/components/{RegisterForm,ParentLoginForm}.tsx`, `frontend/src/routes/parent/register.tsx`, `frontend/src/routes/parent/login.tsx`
 
-- [ ] **T12: Trang chủ phụ huynh và route con có bảo vệ** (M)
+- [x] **T12: Trang chủ phụ huynh và route con có bảo vệ** (M)
   - Mô tả: layout `_parent` kiểm `/parent/auth/me`, chưa đăng nhập thì về `/parent/login` (không về `/login` admin). `/parent` liệt kê con và nút "Thêm con", nút đăng xuất. `/parent/children/$studentId` dùng `PortalPage` với source theo `student_id`.
   - Acceptance:
     - [ ] Chưa đăng nhập mở `/parent` → `/parent/login`; đăng nhập xong quay lại đúng trang
@@ -180,7 +180,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T10, T11, T6, T7
   - Files: `frontend/src/routes/parent/_parent.tsx` (hoặc layout tương đương), `frontend/src/routes/parent/index.tsx`, `frontend/src/routes/parent/children/$studentId.tsx`, `frontend/src/features/parent_accounts/components/ChildrenList.tsx`, `frontend/src/features/parent_accounts/{api,hooks}.ts`
 
-- [ ] **T13: Thêm con: nhận hồ sơ có sẵn hoặc tự khai** (M)
+- [x] **T13: Thêm con: nhận hồ sơ có sẵn hoặc tự khai** (M)
   - Mô tả: `/parent/children/new`. Bước 1: trường, họ tên, ngày sinh → "Tìm hồ sơ". Khớp thì hiện tên, trường, lớp và hỏi "Đúng con của bạn?" rồi `claim`. Không khớp thì mở form tự khai (lớp, giới tính, chiều cao, cân nặng) rồi tạo.
   - Acceptance:
     - [ ] Khớp → xác nhận → vào trang chọn cỡ của con. Không khớp → form tự khai → tạo → vào trang chọn cỡ
@@ -190,7 +190,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Deps: T5, T6, T12
   - Files: `frontend/src/routes/parent/children/new.tsx`, `frontend/src/features/parent_accounts/components/AddChild.tsx`, `frontend/src/features/parent_accounts/addChildLogic.ts`, `frontend/src/features/parent_accounts/addChildLogic.test.ts`, `frontend/src/features/parent_accounts/{api,hooks}.ts`
 
-- [ ] **T13b: Sửa hồ sơ tự khai** (S)
+- [x] **T13b: Sửa hồ sơ tự khai** (S)
   - Mô tả: trên trang con `PARENT_DECLARED`, nút "Sửa thông tin" mở lại form tự khai (lớp, giới tính, chiều cao, cân nặng) điền sẵn. Hồ sơ admin đo không có nút.
   - Acceptance:
     - [ ] Sửa xong quay về trang con, số mới hiện ngay; 409 `measured_locked` hiện thông báo và ẩn nút
