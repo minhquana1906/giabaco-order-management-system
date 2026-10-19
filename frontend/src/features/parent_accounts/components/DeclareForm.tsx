@@ -4,7 +4,7 @@ import { FormSection } from '@/components/FormSection'
 import { GenderToggle } from '@/components/GenderToggle'
 import { NativeSelect } from '@/components/NativeSelect'
 import { UnitInput } from '@/components/UnitInput'
-import { LoadError, PARENT_BTN } from '@/components/ParentShell'
+import { LoadError, PARENT_BTN, PARENT_CONTROL } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,8 +21,6 @@ import {
 } from '../addChildLogic'
 import type { DeclaredBody } from '../api'
 import { useParentClasses } from '../hooks'
-
-const CONTROL = 'h-12 text-[17px]'
 
 export const EMPTY_DECLARED: DeclaredValues = {
   class_id: '',
@@ -106,7 +104,7 @@ export function DeclareForm({
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
       <Field id="class_id" label="Lớp" error={errors.class_id}>
         {(control) => (
-          <NativeSelect {...control} className={CONTROL} value={values.class_id} onChange={(e) => set('class_id', e.target.value)}>
+          <NativeSelect {...control} className={PARENT_CONTROL} value={values.class_id} onChange={(e) => set('class_id', e.target.value)}>
             <option value="">Chọn lớp của con</option>
             {classes.data.map((c) => (
               <option key={c.id} value={c.id}>
@@ -132,7 +130,7 @@ export function DeclareForm({
                 name="height"
                 unit="cm"
                 placeholder={`${HEIGHT_RANGE.min}–${HEIGHT_RANGE.max}`}
-                className={CONTROL}
+                className={PARENT_CONTROL}
                 value={values.height}
                 onChange={(e) => set('height', e.target.value)}
               />
@@ -145,7 +143,7 @@ export function DeclareForm({
                 name="weight"
                 unit="kg"
                 placeholder={`${WEIGHT_RANGE.min}–${WEIGHT_RANGE.max}`}
-                className={CONTROL}
+                className={PARENT_CONTROL}
                 value={values.weight}
                 onChange={(e) => set('weight', e.target.value)}
               />
@@ -167,7 +165,7 @@ export function DeclareForm({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              className={CONTROL}
+              className={PARENT_CONTROL}
               value={values.parent_phone}
               onChange={(e) => set('parent_phone', e.target.value)}
             />
@@ -179,7 +177,7 @@ export function DeclareForm({
               {...control}
               name="name"
               autoComplete="name"
-              className={CONTROL}
+              className={PARENT_CONTROL}
               value={values.parent_name}
               onChange={(e) => set('parent_name', e.target.value)}
             />
@@ -195,7 +193,7 @@ export function DeclareForm({
               autoComplete="email"
               autoCapitalize="none"
               spellCheck={false}
-              className={CONTROL}
+              className={PARENT_CONTROL}
               value={values.parent_email}
               onChange={(e) => set('parent_email', e.target.value)}
             />

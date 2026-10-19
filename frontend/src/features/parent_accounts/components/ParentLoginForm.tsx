@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
-import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { Hotline, PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,7 +47,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="h-12 text-[17px]"
+              className={PARENT_CONTROL}
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value)
@@ -62,7 +62,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
               {...control}
               name="password"
               autoComplete="current-password"
-              className="h-12 text-[17px]"
+              className={PARENT_CONTROL}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value)

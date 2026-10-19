@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
-import { PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
               {...control}
               name="name"
               autoComplete="name"
-              className="h-12 text-[17px]"
+              className={PARENT_CONTROL}
               value={values.full_name}
               onChange={(e) => set('full_name', e.target.value)}
             />
@@ -88,7 +88,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
                 autoComplete="email"
                 autoCapitalize="none"
                 spellCheck={false}
-                className="h-12 text-[17px]"
+                className={PARENT_CONTROL}
                 value={values.email}
                 onChange={(e) => set('email', e.target.value)}
               />
@@ -102,7 +102,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
-                className="h-12 text-[17px]"
+                className={PARENT_CONTROL}
                 value={values.phone}
                 onChange={(e) => set('phone', e.target.value)}
               />
@@ -120,7 +120,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
               {...control}
               name="new-password"
               autoComplete="new-password"
-              className="h-12 text-[17px]"
+              className={PARENT_CONTROL}
               value={values.password}
               onChange={(e) => set('password', e.target.value)}
             />

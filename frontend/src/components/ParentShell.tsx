@@ -6,6 +6,7 @@ export const HOTLINE = '0835352004'
 export const SUPPORT_EMAIL = 'Guniform2026@gmail.com'
 
 export const PARENT_BTN = 'h-[52px] w-full text-[17px]'
+export const PARENT_CONTROL = 'h-12 text-[17px]'
 
 export function ContactActions() {
   return (

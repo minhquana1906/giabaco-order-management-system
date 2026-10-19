@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { DobSelects } from '@/components/DobSelects'
 import { Field } from '@/components/Field'
 import { NativeSelect } from '@/components/NativeSelect'
-import { ContactActions, Hotline, LoadError, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { ContactActions, Hotline, LoadError, PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -105,7 +105,7 @@ function SearchStep({
       ) : null}
       <Field id="school_id" label="Trường" error={errors.school_id}>
         {(control) => (
-          <NativeSelect {...control} className="h-12 text-[17px]" value={value.school_id} onChange={(e) => set('school_id', e.target.value)}>
+          <NativeSelect {...control} className={PARENT_CONTROL} value={value.school_id} onChange={(e) => set('school_id', e.target.value)}>
             <option value="">Chọn trường của con</option>
             {schools.data.map((s) => (
               <option key={s.id} value={s.id}>
@@ -124,7 +124,7 @@ function SearchStep({
             {...control}
             name="child-name"
             autoComplete="off"
-            className="h-12 text-[17px]"
+            className={PARENT_CONTROL}
             value={value.full_name}
             onChange={(e) => set('full_name', e.target.value)}
           />
@@ -134,7 +134,7 @@ function SearchStep({
         value={dob}
         error={errors.dob}
         legendClassName="text-base"
-        selectClassName="h-12 text-[17px]"
+        selectClassName={PARENT_CONTROL}
         onChange={(next) => {
           setDob(next)
           set('dob', dobToIso(next) ?? '')
