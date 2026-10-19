@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.features.students.models import Fit
+from app.features.students.models import DataSource, Fit
 
 
 class PublicTrial(BaseModel):
@@ -24,12 +24,14 @@ class PublicStudent(BaseModel):
     full_name: str
     school_name: str
     class_name: str
+    data_source: DataSource
     height_cm: float
     weight_kg: float
     measured_at: datetime
     trials: list[PublicTrial]
     products: list[PublicProduct]
     choices: dict[str, str]
+    suggested_sizes: dict[str, str | None]
 
 
 class ChoiceIn(BaseModel):

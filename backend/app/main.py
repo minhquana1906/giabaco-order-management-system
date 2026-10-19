@@ -16,6 +16,7 @@ from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.exports.router import router as exports_router
 from app.features.parent_accounts.router import router as parent_accounts_router
+from app.features.parent_portal.router import account_router as parent_children_router
 from app.features.parent_portal.router import router as parent_portal_router
 from app.features.realtime.router import router as realtime_router
 from app.features.stats.router import router as stats_router
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
         students_router,
         parent_accounts_router,
         parent_portal_router,
+        parent_children_router,
         stats_router,
         exports_router,
         realtime_router,
