@@ -3,6 +3,7 @@ from typing import Any
 
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, Gender
+from tests.conftest import MakeParent, declare_child
 
 
 def school_id(school_class: dict[str, Any]) -> str:
@@ -266,26 +267,12 @@ async def test_orders_empty_has_zero_filled_sizes(client: Any) -> None:
 
 
 async def test_declared_child_with_a_choice_only_shows_up_in_orders(
-    client: Any, make_student: Any, make_parent: Any, school_class: dict[str, Any]
+    client: Any, make_student: Any, make_parent: MakeParent, school_class: dict[str, Any]
 ) -> None:
     await make_student("A", [("blazer", "3", "FITS", "3")])
     before = await measured_snapshot(client, school_id(school_class))
     parent = await make_parent()
-    child = (
-        await parent.post(
-            "/api/parent/children",
-            json={
-                "school_id": school_class["school_id"],
-                "class_id": school_class["class_id"],
-                "full_name": "Lê Minh Anh",
-                "dob": "2017-09-01",
-                "gender": "FEMALE",
-                "height_cm": 128.5,
-                "weight_kg": 25,
-                "parent_phone": "0912345678",
-            },
-        )
-    ).json()
+    child = await declare_child(parent, school_class)
 
     await parent.put(
         f"/api/parent/children/{child['student_id']}/size-choices/blazer", json={"size_label": "4"}

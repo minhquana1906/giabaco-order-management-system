@@ -1,5 +1,4 @@
 import uuid
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 from httpx import AsyncClient
@@ -10,19 +9,9 @@ from app.core.audit import AuditLog
 from app.core.events import bus
 from app.features.parent_accounts.models import ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent, Payload, claim_key, count_rows
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
 CLAIM = "/api/parent/children/claim"
-
-
-def claim_body(school_class: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "school_id": school_class["school_id"],
-        "full_name": "Nguyễn Minh Khang",
-        "dob": "2018-03-14",
-    }
 
 
 async def test_admin_unlinks_a_parent_and_the_choice_stays(
@@ -35,7 +24,7 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     mother, father = await make_parent(), await make_parent()
     student = (await client.post("/api/students", json=student_payload())).json()
     for parent in (mother, father):
-        assert (await parent.post(CLAIM, json=claim_body(school_class))).status_code == 200
+        assert (await parent.post(CLAIM, json=claim_key(school_class))).status_code == 200
     url = f"/api/parent/children/{student['id']}"
     await mother.put(f"{url}/size-choices/blazer", json={"size_label": "3"})
 
@@ -55,7 +44,7 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
         ("blazer", "3")
     ]
-    assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 1
+    assert await count_rows(session, ParentSizeChoice) == 1
     log = await session.scalar(
         select(AuditLog).where(AuditLog.action == "parent_student_link.delete")
     )
@@ -75,10 +64,10 @@ async def test_unlinked_parent_can_claim_again(
 ) -> None:
     parent = await make_parent()
     student = (await client.post("/api/students", json=student_payload())).json()
-    await parent.post(CLAIM, json=claim_body(school_class))
+    await parent.post(CLAIM, json=claim_key(school_class))
     await client.delete(f"/api/students/{student['id']}/parents/{parent.parent_id}")
 
-    again = await parent.post(CLAIM, json=claim_body(school_class))
+    again = await parent.post(CLAIM, json=claim_key(school_class))
 
     assert again.status_code == 200 and again.json()["student_id"] == student["id"]
 
@@ -92,7 +81,7 @@ async def test_unlinking_a_missing_link_is_not_found(
 ) -> None:
     linked, stranger = await make_parent(), await make_parent()
     student = (await client.post("/api/students", json=student_payload())).json()
-    await linked.post(CLAIM, json=claim_body(school_class))
+    await linked.post(CLAIM, json=claim_key(school_class))
     base = f"/api/students/{student['id']}/parents"
 
     not_linked = await client.delete(f"{base}/{stranger.parent_id}")
@@ -105,7 +94,7 @@ async def test_unlinking_a_missing_link_is_not_found(
 
     for r in (not_linked, unknown_parent, unknown_student, twice):
         assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 0
+    assert await count_rows(session, ParentStudentLink) == 0
     deletes = await session.scalar(
         select(func.count())
         .select_from(AuditLog)
@@ -123,9 +112,9 @@ async def test_a_parent_session_cannot_unlink(
 ) -> None:
     parent = await make_parent()
     student = (await client.post("/api/students", json=student_payload())).json()
-    await parent.post(CLAIM, json=claim_body(school_class))
+    await parent.post(CLAIM, json=claim_key(school_class))
 
     r = await parent.delete(f"/api/students/{student['id']}/parents/{parent.parent_id}")
 
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 1
+    assert await count_rows(session, ParentStudentLink) == 1

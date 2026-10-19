@@ -1,13 +1,11 @@
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
 from app.core.security import parent_auth_limiter, parent_match_limiter
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent, child_body
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
 RATE_LIMITED = {
     "error": {"code": "rate_limited", "message": "Quá nhiều yêu cầu, vui lòng thử lại sau"}
 }
@@ -20,16 +18,8 @@ MATCH_ROUTES = [LOOKUP, CLAIM, CREATE]
 
 
 def match_body(school_class: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "school_id": school_class["school_id"],
-        "class_id": school_class["class_id"],
-        "full_name": "Không Có Thật",
-        "dob": "2017-09-01",
-        "gender": "FEMALE",
-        "height_cm": 1,
-        "weight_kg": 25,
-        "parent_phone": "0912345678",
-    }
+    """Reaches every match route but is too short to ever create a record."""
+    return child_body(school_class, full_name="Không Có Thật", height_cm=1)
 
 
 def invalid_register(i: int) -> dict[str, Any]:

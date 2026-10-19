@@ -1,7 +1,6 @@
 import json
 import logging
 import uuid
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
@@ -12,9 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import AuditLog
 from app.features.parent_accounts.models import ParentAccount
 from app.main import app
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
 REGISTER = "/api/parent/auth/register"
 LOGIN = "/api/parent/auth/login"
 

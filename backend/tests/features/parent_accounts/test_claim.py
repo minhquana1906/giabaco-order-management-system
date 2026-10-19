@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
@@ -14,22 +13,14 @@ from app.core.db import SessionLocal
 from app.core.events import bus
 from app.core.names import lock_identity
 from app.features.parent_accounts.models import LinkOrigin, ParentStudentLink
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent, Payload, claim_key, count_rows
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
 LOOKUP = "/api/parent/children/lookup"
 CLAIM = "/api/parent/children/claim"
 
 
 def key(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]:
-    body = {
-        "school_id": school_class["school_id"],
-        "full_name": "Nguyễn Văn An",
-        "dob": "2018-03-14",
-    }
-    body.update(overrides)
-    return body
+    return claim_key(school_class, **{"full_name": "Nguyễn Văn An", **overrides})
 
 
 async def admin_student(client: AsyncClient, payload: Payload, **overrides: Any) -> dict[str, Any]:
@@ -147,7 +138,7 @@ async def test_two_matches_are_ambiguous(
 
     assert lookup.json() == {"found": True, "ambiguous": True}
     assert claim.status_code == 409 and claim.json()["error"]["code"] == "ambiguous_match"
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 0
+    assert await count_rows(session, ParentStudentLink) == 0
 
 
 async def test_claim_creates_one_link_and_is_idempotent(
@@ -207,7 +198,7 @@ async def test_two_parents_can_claim_the_same_student(
 
     assert (await mother.post(CLAIM, json=key(school_class))).status_code == 200
     assert (await father.post(CLAIM, json=key(school_class))).status_code == 200
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2
+    assert await count_rows(session, ParentStudentLink) == 2
 
 
 async def test_soft_deleted_student_never_matches(
@@ -276,7 +267,7 @@ async def test_one_parent_claiming_repeatedly_at_once_links_and_audits_once(
     results = await asyncio.gather(*(parent.post(CLAIM, json=key(school_class)) for _ in range(5)))
 
     assert [r.status_code for r in results] == [200] * 5
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 1
+    assert await count_rows(session, ParentStudentLink) == 1
     audits = await session.scalar(
         select(func.count())
         .select_from(AuditLog)
@@ -300,7 +291,7 @@ async def test_two_parents_claiming_at_once_both_link(
     )
 
     assert [r.status_code for r in results] == [200, 200]
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2
+    assert await count_rows(session, ParentStudentLink) == 2
     audits = await session.scalar(
         select(func.count())
         .select_from(AuditLog)
@@ -332,4 +323,4 @@ async def test_claim_waits_for_the_identity_lock_and_matches_again_after_it(
     r = await asyncio.wait_for(pending, 5)
 
     assert r.status_code == 404 and r.json()["error"]["code"] == "no_match"
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 0
+    assert await count_rows(session, ParentStudentLink) == 0

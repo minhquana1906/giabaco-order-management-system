@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -11,12 +11,15 @@ from app.core.events import bus
 from app.features.parent_accounts.models import ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import Student
-from tests.conftest import ParentClient
-
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
-CHILDREN = "/api/parent/children"
-KEY = {"full_name": "Nguyễn Minh Khang", "dob": "2018-03-14"}
+from tests.conftest import (
+    CHILDREN,
+    MakeParent,
+    ParentClient,
+    Payload,
+    child_body,
+    claim_key,
+    count_rows,
+)
 
 
 @pytest.fixture
@@ -25,10 +28,6 @@ def break_commits(monkeypatch: pytest.MonkeyPatch) -> Callable[[], None]:
         raise RuntimeError("commit failed")
 
     return lambda: monkeypatch.setattr(AsyncSession, "commit", failing_commit)
-
-
-async def count(session: AsyncSession, model: Any) -> int:
-    return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
 
 async def audits(session: AsyncSession, *actions: str) -> int:
@@ -40,9 +39,7 @@ async def linked_student(
     admin: AsyncClient, parent: ParentClient, payload: Payload, school_class: dict[str, Any]
 ) -> dict[str, Any]:
     created = (await admin.post("/api/students", json=payload())).json()
-    claim = await parent.post(
-        f"{CHILDREN}/claim", json={"school_id": school_class["school_id"], **KEY}
-    )
+    claim = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
     assert claim.status_code == 200
     return created  # type: ignore[no-any-return]
 
@@ -62,23 +59,12 @@ async def test_failed_commit_on_create_child_publishes_nothing_and_stores_nothin
     break_commits()
 
     async with bus.subscribe() as queue:
-        r = await parent.post(
-            CHILDREN,
-            json={
-                "school_id": school_class["school_id"],
-                "class_id": school_class["class_id"],
-                **KEY,
-                "gender": "MALE",
-                "height_cm": 126.5,
-                "weight_kg": 24,
-                "parent_phone": "0912345678",
-            },
-        )
+        r = await parent.post(CHILDREN, json=child_body(school_class, height_cm=126.5))
 
         assert_server_error(r)
         assert queue.empty()
-    assert await count(session, Student) == 0
-    assert await count(session, ParentStudentLink) == 0
+    assert await count_rows(session, Student) == 0
+    assert await count_rows(session, ParentStudentLink) == 0
     assert await audits(session, "student.create", "parent_student_link.create") == 0
 
 
@@ -95,13 +81,11 @@ async def test_failed_commit_on_claim_publishes_nothing_and_links_nothing(
     break_commits()
 
     async with bus.subscribe() as queue:
-        r = await parent.post(
-            f"{CHILDREN}/claim", json={"school_id": school_class["school_id"], **KEY}
-        )
+        r = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
 
         assert_server_error(r)
         assert queue.empty()
-    assert await count(session, ParentStudentLink) == 0
+    assert await count_rows(session, ParentStudentLink) == 0
     assert await audits(session, "parent_student_link.create") == 0
 
 
@@ -112,20 +96,7 @@ async def test_failed_commit_on_edit_publishes_nothing_and_changes_nothing(
     break_commits: Callable[[], None],
 ) -> None:
     parent = await make_parent()
-    created = (
-        await parent.post(
-            CHILDREN,
-            json={
-                "school_id": school_class["school_id"],
-                "class_id": school_class["class_id"],
-                **KEY,
-                "gender": "MALE",
-                "height_cm": 126.5,
-                "weight_kg": 24,
-                "parent_phone": "0912345678",
-            },
-        )
-    ).json()
+    created = (await parent.post(CHILDREN, json=child_body(school_class, height_cm=126.5))).json()
     break_commits()
 
     async with bus.subscribe() as queue:
@@ -164,7 +135,7 @@ async def test_failed_commit_on_unlink_publishes_nothing_and_keeps_the_link(
 
         assert_server_error(r)
         assert queue.empty()
-    assert await count(session, ParentStudentLink) == 1
+    assert await count_rows(session, ParentStudentLink) == 1
     assert await audits(session, "parent_student_link.delete") == 0
 
 
@@ -198,7 +169,7 @@ async def test_failed_commit_on_choice_set_publishes_nothing_and_stores_nothing(
 
         assert_server_error(r)
         assert queue.empty()
-    assert await count(session, ParentSizeChoice) == 0
+    assert await count_rows(session, ParentSizeChoice) == 0
     assert await audits(session, "choice.set") == 0
 
 
@@ -223,7 +194,7 @@ async def test_failed_commit_on_choice_clear_publishes_nothing_and_keeps_the_cho
 
         assert_server_error(r)
         assert queue.empty()
-    assert await count(session, ParentSizeChoice) == 1
+    assert await count_rows(session, ParentSizeChoice) == 1
     assert await audits(session, "choice.clear") == 0
 
 

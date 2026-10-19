@@ -1,7 +1,6 @@
 import asyncio
 import secrets
 import uuid
-from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
@@ -16,10 +15,8 @@ from app.core.events import bus
 from app.core.names import lock_identity
 from app.features.parent_accounts.models import ParentStudentLink
 from app.features.students.models import DataSource, Gender, Student
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent, ParentClient, Payload, child_body, count_rows
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
 TRIAL = {"product_code": "blazer", "size_label": "2", "fit": "FITS", "note": None}
 
 
@@ -30,20 +27,18 @@ async def declare(
     name: str = "Nguyen Van An",
     **overrides: Any,
 ) -> str:
-    r = await parent.post(
-        "/api/parent/children",
-        json={
-            "school_id": school_class["school_id"],
-            "class_id": class_id or school_class["class_id"],
-            "full_name": name,
-            "dob": "2018-03-14",
-            "gender": "MALE",
-            "height_cm": 120,
-            "weight_kg": 20,
-            "parent_phone": "0912345678",
-            **overrides,
-        },
+    """A declared record sharing the identity `student_payload` uses, so admin entry adopts it."""
+    body = child_body(
+        school_class,
+        class_id=class_id or school_class["class_id"],
+        full_name=name,
+        dob="2018-03-14",
+        gender="MALE",
+        height_cm=120,
+        weight_kg=20,
+        **overrides,
     )
+    r = await parent.post("/api/parent/children", json=body)
     assert r.status_code == 201, r.text
     return str(r.json()["student_id"])
 
@@ -53,10 +48,6 @@ async def other_class(client: AsyncClient, school_class: dict[str, Any]) -> str:
         f"/api/schools/{school_class['school_id']}/classes", json={"grade": 2, "name": "2A2"}
     )
     return str(r.json()["id"])
-
-
-async def student_count(session: AsyncSession) -> int:
-    return int(await session.scalar(select(func.count()).select_from(Student)) or 0)
 
 
 async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
@@ -104,7 +95,7 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
         ("blazer", "3")
     ]
     assert [(t["size_label"], t["suggested_size_label"]) for t in body["trials"]] == [("2", "2")]
-    assert await student_count(session) == 1
+    assert await count_rows(session, Student) == 1
 
     parent_view = (await mother.get(f"/api/parent/children/{declared_id}")).json()
     assert parent_view["data_source"] == "ADMIN_MEASURED" and parent_view["height_cm"] == 126.5
@@ -177,7 +168,7 @@ async def test_adoption_ignores_the_class_when_matching(
     r = await client.post("/api/students", json=student_payload(full_name="nguyễn  văn an"))
 
     assert r.status_code == 201 and r.json()["id"] == declared_id
-    assert await student_count(session) == 1
+    assert await count_rows(session, Student) == 1
 
 
 async def test_force_creates_a_separate_record(
@@ -197,7 +188,7 @@ async def test_force_creates_a_separate_record(
     assert r.json()["linked_parents"] == []
     declared = await session.get(Student, uuid.UUID(declared_id))
     assert declared is not None and declared.data_source is DataSource.PARENT_DECLARED
-    assert await student_count(session) == 2
+    assert await count_rows(session, Student) == 2
 
 
 async def test_admin_duplicate_still_conflicts_and_uses_normalized_names(
@@ -289,7 +280,7 @@ async def test_two_declared_matches_are_not_merged(
     r = await client.post("/api/students", json=student_payload(full_name="Nguyễn Văn An"))
 
     assert r.status_code == 201
-    assert await student_count(session) == 3
+    assert await count_rows(session, Student) == 3
     assert r.json()["data_source"] == "ADMIN_MEASURED" and r.json()["linked_parents"] == []
 
 
@@ -400,8 +391,8 @@ async def test_claim_racing_an_admin_adopt_neither_clashes_nor_duplicates(
 
     assert claim.status_code == 200 and claim.json()["student_id"] == declared_id
     assert adopt.status_code == 201 and adopt.json()["id"] == declared_id
-    assert await student_count(session) == 1
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2
+    assert await count_rows(session, Student) == 1
+    assert await count_rows(session, ParentStudentLink) == 2
 
 
 async def test_admin_edit_of_a_declared_record_takes_ownership(

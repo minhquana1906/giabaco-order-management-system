@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Any
 
 import psycopg.errors
@@ -11,8 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import AuditLog
 from app.core.events import bus
 from app.features.students.models import FittingTrial, Student
-
-Payload = Callable[..., dict[str, Any]]
+from tests.conftest import MakeParent, Payload, claim_key, declare_child
 
 
 def trial(code: str, size: str, fit: str = "FITS", **kw: Any) -> dict[str, Any]:
@@ -311,29 +309,14 @@ async def test_trial_unique_index_is_partial(
     await session.commit()
 
 
-async def parent_child(parent: Any, school_class: dict[str, Any], name: str = "Lê Minh Anh") -> Any:
-    r = await parent.post(
-        "/api/parent/children",
-        json={
-            "school_id": school_class["school_id"],
-            "class_id": school_class["class_id"],
-            "full_name": name,
-            "dob": "2017-09-01",
-            "gender": "FEMALE",
-            "height_cm": 128.5,
-            "weight_kg": 25,
-            "parent_phone": "0912345678",
-        },
-    )
-    assert r.status_code == 201, r.text
-    return r.json()["student_id"]
-
-
 async def test_list_and_detail_expose_data_source(
-    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
 ) -> None:
     measured = (await client.post("/api/students", json=student_payload())).json()
-    declared_id = await parent_child(await make_parent(), school_class)
+    declared_id = (await declare_child(await make_parent(), school_class))["student_id"]
 
     listed = (await client.get("/api/students")).json()["items"]
 
@@ -348,7 +331,10 @@ async def test_list_and_detail_expose_data_source(
 
 
 async def test_admin_cannot_set_data_source(
-    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
 ) -> None:
     created = await client.post(
         "/api/students", json=student_payload(data_source="PARENT_DECLARED")
@@ -360,25 +346,24 @@ async def test_admin_cannot_set_data_source(
     )
     assert updated.status_code == 200 and updated.json()["data_source"] == "ADMIN_MEASURED"
 
-    declared_id = await parent_child(await make_parent(), school_class)
+    declared_id = (await declare_child(await make_parent(), school_class))["student_id"]
     body = student_payload(full_name="Lê Minh Anh", dob="2017-09-01", data_source="PARENT_DECLARED")
     promoted = await client.put(f"/api/students/{declared_id}", json=body)
     assert promoted.status_code == 200 and promoted.json()["data_source"] == "ADMIN_MEASURED"
 
 
 async def test_detail_lists_linked_parents_and_declared_choices(
-    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
 ) -> None:
     creator = await make_parent(email="Me.Tao@Example.com", full_name="Mẹ Tạo")
-    declared_id = await parent_child(creator, school_class)
+    declared_id = (await declare_child(creator, school_class))["student_id"]
     claimer = await make_parent(phone="0987654321", full_name="Bố Nhận")
     claim = await claimer.post(
         "/api/parent/children/claim",
-        json={
-            "school_id": school_class["school_id"],
-            "full_name": "le minh anh",
-            "dob": "2017-09-01",
-        },
+        json=claim_key(school_class, full_name="le minh anh", dob="2017-09-01"),
     )
     assert claim.status_code == 200
     await creator.put(

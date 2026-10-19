@@ -1,15 +1,12 @@
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import ParentClient
+from tests.conftest import CHILDREN, MakeParent, child_body
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
 REGISTER = "/api/parent/auth/register"
 LOGIN = "/api/parent/auth/login"
-CHILDREN = "/api/parent/children"
 
 
 def register_body(**overrides: Any) -> dict[str, Any]:
@@ -60,16 +57,7 @@ async def test_child_name_rejects_control_characters(
     make_parent: MakeParent, school_class: dict[str, Any], route: str
 ) -> None:
     parent = await make_parent()
-    body: dict[str, Any] = {
-        "school_id": school_class["school_id"],
-        "full_name": "Lê\x00Anh",
-        "dob": "2017-09-01",
-        "class_id": school_class["class_id"],
-        "gender": "FEMALE",
-        "height_cm": 128.5,
-        "weight_kg": 25,
-        "parent_phone": "0912345678",
-    }
+    body = child_body(school_class, full_name="Lê\x00Anh")
 
     r = await parent.post(f"{CHILDREN}/{route}".rstrip("/"), json=body)
 

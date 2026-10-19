@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
@@ -11,9 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import JsonFormatter
 from app.features.parent_accounts import handler as accounts
 from app.features.parent_portal import handler as portal
-from tests.conftest import ParentClient
+from tests.conftest import MakeParent, claim_key
 
-MakeParent = Callable[..., Awaitable[ParentClient]]
 SECRET = "bí mật đỏ"
 LOOKUP = "/api/parent/children/lookup"
 
@@ -63,12 +61,7 @@ async def test_unhandled_error_returns_the_envelope_and_logs_only_class_and_path
     caplog.set_level(logging.INFO)
 
     r = await parent.post(
-        LOOKUP,
-        json={
-            "school_id": school_class["school_id"],
-            "full_name": "Lê Minh Anh",
-            "dob": "2017-09-01",
-        },
+        LOOKUP, json=claim_key(school_class, full_name="Lê Minh Anh", dob="2017-09-01")
     )
 
     assert r.status_code == 500

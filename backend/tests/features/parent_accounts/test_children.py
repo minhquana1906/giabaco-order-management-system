@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
@@ -14,30 +13,15 @@ from app.core.security import parent_match_limiter
 from app.features.parent_accounts.models import LinkOrigin, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, FittingTrial, Student
-from tests.conftest import ParentClient
-
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
-CHILDREN = "/api/parent/children"
-
-
-def child_body(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]:
-    body: dict[str, Any] = {
-        "school_id": school_class["school_id"],
-        "class_id": school_class["class_id"],
-        "full_name": "Lê Minh Anh",
-        "dob": "2017-09-01",
-        "gender": "FEMALE",
-        "height_cm": 128.5,
-        "weight_kg": 25.0,
-        "parent_phone": "0912345678",
-    }
-    body.update(overrides)
-    return body
-
-
-async def student_count(session: AsyncSession) -> int:
-    return int(await session.scalar(select(func.count()).select_from(Student)) or 0)
+from tests.conftest import (
+    CHILDREN,
+    MakeParent,
+    ParentClient,
+    Payload,
+    child_body,
+    claim_key,
+    count_rows,
+)
 
 
 async def test_create_child_is_declared_and_linked(
@@ -74,7 +58,7 @@ async def test_create_child_is_declared_and_linked(
         None,
         None,
     )
-    assert await session.scalar(select(func.count()).select_from(FittingTrial)) == 0
+    assert await count_rows(session, FittingTrial) == 0
     link = await session.scalar(select(ParentStudentLink))
     assert link is not None and link.origin is LinkOrigin.CREATED
     assert str(link.parent_id) == parent.parent_id
@@ -96,7 +80,7 @@ async def test_create_child_rejects_out_of_range_measures(
     r = await parent.post(CHILDREN, json=child_body(school_class, **{field: value}))
 
     assert r.status_code == 422 and field in r.json()["error"]["fields"]
-    assert await student_count(session) == 0
+    assert await count_rows(session, Student) == 0
 
 
 async def test_create_child_accepts_range_edges(
@@ -135,7 +119,7 @@ async def test_create_child_rejects_class_of_another_school(
     r = await parent.post(CHILDREN, json=child_body(school_class, class_id=other_class["id"]))
 
     assert r.status_code == 422 and "class_id" in r.json()["error"]["fields"]
-    assert await student_count(session) == 0
+    assert await count_rows(session, Student) == 0
 
 
 @pytest.mark.parametrize("typed", ["Nguyễn Văn An", "nguyen  van an "])
@@ -157,7 +141,7 @@ async def test_create_child_conflicts_with_an_existing_record(
     )
 
     assert r.status_code == 409 and r.json()["error"]["code"] == "child_exists"
-    assert await student_count(session) == 1
+    assert await count_rows(session, Student) == 1
 
 
 async def test_create_child_twice_is_child_exists_even_for_another_parent(
@@ -171,7 +155,7 @@ async def test_create_child_twice_is_child_exists_even_for_another_parent(
 
     assert again.status_code == other_parent.status_code == 409
     assert again.json()["error"]["code"] == "child_exists"
-    assert await student_count(session) == 1
+    assert await count_rows(session, Student) == 1
 
 
 async def test_concurrent_creates_make_one_record(
@@ -185,8 +169,8 @@ async def test_concurrent_creates_make_one_record(
     )
 
     assert sorted(r.status_code for r in results) == [201, 409]
-    assert await student_count(session) == 1
-    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 1
+    assert await count_rows(session, Student) == 1
+    assert await count_rows(session, ParentStudentLink) == 1
     audit_actions = (await session.scalars(select(AuditLog.action))).all()
     assert audit_actions.count("student.create") == 1
     assert audit_actions.count("parent_student_link.create") == 1
@@ -395,11 +379,7 @@ async def test_parent_cannot_edit_admin_measured_child(
 ) -> None:
     admin_made = (await client.post("/api/students", json=student_payload())).json()
     parent = await make_parent()
-    key = {
-        "school_id": school_class["school_id"],
-        "full_name": "Nguyễn Minh Khang",
-        "dob": "2018-03-14",
-    }
+    key = claim_key(school_class)
     assert (await parent.post(f"{CHILDREN}/claim", json=key)).status_code == 200
 
     r = await parent.put(f"{CHILDREN}/{admin_made['id']}", json=edit_body(school_class["class_id"]))
@@ -529,7 +509,7 @@ async def test_create_child_requires_parent_phone(
     r = await parent.post(CHILDREN, json=body)
 
     assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
-    assert await student_count(session) == 0
+    assert await count_rows(session, Student) == 0
 
 
 @pytest.mark.parametrize("phone", [None, "", "   ", "12345", "0912-abc-678", "09123456789"])
@@ -541,7 +521,7 @@ async def test_create_child_rejects_blank_or_invalid_parent_phone(
     r = await parent.post(CHILDREN, json=child_body(school_class, parent_phone=phone))
 
     assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
-    assert await student_count(session) == 0
+    assert await count_rows(session, Student) == 0
 
 
 @pytest.mark.parametrize(
@@ -567,7 +547,7 @@ async def test_create_child_rejects_bad_optional_contact(
     r = await parent.post(CHILDREN, json=child_body(school_class, **{field: value}))
 
     assert r.status_code == 422 and field in r.json()["error"]["fields"]
-    assert await student_count(session) == 0
+    assert await count_rows(session, Student) == 0
 
 
 async def test_blank_optional_contact_is_stored_as_null(
@@ -652,7 +632,7 @@ async def test_claimant_sees_declared_contact_but_never_admin_entered_contact(
         ),
     )
     for name, dob in [("Lê Minh Anh", "2017-09-01"), ("Nguyễn Minh Khang", "2018-03-14")]:
-        key = {"school_id": school_class["school_id"], "full_name": name, "dob": dob}
+        key = claim_key(school_class, full_name=name, dob=dob)
         assert (await claimer.post(f"{CHILDREN}/claim", json=key)).status_code == 200
 
     listing = await claimer.get(CHILDREN)
@@ -692,7 +672,7 @@ async def test_parent_cannot_create_more_than_ten_children(
 
     assert r.status_code == 409 and r.json()["error"]["code"] == "child_limit"
     assert "10" in r.json()["error"]["message"]
-    assert await student_count(session) == 10
+    assert await count_rows(session, Student) == 10
     audits = await session.scalar(
         select(func.count()).select_from(AuditLog).where(AuditLog.action == "student.create")
     )
@@ -707,11 +687,7 @@ async def test_claims_count_towards_the_limit_once(
 ) -> None:
     await client.post("/api/students", json=student_payload(full_name="Nguyễn Văn An"))
     parent = await make_parent()
-    key = {
-        "school_id": school_class["school_id"],
-        "full_name": "Nguyễn Văn An",
-        "dob": "2018-03-14",
-    }
+    key = claim_key(school_class, full_name="Nguyễn Văn An")
     assert (await parent.post(f"{CHILDREN}/claim", json=key)).status_code == 200
     assert (await parent.post(f"{CHILDREN}/claim", json=key)).status_code == 200
     parent_match_limiter.reset()
@@ -762,7 +738,7 @@ async def test_concurrent_creates_cannot_slip_past_the_limit(
     )
 
     assert sorted(r.status_code for r in results) == [201, 409]
-    assert await student_count(session) == 10
+    assert await count_rows(session, Student) == 10
 
 
 async def test_parent_edit_refreshes_measured_at(
@@ -824,7 +800,7 @@ async def test_a_second_linked_parent_can_edit_a_declared_child_as_themselves(
 ) -> None:
     creator, claimer = await make_parent(), await make_parent()
     created = (await creator.post(CHILDREN, json=child_body(school_class))).json()
-    key = {"school_id": school_class["school_id"], "full_name": "Lê Minh Anh", "dob": "2017-09-01"}
+    key = claim_key(school_class, full_name="Lê Minh Anh", dob="2017-09-01")
     assert (await claimer.post(f"{CHILDREN}/claim", json=key)).status_code == 200
 
     r = await claimer.put(

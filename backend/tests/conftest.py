@@ -11,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from argon2 import PasswordHasher
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 TEST_DB_URL = "postgresql+psycopg://guniform:guniform_test@127.0.0.1:55433/guniform_test"
@@ -101,8 +101,50 @@ class ParentClient(AsyncClient):
     parent_id: str
 
 
+MakeParent = Callable[..., Awaitable[ParentClient]]
+Payload = Callable[..., dict[str, Any]]
+CHILDREN = "/api/parent/children"
+
+
+def child_body(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]:
+    """Body of a self-declared child, distinct from the `student_payload` identity."""
+    return {
+        "school_id": school_class["school_id"],
+        "class_id": school_class["class_id"],
+        "full_name": "Lê Minh Anh",
+        "dob": "2017-09-01",
+        "gender": "FEMALE",
+        "height_cm": 128.5,
+        "weight_kg": 25.0,
+        "parent_phone": "0912345678",
+        **overrides,
+    }
+
+
+async def declare_child(
+    parent: ParentClient, school_class: dict[str, Any], **overrides: Any
+) -> dict[str, Any]:
+    r = await parent.post(CHILDREN, json=child_body(school_class, **overrides))
+    assert r.status_code == 201, r.text
+    return r.json()  # type: ignore[no-any-return]
+
+
+def claim_key(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]:
+    """Lookup/claim key of the child `student_payload` creates."""
+    return {
+        "school_id": school_class["school_id"],
+        "full_name": "Nguyễn Minh Khang",
+        "dob": "2018-03-14",
+        **overrides,
+    }
+
+
+async def count_rows(session: AsyncSession, model: Any) -> int:
+    return int(await session.scalar(select(func.count()).select_from(model)) or 0)
+
+
 @pytest_asyncio.fixture
-async def make_parent() -> AsyncIterator[Callable[..., Awaitable[ParentClient]]]:
+async def make_parent() -> AsyncIterator[MakeParent]:
     clients: list[ParentClient] = []
 
     async def make(

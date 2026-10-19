@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Any
 
 from httpx import AsyncClient
@@ -7,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
-
-Payload = Callable[..., dict[str, Any]]
+from tests.conftest import Payload
 
 
 async def make_student(client: AsyncClient, payload: Payload) -> dict[str, Any]:

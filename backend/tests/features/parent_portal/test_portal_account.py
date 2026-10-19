@@ -1,6 +1,5 @@
 import json
 import uuid
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
@@ -11,12 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import AuditLog
 from app.core.events import bus
 from app.features.parent_portal.models import ParentSizeChoice
-from tests.conftest import ParentClient
-
-MakeParent = Callable[..., Awaitable[ParentClient]]
-Payload = Callable[..., dict[str, Any]]
-CHILDREN = "/api/parent/children"
-KEY = {"full_name": "Nguyễn Minh Khang", "dob": "2018-03-14"}
+from tests.conftest import CHILDREN, MakeParent, ParentClient, Payload, claim_key, declare_child
 
 
 async def claimed_student(
@@ -29,9 +23,7 @@ async def claimed_student(
             json=payload(parent_email="ph@example.com", parent_name="Phụ Huynh", trials=trials),
         )
     ).json()
-    claim = await parent.post(
-        f"{CHILDREN}/claim", json={"school_id": school_class["school_id"], **KEY}
-    )
+    claim = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
     assert claim.status_code == 200
     return created  # type: ignore[no-any-return]
 
@@ -242,25 +234,6 @@ async def test_portal_account_routes_reject_admin_sessions(
     r = await client.request(method, path, json={"size_label": "3"} if method == "PUT" else None)
 
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
-
-
-async def declare_child(
-    parent: ParentClient, school_class: dict[str, Any], **overrides: Any
-) -> Any:
-    body = {
-        "school_id": school_class["school_id"],
-        "class_id": school_class["class_id"],
-        "full_name": "Lê Minh Anh",
-        "dob": "2017-09-01",
-        "gender": "FEMALE",
-        "height_cm": 128.5,
-        "weight_kg": 25,
-        "parent_phone": "0912345678",
-        **overrides,
-    }
-    r = await parent.post(CHILDREN, json=body)
-    assert r.status_code == 201, r.text
-    return r.json()
 
 
 @pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
