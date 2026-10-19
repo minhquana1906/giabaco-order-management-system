@@ -173,12 +173,23 @@ async def trials_dataset(session: AsyncSession) -> Dataset:
     return TRIAL_HEADERS, rows
 
 
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe(row: Sequence[Any]) -> Row:
+    """Prefix text a spreadsheet would run as a formula; user-typed names and notes reach cells."""
+    return [
+        f"'{cell}" if isinstance(cell, str) and cell.startswith(_FORMULA_TRIGGERS) else cell
+        for cell in row
+    ]
+
+
 def to_csv(headers: Sequence[str], rows: Sequence[Row]) -> bytes:
     """Encode as UTF-8 CSV with BOM so Excel keeps Vietnamese diacritics."""
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(headers)
-    writer.writerows(rows)
+    writer.writerow(_safe(headers))
+    writer.writerows(_safe(row) for row in rows)
     return buffer.getvalue().encode("utf-8-sig")
 
 
@@ -188,9 +199,9 @@ def to_xlsx(sheets: dict[str, Dataset]) -> bytes:
     workbook.remove(workbook.active)
     for title, (headers, rows) in sheets.items():
         sheet = workbook.create_sheet(title)
-        sheet.append(list(headers))
+        sheet.append(_safe(headers))
         for row in rows:
-            sheet.append(row)
+            sheet.append(_safe(row))
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()

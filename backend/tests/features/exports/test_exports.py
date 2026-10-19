@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import date
 from typing import Any
 
 import pytest
@@ -180,3 +181,72 @@ async def test_trials_export_excludes_parent_declared_students(
 
     assert len(csv_rows) == len(xlsx_rows) == len(all_rows) == 2
     assert csv_rows[1][csv_rows[0].index("Cỡ thử")] == "2"
+
+
+FORMULA_NAMES = ["=1+1", "@SUM(1)", "+1", "-1", "\tcmd", "\rcmd"]
+STUDENT_CELL_URLS = [
+    "/api/export/students.csv",
+    "/api/export/students.xlsx",
+    "/api/export/all.xlsx",
+]
+
+
+def student_rows(url: str, content: bytes) -> list[list[Any]]:
+    if url.endswith(".csv"):
+        return read_csv(content)
+    return read_sheet(content, "Học sinh")
+
+
+@pytest.mark.parametrize("url", STUDENT_CELL_URLS)
+async def test_exports_neutralise_formula_cells_from_parent_names(
+    client: Any,
+    make_parent: Any,
+    school_class: dict[str, Any],
+    session: Any,
+    url: str,
+) -> None:
+    parent = await make_parent()
+    for i, name in enumerate(["=1+1", "@SUM(1)"]):
+        r = await parent.post(
+            "/api/parent/children",
+            json={
+                "school_id": school_class["school_id"],
+                "class_id": school_class["class_id"],
+                "full_name": name,
+                "dob": f"2017-09-0{i + 1}",
+                "gender": "FEMALE",
+                "height_cm": 128.5,
+                "weight_kg": 25.0,
+            },
+        )
+        assert r.status_code == 201, r.text
+
+    rows = student_rows(url, (await client.get(url)).content)
+
+    names = {r[3] for r in rows[1:]}
+    assert names == {"'=1+1", "'@SUM(1)"}
+
+
+@pytest.mark.parametrize("url", URLS)
+async def test_exports_neutralise_every_string_cell(
+    client: Any, make_student: Any, url: str
+) -> None:
+    for i, name in enumerate(FORMULA_NAMES):
+        await make_student(
+            name,
+            [("blazer", "2", "FITS", "3")],
+            note=name,
+            dob=date(2018, 3, i + 1),
+        )
+
+    content = (await client.get(url)).content
+    if url.endswith(".csv"):
+        sheets = [read_csv(content)]
+    else:
+        workbook = load_workbook(io.BytesIO(content))
+        sheets = [[list(r) for r in ws.iter_rows(values_only=True)] for ws in workbook.worksheets]
+    cells = [c for rows in sheets for row in rows for c in row if isinstance(c, str)]
+
+    assert cells
+    assert not [c for c in cells if c.startswith(("=", "+", "-", "@", "\t", "\r"))]
+    assert "'=1+1" in cells
