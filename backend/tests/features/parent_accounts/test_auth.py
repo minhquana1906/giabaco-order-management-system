@@ -11,20 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import AuditLog
 from app.features.parent_accounts.models import ParentAccount
 from app.main import app
-from tests.conftest import MakeParent
+from tests.conftest import MakeParent, register_body
 
 REGISTER = "/api/parent/auth/register"
 LOGIN = "/api/parent/auth/login"
-
-
-def register_body(**overrides: Any) -> dict[str, Any]:
-    body: dict[str, Any] = {
-        "full_name": "Trần Thị Hoa",
-        "email": "Hoa.Tran@Example.com",
-        "password": "mat-khau-123",
-    }
-    body.update(overrides)
-    return body
 
 
 async def test_register_with_email_signs_in(anon_client: AsyncClient) -> None:

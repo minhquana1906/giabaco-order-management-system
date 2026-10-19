@@ -3,20 +3,10 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import CHILDREN, MakeParent, child_body
+from tests.conftest import CHILDREN, MakeParent, child_body, register_body
 
 REGISTER = "/api/parent/auth/register"
 LOGIN = "/api/parent/auth/login"
-
-
-def register_body(**overrides: Any) -> dict[str, Any]:
-    body: dict[str, Any] = {
-        "full_name": "Trần Thị Hoa",
-        "email": "hoa@example.com",
-        "password": "mat-khau-123",
-    }
-    body.update(overrides)
-    return body
 
 
 @pytest.mark.parametrize(

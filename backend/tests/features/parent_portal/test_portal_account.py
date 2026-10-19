@@ -10,22 +10,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import AuditLog
 from app.core.events import bus
 from app.features.parent_portal.models import ParentSizeChoice
-from tests.conftest import CHILDREN, MakeParent, ParentClient, Payload, claim_key, declare_child
+from tests.conftest import (
+    CHILDREN,
+    MakeParent,
+    ParentClient,
+    Payload,
+    claimed_student,
+    declare_child,
+)
+
+TRIALS = [{"product_code": "blazer", "size_label": "2", "fit": "FITS", "note": "bí mật"}]
 
 
-async def claimed_student(
+async def claimed_with_pii(
     admin: AsyncClient, parent: ParentClient, payload: Payload, school_class: dict[str, Any]
 ) -> dict[str, Any]:
-    trials = [{"product_code": "blazer", "size_label": "2", "fit": "FITS", "note": "bí mật"}]
-    created = (
-        await admin.post(
-            "/api/students",
-            json=payload(parent_email="ph@example.com", parent_name="Phụ Huynh", trials=trials),
-        )
-    ).json()
-    claim = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
-    assert claim.status_code == 200
-    return created  # type: ignore[no-any-return]
+    """Claimed student whose admin record holds contact details and a trial note."""
+    return await claimed_student(
+        admin,
+        parent,
+        payload,
+        school_class,
+        parent_email="ph@example.com",
+        parent_name="Phụ Huynh",
+        trials=TRIALS,
+    )
 
 
 async def test_linked_child_has_the_public_schema_without_pii(
@@ -35,7 +44,7 @@ async def test_linked_child_has_the_public_schema_without_pii(
     school_class: dict[str, Any],
 ) -> None:
     parent = await make_parent()
-    student = await claimed_student(client, parent, student_payload, school_class)
+    student = await claimed_with_pii(client, parent, student_payload, school_class)
 
     r = await parent.get(f"{CHILDREN}/{student['id']}")
 
@@ -92,7 +101,7 @@ async def test_choice_lifecycle_through_the_account(
     session: AsyncSession,
 ) -> None:
     parent = await make_parent()
-    student = await claimed_student(client, parent, student_payload, school_class)
+    student = await claimed_with_pii(client, parent, student_payload, school_class)
     url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
 
     async with bus.subscribe() as queue:
@@ -155,7 +164,7 @@ async def test_choice_validation_through_the_account(
     session: AsyncSession,
 ) -> None:
     parent = await make_parent()
-    student = await claimed_student(client, parent, student_payload, school_class)
+    student = await claimed_with_pii(client, parent, student_payload, school_class)
     base = f"{CHILDREN}/{student['id']}/size-choices"
 
     bad_size = await parent.put(f"{base}/blazer", json={"size_label": "99"})
@@ -178,7 +187,7 @@ async def test_unlinked_or_foreign_children_are_not_found(
     method: str,
 ) -> None:
     owner, stranger = await make_parent(), await make_parent()
-    linked = await claimed_student(client, owner, student_payload, school_class)
+    linked = await claimed_with_pii(client, owner, student_payload, school_class)
     unclaimed = (
         await client.post("/api/students", json=student_payload(full_name="Trần Văn Bình"))
     ).json()
@@ -214,7 +223,7 @@ async def test_a_parent_cannot_clear_another_parents_choice(
     session: AsyncSession,
 ) -> None:
     owner, stranger = await make_parent(), await make_parent()
-    student = await claimed_student(client, owner, student_payload, school_class)
+    student = await claimed_with_pii(client, owner, student_payload, school_class)
     url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
     await owner.put(url, json={"size_label": "3"})
 

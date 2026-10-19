@@ -14,10 +14,10 @@ from app.features.students.models import Student
 from tests.conftest import (
     CHILDREN,
     MakeParent,
-    ParentClient,
     Payload,
     child_body,
     claim_key,
+    claimed_student,
     count_rows,
 )
 
@@ -33,15 +33,6 @@ def break_commits(monkeypatch: pytest.MonkeyPatch) -> Callable[[], None]:
 async def audits(session: AsyncSession, *actions: str) -> int:
     query = select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(actions))
     return int(await session.scalar(query) or 0)
-
-
-async def linked_student(
-    admin: AsyncClient, parent: ParentClient, payload: Payload, school_class: dict[str, Any]
-) -> dict[str, Any]:
-    created = (await admin.post("/api/students", json=payload())).json()
-    claim = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
-    assert claim.status_code == 200
-    return created  # type: ignore[no-any-return]
 
 
 def assert_server_error(response: Any) -> None:
@@ -127,7 +118,7 @@ async def test_failed_commit_on_unlink_publishes_nothing_and_keeps_the_link(
     break_commits: Callable[[], None],
 ) -> None:
     parent = await make_parent()
-    student = await linked_student(client, parent, student_payload, school_class)
+    student = await claimed_student(client, parent, student_payload, school_class)
     break_commits()
 
     async with bus.subscribe() as queue:
@@ -159,7 +150,7 @@ async def test_failed_commit_on_choice_set_publishes_nothing_and_stores_nothing(
     kind: str,
 ) -> None:
     parent = await make_parent()
-    student = await linked_student(client, parent, student_payload, school_class)
+    student = await claimed_student(client, parent, student_payload, school_class)
     break_commits()
 
     async with bus.subscribe() as queue:
@@ -184,7 +175,7 @@ async def test_failed_commit_on_choice_clear_publishes_nothing_and_keeps_the_cho
     kind: str,
 ) -> None:
     parent = await make_parent()
-    student = await linked_student(client, parent, student_payload, school_class)
+    student = await claimed_student(client, parent, student_payload, school_class)
     actor = parent if kind == "account" else client
     assert (await actor.put(choice_url(kind, student), json={"size_label": "3"})).status_code == 200
     break_commits()
@@ -220,7 +211,7 @@ async def test_choices_event_is_not_published_for_rejected_requests(
     status: int,
 ) -> None:
     parent = await make_parent()
-    student = await linked_student(client, parent, student_payload, school_class)
+    student = await claimed_student(client, parent, student_payload, school_class)
     url = choice_url(kind, student).replace("/blazer", f"/{product}")
 
     async with bus.subscribe() as queue:

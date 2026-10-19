@@ -139,6 +139,30 @@ def claim_key(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]:
     }
 
 
+async def claimed_student(
+    admin: AsyncClient,
+    parent: ParentClient,
+    payload: Payload,
+    school_class: dict[str, Any],
+    **overrides: Any,
+) -> dict[str, Any]:
+    """An admin-measured student the parent has claimed."""
+    created = (await admin.post("/api/students", json=payload(**overrides))).json()
+    claim = await parent.post(f"{CHILDREN}/claim", json=claim_key(school_class))
+    assert claim.status_code == 200, claim.text
+    return created  # type: ignore[no-any-return]
+
+
+def register_body(**overrides: Any) -> dict[str, Any]:
+    """Parent registration body; the email is mixed case so normalization shows up."""
+    return {
+        "full_name": "Trần Thị Hoa",
+        "email": "Hoa.Tran@Example.com",
+        "password": "mat-khau-123",
+        **overrides,
+    }
+
+
 async def count_rows(session: AsyncSession, model: Any) -> int:
     return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
