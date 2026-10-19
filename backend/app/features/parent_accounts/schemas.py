@@ -4,12 +4,13 @@ import re
 import unicodedata
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app.core.phone import normalize_phone
-from app.features.students.models import DataSource, Gender
+from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -22,6 +23,14 @@ def _non_blank_name(value: str) -> str:
 
 
 FullName = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_non_blank_name)]
+
+
+Height = Annotated[
+    Decimal, Field(ge=HEIGHT_RANGE[0], le=HEIGHT_RANGE[1], max_digits=4, decimal_places=1)
+]
+Weight = Annotated[
+    Decimal, Field(ge=WEIGHT_RANGE[0], le=WEIGHT_RANGE[1], max_digits=3, decimal_places=1)
+]
 
 
 class RegisterIn(BaseModel):
@@ -84,3 +93,38 @@ class ChildSummary(BaseModel):
     gender: Gender
     data_source: DataSource
     choices: dict[str, str]
+
+
+class ChildUpdateIn(BaseModel):
+    """The fields a parent may change on a self-declared record."""
+
+    class_id: uuid.UUID
+    gender: Gender
+    height_cm: Height
+    weight_kg: Weight
+
+
+class ChildIn(ChildKeyIn, ChildUpdateIn):
+    @field_validator("dob")
+    @classmethod
+    def _dob(cls, v: date) -> date:
+        if v >= date.today():
+            raise ValueError("Ngày sinh phải trong quá khứ")
+        return v
+
+
+class SchoolOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    code: str
+
+
+class ClassOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    school_id: uuid.UUID
+    grade: int
+    name: str

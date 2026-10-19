@@ -1,10 +1,13 @@
 """Parent account use cases."""
 
+import secrets
 import uuid
 from collections import defaultdict
+from collections.abc import Sequence
+from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +22,7 @@ from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, v
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
 from app.features.parent_accounts.schemas import (
+    ChildIn,
     ChildKeyIn,
     ChildSummary,
     LoginIn,
@@ -27,7 +31,7 @@ from app.features.parent_accounts.schemas import (
     RegisterIn,
 )
 from app.features.parent_portal.models import ParentSizeChoice
-from app.features.students.models import Student
+from app.features.students.models import DataSource, Student
 
 
 def _unauthorized() -> ApiError:
@@ -210,4 +214,90 @@ async def claim(session: AsyncSession, parent: ParentAccount, key: ChildKeyIn) -
         )  # fmt: skip
         await session.commit()
         bus.publish("students")
+    return await child(session, parent.id, student.id)
+
+
+async def list_schools(session: AsyncSession) -> Sequence[School]:
+    return (await session.scalars(select(School).order_by(School.name))).all()
+
+
+async def list_classes(session: AsyncSession, school_id: uuid.UUID) -> Sequence[SchoolClass]:
+    if await session.get(School, school_id) is None:
+        raise ApiError(404, "not_found", "Không tìm thấy trường")
+    result = await session.scalars(
+        select(SchoolClass)
+        .where(SchoolClass.school_id == school_id)
+        .order_by(SchoolClass.grade, SchoolClass.name)
+    )
+    return result.all()
+
+
+async def check_class(session: AsyncSession, school_id: uuid.UUID, class_id: uuid.UUID) -> None:
+    found = await session.scalar(
+        select(SchoolClass.id).where(SchoolClass.id == class_id, SchoolClass.school_id == school_id)
+    )
+    if found is None:
+        raise ApiError(
+            422,
+            "validation_error",
+            "Lớp không thuộc trường đã chọn",
+            {"class_id": "Lớp không thuộc trường đã chọn"},
+        )
+
+
+def _student_snapshot(student: Student) -> dict[str, Any]:
+    return {
+        "school_id": str(student.school_id),
+        "class_id": str(student.class_id),
+        "full_name": student.full_name,
+        "dob": student.dob.isoformat(),
+        "gender": student.gender.value,
+        "height_cm": float(student.height_cm),
+        "weight_kg": float(student.weight_kg),
+        "data_source": student.data_source.value,
+        "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
+    }
+
+
+async def create_child(
+    session: AsyncSession, parent: ParentAccount, payload: ChildIn
+) -> ChildSummary:
+    """Create a self-declared record and link it to the parent, unless the child already exists."""
+    await check_class(session, payload.school_id, payload.class_id)
+    # Serialize creators of one identity so two parents cannot both pass the duplicate check.
+    identity = func.concat(
+        str(payload.school_id), "|", name_key(payload.full_name), "|", payload.dob.isoformat()
+    )
+    await session.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(identity, 0))))
+    if await _matches(session, payload):
+        await session.rollback()
+        raise ApiError(
+            409, "child_exists", "Hồ sơ của con đã có, hãy dùng chức năng tìm hồ sơ để nhận"
+        )
+    student = Student(
+        school_id=payload.school_id,
+        class_id=payload.class_id,
+        full_name=payload.full_name,
+        dob=payload.dob,
+        gender=payload.gender,
+        height_cm=payload.height_cm,
+        weight_kg=payload.weight_kg,
+        portal_token=secrets.token_urlsafe(16),
+        data_source=DataSource.PARENT_DECLARED,
+    )
+    session.add(student)
+    await session.flush()
+    link = ParentStudentLink(parent_id=parent.id, student_id=student.id, origin=LinkOrigin.CREATED)
+    session.add(link)
+    await session.flush()
+    actor = parent_actor(parent.id)
+    await audit.record(
+        session, actor, "student.create", "student", student.id, None, _student_snapshot(student)
+    )
+    await audit.record(
+        session, actor, "parent_student_link.create", "parent_student_link", link.id, None,
+        {"parent_id": str(parent.id), "student_id": str(student.id), "origin": "CREATED"},
+    )  # fmt: skip
+    await session.commit()
+    bus.publish("students")
     return await child(session, parent.id, student.id)

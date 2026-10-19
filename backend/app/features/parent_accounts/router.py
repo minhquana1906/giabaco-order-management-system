@@ -16,12 +16,15 @@ from app.core.security import (
 from app.features.parent_accounts import handler
 from app.features.parent_accounts.models import ParentAccount
 from app.features.parent_accounts.schemas import (
+    ChildIn,
     ChildKeyIn,
     ChildSummary,
+    ClassOut,
     LoginIn,
     LookupOut,
     ParentAccountOut,
     RegisterIn,
+    SchoolOut,
 )
 
 router = APIRouter(prefix="/api/parent")
@@ -78,3 +81,29 @@ async def claim_child(
     payload: ChildKeyIn, session: Session, parent: CurrentParent, _limit: MatchLimit
 ) -> ChildSummary:
     return await handler.claim(session, parent, payload)
+
+
+@router.post("/children", response_model=ChildSummary, status_code=201)
+async def create_child(
+    payload: ChildIn, session: Session, parent: CurrentParent, _limit: MatchLimit
+) -> ChildSummary:
+    return await handler.create_child(session, parent, payload)
+
+
+@router.get("/children", response_model=list[ChildSummary])
+async def list_children(session: Session, parent: CurrentParent) -> list[ChildSummary]:
+    return await handler.children(session, parent.id)
+
+
+@router.get("/schools", response_model=list[SchoolOut], dependencies=[Depends(current_parent)])
+async def list_schools(session: Session) -> list[SchoolOut]:
+    return [SchoolOut.model_validate(s) for s in await handler.list_schools(session)]
+
+
+@router.get(
+    "/schools/{school_id}/classes",
+    response_model=list[ClassOut],
+    dependencies=[Depends(current_parent)],
+)
+async def list_classes(school_id: uuid.UUID, session: Session) -> list[ClassOut]:
+    return [ClassOut.model_validate(c) for c in await handler.list_classes(session, school_id)]
