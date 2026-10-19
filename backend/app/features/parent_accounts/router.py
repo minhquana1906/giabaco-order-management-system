@@ -72,10 +72,13 @@ async def me(parent: CurrentParent) -> ParentAccountOut:
     return handler.account_out(parent)
 
 
-@router.post("/children/lookup", response_model=LookupOut, response_model_exclude_none=True)
-async def lookup_child(
-    payload: ChildKeyIn, session: Session, parent: CurrentParent, _limit: MatchLimit
-) -> LookupOut:
+@router.post(
+    "/children/lookup",
+    response_model=LookupOut,
+    response_model_exclude_none=True,
+    dependencies=[Depends(current_parent)],
+)
+async def lookup_child(payload: ChildKeyIn, session: Session, _limit: MatchLimit) -> LookupOut:
     return await handler.lookup(session, payload)
 
 

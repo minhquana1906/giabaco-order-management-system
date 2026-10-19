@@ -38,10 +38,6 @@ from app.features.students.models import DataSource, Student, student_snapshot
 MAX_CHILDREN = 10
 
 
-def _unauthorized() -> ApiError:
-    return ApiError(401, "unauthorized", "Cần đăng nhập")
-
-
 def account_out(parent: ParentAccount) -> ParentAccountOut:
     return ParentAccountOut(
         id=parent.id, full_name=parent.full_name, email=parent.email, phone=parent.phone
@@ -52,7 +48,7 @@ async def load_parent(session: AsyncSession, parent_id: uuid.UUID) -> ParentAcco
     """The signed-in account; a cookie for a vanished account is unauthorized."""
     parent = await session.get(ParentAccount, parent_id)
     if parent is None:
-        raise _unauthorized()
+        raise ApiError(401, "unauthorized", "Cần đăng nhập")
     return parent
 
 
