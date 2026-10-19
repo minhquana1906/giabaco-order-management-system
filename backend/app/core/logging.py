@@ -26,13 +26,18 @@ PII_KEYS = frozenset(
 )
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _PHONE = re.compile(r"(?<!\d)(?:\+?84|0)(?:[\s.-]?\d){9}(?!\d)")
-_PUBLIC_TOKEN = re.compile(r"(/api/public/students/)[^/]+")
+_TOKEN_PATH = re.compile(r"^(/api/public/students/|/p/)[^/]+")
 MASK = "***"
 
 
 def mask_text(text: str) -> str:
     """Mask emails and phone numbers inside free text."""
     return _PHONE.sub(MASK, _EMAIL.sub(MASK, text))
+
+
+def mask_path(path: str) -> str:
+    """Hide the portal token, which is the credential of the QR link."""
+    return _TOKEN_PATH.sub(r"\1<token>", path)
 
 
 def mask_value(value: Any) -> Any:
@@ -99,7 +104,7 @@ class RequestLogMiddleware:
         try:
             await self.app(scope, receive, send_wrapper)
         finally:
-            path = _PUBLIC_TOKEN.sub(r"\1<token>", scope["path"])
+            path = mask_path(scope["path"])
             request_logger.info(
                 "request",
                 extra={

@@ -17,7 +17,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _non_blank_name(value: str) -> str:
-    value = unicodedata.normalize("NFC", value.strip())
+    value = unicodedata.normalize("NFC", reject_control_chars(value.strip()))
     if not value:
         raise ValueError("Không được để trống")
     return value
@@ -44,6 +44,8 @@ def _optional_email(value: str | None) -> str | None:
 OptionalName = Annotated[str | None, Field(max_length=200), AfterValidator(_optional_name)]
 OptionalEmail = Annotated[str | None, Field(max_length=200), AfterValidator(_optional_email)]
 Phone = Annotated[str, AfterValidator(normalize_phone)]
+Password = Annotated[str, Field(max_length=128), AfterValidator(reject_control_chars)]
+Identifier = Annotated[str, Field(max_length=200), AfterValidator(reject_control_chars)]
 
 
 Height = Annotated[
@@ -58,7 +60,7 @@ class RegisterIn(BaseModel):
     full_name: FullName
     email: OptionalEmail = None
     phone: str | None = None
-    password: str = Field(min_length=8, max_length=128)
+    password: Annotated[Password, Field(min_length=8)]
 
     @field_validator("phone")
     @classmethod
@@ -67,8 +69,8 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    identifier: str
-    password: str
+    identifier: Identifier
+    password: Password
 
 
 class ParentAccountOut(BaseModel):
