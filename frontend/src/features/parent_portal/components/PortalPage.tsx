@@ -1,60 +1,24 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, CheckCircle2, Mail, Phone, Ruler } from 'lucide-react'
+import { Check, CheckCircle2, Ruler } from 'lucide-react'
 import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg, formatNumber } from '@/lib/format'
 import { ApiError } from '@/lib/http'
 import { cn } from '@/lib/utils'
+import { ContactActions as Contact, Hotline, PARENT_BTN as primaryBtn, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { PublicProduct, PublicStudent } from '../api'
-import { derivedSize } from '../choices'
-import { usePublicStudent, useSaveChoices, type ChoiceChanges } from '../hooks'
+import type { PortalSource, PublicProduct, PublicStudent } from '../api'
+import { derivedSize, initialStep } from '../choices'
+import { usePortalStudent, useSaveChoices, type ChoiceChanges } from '../hooks'
 import { SIZE_CHARTS } from '../sizeCharts'
 
-const HOTLINE = '0835352004'
-const EMAIL = 'Guniform2026@gmail.com'
 const NONE = '__none__'
 
 type Step = 'identity' | 'help' | 'measure' | 'choose' | 'review' | 'overview'
 
 type Success = { savedAt?: string; first: boolean }
-
-const primaryBtn = 'h-[52px] w-full text-[17px]'
-
-function Contact() {
-  return (
-    <div className="flex flex-col gap-3">
-      <Button asChild size="lg" className={primaryBtn}>
-        <a href={`tel:${HOTLINE}`}>
-          <Phone /> Gọi {HOTLINE}
-        </a>
-      </Button>
-      <Button asChild variant="outline" size="lg" className={primaryBtn}>
-        <a href={`mailto:${EMAIL}`}>
-          <Mail /> {EMAIL}
-        </a>
-      </Button>
-    </div>
-  )
-}
-
-function Shell({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-dvh bg-background text-[17px] leading-relaxed">
-      <header className="border-b border-hairline bg-white">
-        <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3">
-          <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto" />
-          <span className="text-base font-semibold tracking-[0.18em] text-navy">G-UNIFORM</span>
-        </div>
-      </header>
-      <main className="mx-auto flex min-h-[calc(100dvh-61px)] max-w-[480px] flex-col gap-6 px-4 py-6">
-        {children}
-      </main>
-    </div>
-  )
-}
 
 const STEP_LABELS = ['Thông tin', 'Chọn cỡ', 'Xác nhận']
 
@@ -76,17 +40,6 @@ function StepDots({ n }: { n: 1 | 2 | 3 }) {
         ))}
       </div>
     </div>
-  )
-}
-
-function Hotline() {
-  return (
-    <p className="text-muted-foreground">
-      Cần hỗ trợ? Gọi{' '}
-      <a className="font-semibold text-navy underline" href={`tel:${HOTLINE}`}>
-        {HOTLINE}
-      </a>
-    </p>
   )
 }
 
@@ -192,10 +145,17 @@ function Measurements({ s, onNext }: { s: PublicStudent; onNext: () => void }) {
       <dl className="rounded-lg border border-hairline bg-white px-5 py-2">
         <Row label="Chiều cao">{formatCm(s.height_cm)}</Row>
         <Row label="Cân nặng">{formatKg(s.weight_kg)}</Row>
-        <Row label="Ngày đo">{formatDate(s.measured_at)}</Row>
+        <Row label={s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo'}>{formatDate(s.measured_at)}</Row>
       </dl>
       {byProduct.length === 0 ? (
-        <p className="text-muted-foreground">Chưa có lần thử áo nào được ghi nhận.</p>
+        s.data_source === 'PARENT_DECLARED' ? (
+          <div className="rounded-lg border border-hairline bg-white px-5 py-4">
+            <p className="font-semibold text-navy">Phụ huynh tự khai</p>
+            <p className="text-muted-foreground">Số đo do bạn khai, chưa có kết quả thử áo.</p>
+          </div>
+        ) : (
+          <p className="text-muted-foreground">Chưa có lần thử áo nào được ghi nhận.</p>
+        )
       ) : (
         byProduct.map(({ p, trials }) => (
           <section key={p.code} className="flex flex-col gap-2">
@@ -311,16 +271,24 @@ function Choose({
       <h1 className="text-xl font-semibold text-navy">Chọn cỡ đăng ký</h1>
       {s.products.map((p) => {
         const suggested = derivedSize(p, s.trials)
+        const guide = s.data_source === 'PARENT_DECLARED' ? (s.suggested_sizes[p.code] ?? null) : null
         const labelId = `prod-${p.code}`
         return (
           <section key={p.code} className="flex flex-col gap-3 rounded-lg border border-hairline bg-white p-4">
             <h2 id={labelId} className="font-semibold text-navy">
               {p.name}
             </h2>
+            {guide ? (
+              <p className="-mt-1 text-[15px] text-muted-foreground">
+                Gợi ý theo bảng cỡ: <span className="font-semibold text-navy">Cỡ {guide}</span>
+              </p>
+            ) : null}
             <SizeChartButton product={p} selected={picked[p.code]} />
             <div role="radiogroup" aria-labelledby={labelId} className="grid grid-cols-3 gap-2">
               {p.sizes.map((size) => {
                 const on = picked[p.code] === size
+                const hintText =
+                  suggested === size ? 'Nhân viên đo thấy vừa' : guide === size ? 'Gợi ý theo bảng cỡ' : null
                 return (
                   <label
                     key={size}
@@ -338,9 +306,9 @@ function Choose({
                       onChange={() => setPicked((v) => ({ ...v, [p.code]: size }))}
                     />
                     <span>Cỡ {size}</span>
-                    {suggested === size ? (
+                    {hintText ? (
                       <span className={cn('text-[11px] font-medium leading-tight', on ? 'text-brass' : 'text-navy')}>
-                        Nhân viên đo thấy vừa
+                        {hintText}
                       </span>
                     ) : null}
                     {on ? (
@@ -507,7 +475,7 @@ function Overview({ s, onChange }: { s: PublicStudent; onChange: () => void }) {
           {[
             ['Chiều cao', formatCm(s.height_cm)],
             ['Cân nặng', formatKg(s.weight_kg)],
-            ['Ngày đo', formatDate(s.measured_at)],
+            [s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo', formatDate(s.measured_at)],
           ].map(([label, value]) => (
             <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
               <dt className="text-sm text-muted-foreground">{label}</dt>
@@ -552,9 +520,15 @@ function SuccessDialog({ success, onClose }: { success: Success | null; onClose:
   )
 }
 
-export function PortalPage({ token }: { token: string }) {
-  const query = usePublicStudent(token)
-  const save = useSaveChoices(token)
+interface PortalPageProps {
+  source: PortalSource
+  skipIdentity?: boolean
+  onBack?: () => void
+}
+
+export function PortalPage({ source, skipIdentity = false, onBack }: PortalPageProps) {
+  const query = usePortalStudent(source)
+  const save = useSaveChoices(source)
   const [stepState, setStep] = useState<Step | null>(null)
   const [picked, setPicked] = useState<Record<string, string> | null>(null)
   const [success, setSuccess] = useState<Success | null>(null)
@@ -569,7 +543,7 @@ export function PortalPage({ token }: { token: string }) {
   }, [])
 
   const s = query.data
-  const step = stepState ?? (s && Object.keys(s.choices).length > 0 ? 'overview' : 'identity')
+  const step = stepState ?? (s ? initialStep(Object.keys(s.choices).length > 0, skipIdentity) : 'identity')
 
   const submit = () => {
     if (!s || !picked) return
@@ -639,9 +613,9 @@ export function PortalPage({ token }: { token: string }) {
   }
 
   return (
-    <Shell>
+    <ParentShell onBack={onBack}>
       {body}
       <SuccessDialog success={success} onClose={() => setSuccess(null)} />
-    </Shell>
+    </ParentShell>
   )
 }

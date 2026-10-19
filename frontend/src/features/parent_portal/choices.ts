@@ -9,3 +9,10 @@ export function derivedSize(product: PublicProduct, trials: PublicTrial[]): stri
   }
   return best >= 0 ? product.sizes[best]! : null
 }
+
+export type PortalStep = 'identity' | 'measure' | 'overview'
+
+export function initialStep(hasChoices: boolean, skipIdentity: boolean): PortalStep {
+  if (hasChoices) return 'overview'
+  return skipIdentity ? 'measure' : 'identity'
+}
