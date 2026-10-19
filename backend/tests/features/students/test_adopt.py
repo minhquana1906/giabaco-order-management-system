@@ -11,7 +11,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
+from app.core.db import SessionLocal
 from app.core.events import bus
+from app.core.names import lock_identity
 from app.features.parent_accounts.models import ParentStudentLink
 from app.features.students.models import DataSource, Gender, Student
 from tests.conftest import ParentClient
@@ -513,3 +515,27 @@ async def test_rename_racing_a_parent_create_of_the_same_identity_never_duplicat
         .where(Student.full_name.in_(["Nguyễn Văn An", "Nguyen Van An"]))
     )
     assert same_identity == 1
+
+
+async def test_admin_edit_waits_for_the_lock_of_the_identity_it_moves_into(
+    client: AsyncClient, student_payload: Payload, school_class: dict[str, Any]
+) -> None:
+    other = (
+        await client.post("/api/students", json=student_payload(full_name="Trần Văn Bình"))
+    ).json()
+    async with SessionLocal() as holder:
+        await lock_identity(
+            holder, uuid.UUID(school_class["school_id"]), "Nguyễn Văn An", date(2018, 3, 14)
+        )
+        pending = asyncio.ensure_future(
+            client.put(
+                f"/api/students/{other['id']}", json=student_payload(full_name="Nguyễn Văn An")
+            )
+        )
+        done, _ = await asyncio.wait({pending}, timeout=0.5)
+        assert not done, "edit did not wait for the identity lock"
+        await holder.rollback()
+
+    r = await asyncio.wait_for(pending, 5)
+
+    assert r.status_code == 200 and r.json()["full_name"] == "Nguyễn Văn An"

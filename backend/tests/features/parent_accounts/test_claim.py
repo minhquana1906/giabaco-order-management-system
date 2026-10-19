@@ -1,5 +1,7 @@
 import asyncio
+import uuid
 from collections.abc import Awaitable, Callable
+from datetime import date
 from typing import Any
 
 import pytest
@@ -8,7 +10,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
+from app.core.db import SessionLocal
 from app.core.events import bus
+from app.core.names import lock_identity
 from app.features.parent_accounts.models import LinkOrigin, ParentStudentLink
 from tests.conftest import ParentClient
 
@@ -303,3 +307,29 @@ async def test_two_parents_claiming_at_once_both_link(
         .where(AuditLog.action == "parent_student_link.create")
     )
     assert audits == 2
+
+
+async def test_claim_waits_for_the_identity_lock_and_matches_again_after_it(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    student = await admin_student(client, student_payload)
+    parent = await make_parent()
+    async with SessionLocal() as holder:
+        await lock_identity(
+            holder, uuid.UUID(school_class["school_id"]), "Nguyễn Văn An", date(2018, 3, 14)
+        )
+        pending = asyncio.ensure_future(parent.post(CLAIM, json=key(school_class)))
+        done, _ = await asyncio.wait({pending}, timeout=0.5)
+        assert not done, "claim did not wait for the identity lock"
+
+        assert (await client.delete(f"/api/students/{student['id']}")).status_code == 204
+        await holder.rollback()
+
+    r = await asyncio.wait_for(pending, 5)
+
+    assert r.status_code == 404 and r.json()["error"]["code"] == "no_match"
+    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 0
