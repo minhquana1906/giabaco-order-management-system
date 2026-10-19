@@ -30,7 +30,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
   const [clientErrors, setClientErrors] = useState<RegisterErrors>({})
   const formRef = useRef<HTMLFormElement>(null)
 
-  const set = (key: keyof RegisterValues) => (value: string) => {
+  const set = (key: keyof RegisterValues, value: string) => {
     setValues((v) => ({ ...v, [key]: value }))
     setClientErrors((e) => ({ ...e, [key]: undefined }))
   }
@@ -70,7 +70,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
               autoComplete="name"
               className="h-12 text-[17px]"
               value={values.full_name}
-              onChange={(e) => set('full_name')(e.target.value)}
+              onChange={(e) => set('full_name', e.target.value)}
             />
           )}
         </Field>
@@ -90,7 +90,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
                 spellCheck={false}
                 className="h-12 text-[17px]"
                 value={values.email}
-                onChange={(e) => set('email')(e.target.value)}
+                onChange={(e) => set('email', e.target.value)}
               />
             )}
           </Field>
@@ -104,7 +104,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
                 autoComplete="tel"
                 className="h-12 text-[17px]"
                 value={values.phone}
-                onChange={(e) => set('phone')(e.target.value)}
+                onChange={(e) => set('phone', e.target.value)}
               />
             )}
           </Field>
@@ -122,7 +122,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
               autoComplete="new-password"
               className="h-12 text-[17px]"
               value={values.password}
-              onChange={(e) => set('password')(e.target.value)}
+              onChange={(e) => set('password', e.target.value)}
             />
           )}
         </Field>
