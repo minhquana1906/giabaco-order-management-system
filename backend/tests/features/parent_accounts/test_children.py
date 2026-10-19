@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
+from app.core.security import parent_match_limiter
 from app.features.parent_accounts.models import LinkOrigin, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, FittingTrial, Student
@@ -185,6 +186,10 @@ async def test_concurrent_creates_make_one_record(
 
     assert sorted(r.status_code for r in results) == [201, 409]
     assert await student_count(session) == 1
+    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 1
+    audit_actions = (await session.scalars(select(AuditLog.action))).all()
+    assert audit_actions.count("student.create") == 1
+    assert audit_actions.count("parent_student_link.create") == 1
 
 
 async def test_soft_deleted_record_does_not_block_creation(
@@ -665,3 +670,113 @@ async def test_claimant_sees_declared_contact_but_never_admin_entered_contact(
     )
     for secret in ("Admin Entered", "0900000001", "admin@example.com"):
         assert secret not in listing.text
+
+
+async def create_many(parent: ParentClient, school_class: dict[str, Any], count: int) -> None:
+    for i in range(count):
+        r = await parent.post(
+            CHILDREN, json=child_body(school_class, full_name=f"Bé {chr(65 + i)}")
+        )
+        assert r.status_code == 201, r.text
+
+
+async def test_parent_cannot_create_more_than_ten_children(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+    await create_many(parent, school_class, 10)
+    parent_match_limiter.reset()
+
+    r = await parent.post(CHILDREN, json=child_body(school_class, full_name="Bé Thứ Mười Một"))
+
+    assert r.status_code == 409 and r.json()["error"]["code"] == "child_limit"
+    assert "10" in r.json()["error"]["message"]
+    assert await student_count(session) == 10
+    audits = await session.scalar(
+        select(func.count()).select_from(AuditLog).where(AuditLog.action == "student.create")
+    )
+    assert audits == 10
+
+
+async def test_claims_count_towards_the_limit_once(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+) -> None:
+    await client.post("/api/students", json=student_payload(full_name="Nguyễn Văn An"))
+    parent = await make_parent()
+    key = {
+        "school_id": school_class["school_id"],
+        "full_name": "Nguyễn Văn An",
+        "dob": "2018-03-14",
+    }
+    assert (await parent.post(f"{CHILDREN}/claim", json=key)).status_code == 200
+    assert (await parent.post(f"{CHILDREN}/claim", json=key)).status_code == 200
+    parent_match_limiter.reset()
+
+    await create_many(parent, school_class, 9)
+    parent_match_limiter.reset()
+    r = await parent.post(CHILDREN, json=child_body(school_class, full_name="Bé Thừa"))
+
+    assert r.status_code == 409 and r.json()["error"]["code"] == "child_limit"
+
+
+async def test_deleted_children_free_a_slot(
+    client: AsyncClient, make_parent: MakeParent, school_class: dict[str, Any]
+) -> None:
+    parent = await make_parent()
+    await create_many(parent, school_class, 10)
+    first = (await parent.get(CHILDREN)).json()[0]
+    await client.delete(f"/api/students/{first['student_id']}")
+    parent_match_limiter.reset()
+
+    r = await parent.post(CHILDREN, json=child_body(school_class, full_name="Bé Mới"))
+
+    assert r.status_code == 201
+
+
+async def test_existing_child_is_reported_before_the_limit(
+    make_parent: MakeParent, school_class: dict[str, Any]
+) -> None:
+    parent = await make_parent()
+    await create_many(parent, school_class, 10)
+    parent_match_limiter.reset()
+
+    r = await parent.post(CHILDREN, json=child_body(school_class, full_name="Bé A"))
+
+    assert r.status_code == 409 and r.json()["error"]["code"] == "child_exists"
+
+
+async def test_concurrent_creates_cannot_slip_past_the_limit(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+    await create_many(parent, school_class, 9)
+    parent_match_limiter.reset()
+
+    results = await asyncio.gather(
+        parent.post(CHILDREN, json=child_body(school_class, full_name="Bé Sinh Đôi 1")),
+        parent.post(CHILDREN, json=child_body(school_class, full_name="Bé Sinh Đôi 2")),
+    )
+
+    assert sorted(r.status_code for r in results) == [201, 409]
+    assert await student_count(session) == 10
+
+
+async def test_parent_edit_refreshes_measured_at(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    parent = await make_parent()
+    created = (await parent.post(CHILDREN, json=child_body(school_class))).json()
+    student_id = uuid.UUID(created["student_id"])
+    before = (await session.get(Student, student_id)).measured_at  # type: ignore[union-attr]
+
+    r = await parent.put(
+        f"{CHILDREN}/{created['student_id']}", json=edit_body(school_class["class_id"])
+    )
+
+    assert r.status_code == 200
+    session.expire_all()
+    after = (await session.get(Student, student_id)).measured_at  # type: ignore[union-attr]
+    assert after > before

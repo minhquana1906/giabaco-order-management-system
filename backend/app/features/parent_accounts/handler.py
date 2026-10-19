@@ -4,10 +4,11 @@ import secrets
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +34,8 @@ from app.features.parent_accounts.schemas import (
 )
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, Student
+
+MAX_CHILDREN = 10
 
 
 def _unauthorized() -> ApiError:
@@ -197,6 +200,7 @@ async def lookup(session: AsyncSession, key: ChildKeyIn) -> LookupOut:
 
 async def claim(session: AsyncSession, parent: ParentAccount, key: ChildKeyIn) -> ChildSummary:
     """Link the parent to the single matching student; repeating the claim changes nothing."""
+    await lock_identity(session, key.school_id, key.full_name, key.dob)
     matches = await _matches(session, key)
     if not matches:
         raise ApiError(404, "no_match", "Không tìm thấy hồ sơ phù hợp")
@@ -267,6 +271,16 @@ def _student_snapshot(student: Student) -> dict[str, Any]:
     }
 
 
+async def _linked_count(session: AsyncSession, parent_id: uuid.UUID) -> int:
+    count = await session.scalar(
+        select(func.count())
+        .select_from(ParentStudentLink)
+        .join(Student, Student.id == ParentStudentLink.student_id)
+        .where(ParentStudentLink.parent_id == parent_id, Student.deleted_at.is_(None))
+    )
+    return int(count or 0)
+
+
 async def create_child(
     session: AsyncSession, parent: ParentAccount, payload: ChildIn
 ) -> ChildSummary:
@@ -277,6 +291,18 @@ async def create_child(
         await session.rollback()
         raise ApiError(
             409, "child_exists", "Hồ sơ của con đã có, hãy dùng chức năng tìm hồ sơ để nhận"
+        )
+    await session.execute(
+        select(ParentAccount.id)
+        .where(ParentAccount.id == parent.id)
+        .with_for_update(key_share=True)
+    )
+    if await _linked_count(session, parent.id) >= MAX_CHILDREN:
+        await session.rollback()
+        raise ApiError(
+            409,
+            "child_limit",
+            f"Mỗi tài khoản chỉ liên kết tối đa {MAX_CHILDREN} hồ sơ con, vui lòng liên hệ Giabaco",
         )
     student = Student(
         school_id=payload.school_id,
@@ -337,6 +363,7 @@ async def update_child(
     student.parent_name = payload.parent_name
     student.parent_phone = payload.parent_phone
     student.parent_email = payload.parent_email
+    student.measured_at = datetime.now(UTC)
     await session.flush()
     await audit.record(
         session, parent_actor(parent.id), "student.update", "student", student.id, before,

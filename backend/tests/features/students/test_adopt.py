@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 import uuid
 from collections.abc import Awaitable, Callable
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
+from app.features.parent_accounts.models import ParentStudentLink
 from app.features.students.models import DataSource, Gender, Student
 from tests.conftest import ParentClient
 
@@ -369,3 +371,31 @@ async def test_adoption_overwrites_only_the_contact_fields_admin_supplies(
         "0987654321",
         "me@example.com",
     )
+
+
+async def test_claim_racing_an_admin_adopt_neither_clashes_nor_duplicates(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    creator, claimer = await make_parent(), await make_parent()
+    declared_id = await declare(creator, school_class)
+
+    claim, adopt = await asyncio.gather(
+        claimer.post(
+            "/api/parent/children/claim",
+            json={
+                "school_id": school_class["school_id"],
+                "full_name": "nguyen van an",
+                "dob": "2018-03-14",
+            },
+        ),
+        client.post("/api/students", json=student_payload(full_name="Nguyễn Văn An")),
+    )
+
+    assert claim.status_code == 200 and claim.json()["student_id"] == declared_id
+    assert adopt.status_code == 201 and adopt.json()["id"] == declared_id
+    assert await student_count(session) == 1
+    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2

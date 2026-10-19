@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -256,3 +257,49 @@ async def test_lookup_and_claim_are_rate_limited(
     statuses = [(await parent.post(path, json=key(school_class))).status_code for _ in range(11)]
 
     assert 429 not in statuses[:10] and statuses[10] == 429
+
+
+async def test_one_parent_claiming_repeatedly_at_once_links_and_audits_once(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    await admin_student(client, student_payload)
+    parent = await make_parent()
+
+    results = await asyncio.gather(*(parent.post(CLAIM, json=key(school_class)) for _ in range(5)))
+
+    assert [r.status_code for r in results] == [200] * 5
+    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 1
+    audits = await session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.action == "parent_student_link.create")
+    )
+    assert audits == 1
+
+
+async def test_two_parents_claiming_at_once_both_link(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    await admin_student(client, student_payload)
+    mother, father = await make_parent(), await make_parent()
+
+    results = await asyncio.gather(
+        mother.post(CLAIM, json=key(school_class)), father.post(CLAIM, json=key(school_class))
+    )
+
+    assert [r.status_code for r in results] == [200, 200]
+    assert await session.scalar(select(func.count()).select_from(ParentStudentLink)) == 2
+    audits = await session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.action == "parent_student_link.create")
+    )
+    assert audits == 2
