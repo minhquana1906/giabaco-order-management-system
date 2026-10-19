@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { DobSelects } from '@/components/DobSelects'
 import { Field } from '@/components/Field'
 import { NativeSelect } from '@/components/NativeSelect'
-import { ContactActions, Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { ContactActions, Hotline, LoadError, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -85,15 +85,7 @@ function SearchStep({
     )
   }
   if (schools.isError) {
-    return (
-      <div role="alert" className="flex flex-col gap-4">
-        <p className="font-medium text-destructive">Chưa tải được danh sách trường.</p>
-        <Button size="lg" className={PARENT_BTN} onClick={() => void schools.refetch()}>
-          Thử lại
-        </Button>
-        <Hotline />
-      </div>
-    )
+    return <LoadError message="Chưa tải được danh sách trường." onRetry={() => void schools.refetch()} />
   }
   if (schools.data.length === 0) {
     return (

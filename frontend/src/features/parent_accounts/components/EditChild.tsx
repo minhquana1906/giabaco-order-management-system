@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { Hotline, LoadError, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/http'
@@ -29,15 +29,7 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
       </div>
     )
   } else if (children.isError) {
-    body = (
-      <div role="alert" className="flex flex-col gap-4">
-        <p className="font-medium text-destructive">Chưa tải được thông tin của con.</p>
-        <Button size="lg" className={PARENT_BTN} onClick={() => void children.refetch()}>
-          Thử lại
-        </Button>
-        <Hotline />
-      </div>
-    )
+    body = <LoadError message="Chưa tải được thông tin của con." onRetry={() => void children.refetch()} />
   } else if (!child) {
     body = (
       <div role="alert" className="flex flex-col gap-4">

@@ -35,6 +35,18 @@ export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
   )
 }
 
+export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="flex flex-col gap-4">
+      <p className="font-medium text-destructive">{message}</p>
+      <Button size="lg" className={PARENT_BTN} onClick={onRetry}>
+        Thử lại
+      </Button>
+      <Hotline />
+    </div>
+  )
+}
+
 interface ParentShellProps {
   children: ReactNode
   actions?: ReactNode

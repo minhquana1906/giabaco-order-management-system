@@ -4,7 +4,7 @@ import { FormSection } from '@/components/FormSection'
 import { GenderToggle } from '@/components/GenderToggle'
 import { NativeSelect } from '@/components/NativeSelect'
 import { UnitInput } from '@/components/UnitInput'
-import { Hotline, PARENT_BTN } from '@/components/ParentShell'
+import { LoadError, PARENT_BTN } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -99,15 +99,7 @@ export function DeclareForm({
     )
   }
   if (classes.isError) {
-    return (
-      <div role="alert" className="flex flex-col gap-4">
-        <p className="font-medium text-destructive">Chưa tải được danh sách lớp.</p>
-        <Button size="lg" className={PARENT_BTN} onClick={() => void classes.refetch()}>
-          Thử lại
-        </Button>
-        <Hotline />
-      </div>
-    )
+    return <LoadError message="Chưa tải được danh sách lớp." onRetry={() => void classes.refetch()} />
   }
 
   return (
