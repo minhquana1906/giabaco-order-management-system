@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Unlink } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { ErrorState } from '@/components/ErrorState'
@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useProducts } from '@/features/catalog/hooks'
 import { formatCm, formatDate, formatDateTime, formatKg } from '@/lib/format'
 import { ApiError } from '@/lib/http'
-import type { StudentDetail } from '../api'
-import { useDeleteStudent, useStudent } from '../hooks'
+import type { LinkedParent, StudentDetail } from '../api'
+import { useDeleteStudent, useStudent, useUnlinkParent } from '../hooks'
+import { DataSourceBadge } from './DataSourceBadge'
 import { FitBadge } from './FitBadge'
 import { QrCard } from './QrCard'
 import { StudentForm } from './StudentForm'
@@ -68,7 +69,65 @@ function DeleteDialog({ student, open, onOpenChange }: { student: StudentDetail;
   )
 }
 
+function UnlinkDialog({
+  studentId,
+  parent,
+  onClose,
+}: {
+  studentId: string
+  parent: LinkedParent | null
+  onClose: () => void
+}) {
+  const unlink = useUnlinkParent(studentId)
+  return (
+    <Dialog
+      open={parent !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          unlink.reset()
+          onClose()
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gỡ liên kết với {parent?.full_name}?</DialogTitle>
+          <DialogDescription>
+            Tài khoản này sẽ không còn thấy hồ sơ của học sinh. Có thể liên kết lại khi phụ huynh nhận lại hồ sơ.
+          </DialogDescription>
+        </DialogHeader>
+        {unlink.error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {unlink.error instanceof ApiError ? unlink.error.message : 'Không gỡ được, thử lại.'}
+          </p>
+        ) : null}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Giữ liên kết
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={unlink.isPending || !parent}
+            onClick={() =>
+              parent &&
+              unlink.mutate(parent.parent_id, {
+                onSuccess: () => {
+                  toast.success(`Đã gỡ liên kết với ${parent.full_name}`)
+                  onClose()
+                },
+              })
+            }
+          >
+            Gỡ liên kết
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function Profile({ student }: { student: StudentDetail }) {
+  const [unlinking, setUnlinking] = useState<LinkedParent | null>(null)
   const products = useProducts()
   const productList =
     products.data?.map((p) => ({ code: p.code, name: p.name })) ??
@@ -132,10 +191,34 @@ function Profile({ student }: { student: StudentDetail }) {
         })}
       </div>
 
-      <Card className="gap-3 p-4">
-        <h2 className="text-base font-semibold">Mã QR phụ huynh</h2>
-        <QrCard portalUrl={student.portal_url} fileName={`qr-${student.full_name}`} size={240} showOpen />
-      </Card>
+      <div className="flex min-w-0 flex-col gap-4">
+        <Card className="gap-3 p-4">
+          <h2 className="text-base font-semibold">Mã QR phụ huynh</h2>
+          <QrCard portalUrl={student.portal_url} fileName={`qr-${student.full_name}`} size={240} showOpen />
+        </Card>
+        <Card className="gap-3 p-4">
+          <h2 className="text-base font-semibold">Tài khoản phụ huynh liên kết</h2>
+          {student.linked_parents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Chưa có tài khoản nào liên kết</p>
+          ) : (
+            <ul className="divide-y divide-hairline">
+              {student.linked_parents.map((p) => (
+                <li key={p.parent_id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{p.full_name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{p.phone ?? p.email}</p>
+                    <p className="text-xs text-muted-foreground">Liên kết {formatDateTime(p.linked_at)}</p>
+                  </div>
+                  <Button variant="outline" className="h-11 shrink-0 md:h-9" onClick={() => setUnlinking(p)}>
+                    <Unlink /> Gỡ liên kết
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+      <UnlinkDialog studentId={student.id} parent={unlinking} onClose={() => setUnlinking(null)} />
     </div>
   )
 }
@@ -179,8 +262,9 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
             )
           }
         />
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground">
           Lớp {student.class.name} · {student.school.name}
+          <DataSourceBadge source={student.data_source} />
         </p>
       </div>
 

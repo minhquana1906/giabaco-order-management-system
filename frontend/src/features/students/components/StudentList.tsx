@@ -1,3 +1,4 @@
+import { DataSourceBadge } from './DataSourceBadge'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, MessageSquareText, Plus } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
@@ -97,6 +98,7 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
                     >
                       {s.full_name}
                     </Link>
+                    <DataSourceBadge source={s.data_source} />
                   </TableCell>
                   <TableCell>
                     Lớp {s.class.name}
@@ -125,7 +127,10 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
             <li key={s.id}>
               <Link to="/students/$studentId" params={{ studentId: s.id }} className="flex min-h-14 flex-col gap-1.5 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">{s.full_name}</span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{s.full_name}</span>
+                    <DataSourceBadge source={s.data_source} />
+                  </span>
                   {s.has_note ? <MessageSquareText className="size-4 shrink-0" role="img" aria-label="Có ghi chú" /> : null}
                 </span>
                 <span className="text-sm text-muted-foreground">
