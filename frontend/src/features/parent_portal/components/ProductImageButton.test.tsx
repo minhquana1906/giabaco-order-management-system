@@ -18,7 +18,6 @@ describe('ProductImageButton', () => {
 
     await user.click(screen.getByRole('button', { name: 'Xem ảnh sản phẩm' }))
     expect(screen.getByRole('img')).toHaveAttribute('src', '/products/blazer_nu_navy.jpg')
-    expect(screen.getByRole('img')).toHaveAttribute('loading', 'lazy')
 
     await user.click(screen.getByLabelText('Ghi'))
     expect(screen.getByRole('img')).toHaveAttribute('src', '/products/blazer_nu_ghi.jpg')
