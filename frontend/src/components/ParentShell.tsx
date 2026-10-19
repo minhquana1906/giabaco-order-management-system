@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronLeft, Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -40,19 +40,30 @@ interface ParentShellProps {
   actions?: ReactNode
   onBack?: () => void
   backLabel?: string
+  focusKey?: string
 }
 
-export function ParentShell({ children, actions, onBack, backLabel = 'Các con của tôi' }: ParentShellProps) {
+export function ParentShell({ children, actions, onBack, backLabel = 'Các con của bạn', focusKey }: ParentShellProps) {
+  const mainRef = useRef<HTMLElement>(null)
+  const firstKey = useRef(focusKey)
+
+  useEffect(() => {
+    if (focusKey === firstKey.current) return
+    const heading = mainRef.current?.querySelector('h1')
+    heading?.setAttribute('tabindex', '-1')
+    heading?.focus()
+  }, [focusKey])
+
   return (
-    <div className="min-h-dvh bg-background text-[17px] leading-relaxed">
+    <div className="flex min-h-dvh flex-col bg-background text-[17px] leading-relaxed">
       <header className="border-b border-hairline bg-white">
         <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3">
-          <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto" />
-          <span className="text-base font-semibold tracking-[0.18em] text-navy">G-UNIFORM</span>
-          {actions ? <div className="ml-auto">{actions}</div> : null}
+          <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto shrink-0" />
+          <span className="whitespace-nowrap text-base font-semibold tracking-[0.18em] text-navy">G-UNIFORM</span>
+          {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
         </div>
       </header>
-      <main className="mx-auto flex min-h-[calc(100dvh-61px)] max-w-[480px] flex-col gap-6 px-4 py-6">
+      <main ref={mainRef} className="mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-6 px-4 py-6 [&_h1:focus]:outline-none">
         {onBack ? (
           <Button type="button" variant="ghost" className="-ml-3 -mb-2 h-11 self-start px-3 text-base" onClick={onBack}>
             <ChevronLeft /> {backLabel}

@@ -8,7 +8,7 @@ export const Route = createFileRoute('/parent/_parent/')({
 
 function Page() {
   useEffect(() => {
-    document.title = 'Con của bạn · G-UNIFORM'
+    document.title = 'Các con của bạn · G-UNIFORM'
   }, [])
   return <ChildrenList />
 }

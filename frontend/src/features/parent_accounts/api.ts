@@ -34,7 +34,16 @@ export interface ChildSummary {
   class_name: string
   gender: Gender
   data_source: DataSource
-  choices: Record<string, string>
+  parent_name: string | null
+  parent_phone: string | null
+  parent_email: string | null
+  choices: ChildChoice[]
+}
+
+export interface ChildChoice {
+  product_code: string
+  product_name: string
+  size_label: string
 }
 
 export interface ChildKey {
@@ -53,6 +62,9 @@ export interface DeclaredBody {
   gender: Gender
   height_cm: number
   weight_kg: number
+  parent_phone: string
+  parent_name: string | null
+  parent_email: string | null
 }
 
 export type CreateChildBody = ChildKey & DeclaredBody

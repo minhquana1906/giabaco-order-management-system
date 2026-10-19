@@ -4,11 +4,9 @@ import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import type { ChildSummary } from '../api'
 import { useChildren, useParentLogout, useParentMe } from '../hooks'
-
-const productLabel = (code: string) => `${code.charAt(0).toUpperCase()}${code.slice(1)}`
 
 function AddChildButton({ primary }: { primary: boolean }) {
   return (
@@ -21,7 +19,6 @@ function AddChildButton({ primary }: { primary: boolean }) {
 }
 
 function ChildCard({ child }: { child: ChildSummary }) {
-  const picked = Object.entries(child.choices).sort(([a], [b]) => a.localeCompare(b))
   return (
     <li>
       <Link
@@ -39,12 +36,12 @@ function ChildCard({ child }: { child: ChildSummary }) {
           {child.data_source === 'PARENT_DECLARED' ? (
             <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Phụ huynh tự khai</p>
           ) : null}
-          {picked.length > 0 ? (
+          {child.choices.length > 0 ? (
             <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Cỡ đã chọn">
-              {picked.map(([code, size]) => (
-                <li key={code} className="flex items-center gap-2 text-[15px]">
-                  <span className="text-muted-foreground">{productLabel(code)}</span>
-                  <SizeLabel label={size} scale="md" />
+              {child.choices.map((choice) => (
+                <li key={choice.product_code} className="flex items-center gap-2 text-[15px]">
+                  <span className="text-muted-foreground">{choice.product_name}</span>
+                  <SizeLabel label={choice.size_label} scale="md" />
                 </li>
               ))}
             </ul>
@@ -64,8 +61,8 @@ export function ChildrenList() {
   const logout = useParentLogout()
 
   const logoutButton = (
-    <Button type="button" variant="ghost" className="h-11 text-base" disabled={logout.isPending} onClick={() => logout.mutate()}>
-      <LogOut /> Đăng xuất
+    <Button type="button" variant="ghost" className="h-11 min-w-11 px-3 text-base" disabled={logout.isPending} onClick={() => logout.mutate()}>
+      <LogOut aria-hidden="true" /> <span className="sr-only sm:not-sr-only">Đăng xuất</span>
     </Button>
   )
 
@@ -78,11 +75,10 @@ export function ChildrenList() {
       </div>
     )
   } else if (children.isError) {
-    const offline = children.error instanceof ApiError && children.error.status === 0
     body = (
       <div role="alert" className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold text-navy">Chưa tải được danh sách</h2>
-        <p>{offline ? 'Không kết nối được. Kiểm tra mạng rồi thử lại.' : 'Có lỗi xảy ra, vui lòng thử lại.'}</p>
+        <p>{requestErrorMessage(children.error, 'Có lỗi xảy ra, vui lòng thử lại.')}</p>
         <Button size="lg" className={PARENT_BTN} onClick={() => void children.refetch()}>
           Thử lại
         </Button>
@@ -94,7 +90,7 @@ export function ChildrenList() {
       <div className="flex flex-1 flex-col gap-4">
         <div className="rounded-lg border border-dashed border-input bg-white px-5 py-6">
           <p className="text-lg font-semibold text-navy">Chưa có hồ sơ con</p>
-          <p className="mt-1 text-muted-foreground">Thêm con để xem số đo và chọn cỡ áo G Blazer.</p>
+          <p className="mt-1 text-muted-foreground">Thêm con để xem số đo và chọn cỡ áo cho con.</p>
         </div>
         <div className="mt-auto">
           <AddChildButton primary />
@@ -120,7 +116,7 @@ export function ChildrenList() {
   return (
     <ParentShell actions={logoutButton}>
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Con của bạn</h1>
+        <h1 className="text-2xl font-semibold text-navy">Các con của bạn</h1>
         {me.data ? <p className="text-muted-foreground">Xin chào, {me.data.full_name}.</p> : null}
       </div>
       {body}
