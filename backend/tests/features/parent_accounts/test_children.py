@@ -817,3 +817,24 @@ async def test_child_choices_follow_catalog_order_and_skip_inactive_products(
         for code, (position, active) in original.items():
             products[code].position, products[code].active = position, active
         await session.commit()
+
+
+async def test_a_second_linked_parent_can_edit_a_declared_child_as_themselves(
+    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    creator, claimer = await make_parent(), await make_parent()
+    created = (await creator.post(CHILDREN, json=child_body(school_class))).json()
+    key = {"school_id": school_class["school_id"], "full_name": "Lê Minh Anh", "dob": "2017-09-01"}
+    assert (await claimer.post(f"{CHILDREN}/claim", json=key)).status_code == 200
+
+    r = await claimer.put(
+        f"{CHILDREN}/{created['student_id']}",
+        json=edit_body(school_class["class_id"], height_cm=140),
+    )
+
+    assert r.status_code == 200
+    student = await session.get(Student, uuid.UUID(created["student_id"]))
+    assert student is not None and student.height_cm == 140
+    log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
+    assert log is not None and log.actor == f"parent:{claimer.parent_id}"
+    assert (await creator.get(CHILDREN)).json()[0]["student_id"] == created["student_id"]

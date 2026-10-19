@@ -1,14 +1,16 @@
 import json
 import logging
+import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
+from app.features.parent_accounts.models import ParentAccount
 from app.main import app
 from tests.conftest import ParentClient
 
@@ -181,3 +183,19 @@ async def test_auth_flow_logs_no_pii(
     logged = "\n".join(f"{r.getMessage()} {getattr(r, 'ctx', '')}" for r in caplog.records).lower()
     for secret in ("hoa.tran", "0912345678", "mat-khau", "trần"):
         assert secret not in logged
+
+
+@pytest.mark.parametrize("path", ["/api/parent/auth/me", "/api/parent/children"])
+async def test_cookie_of_a_deleted_account_is_unauthorized(
+    make_parent: MakeParent, session: AsyncSession, path: str
+) -> None:
+    parent = await make_parent()
+    assert (await parent.get(path)).status_code == 200
+    await session.execute(
+        delete(ParentAccount).where(ParentAccount.id == uuid.UUID(parent.parent_id))
+    )
+    await session.commit()
+
+    r = await parent.get(path)
+
+    assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"

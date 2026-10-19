@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from base64 import b64decode, b64encode
@@ -8,13 +9,14 @@ import pytest
 from httpx import AsyncClient
 from itsdangerous import TimestampSigner
 
+from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.security import PARENT_SESSION_KEY, SESSION_KEY, require_parent, verify_password
 from tests.conftest import ADMIN_PASSWORD, ADMIN_USERNAME
 
 COOKIE = "guniform_session"
 JAR_DOMAIN = "test.local"
-_signer = TimestampSigner("test-secret")
+_signer = TimestampSigner(get_settings().session_secret)
 
 
 def _encode(session: dict[str, Any]) -> str:
@@ -31,6 +33,17 @@ async def test_parent_session_cannot_reach_admin_routes(
 ) -> None:
     anon_client.cookies.set(COOKIE, _encode({PARENT_SESSION_KEY: str(uuid.uuid4())}), JAR_DOMAIN)
     assert (await anon_client.get(path)).status_code == 401
+
+    login = await anon_client.post(
+        "/api/auth/login", json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+    )
+    assert login.status_code == 200
+    if path == "/api/events":
+        # the stream never ends: not answering is the proof it was let through
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(anon_client.get(path), 0.3)
+    else:
+        assert (await anon_client.get(path)).status_code == 200
 
 
 @pytest.mark.parametrize(

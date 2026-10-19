@@ -251,3 +251,63 @@ async def test_exports_neutralise_every_string_cell(
     assert cells
     assert not [c for c in cells if c.startswith(("=", "+", "-", "@", "\t", "\r"))]
     assert "'=1+1" in cells
+
+
+def sheet_cells(url: str, content: bytes, sheet: str) -> list[Any]:
+    rows = read_csv(content) if url.endswith(".csv") else read_sheet(content, sheet)
+    return [cell for row in rows for cell in row]
+
+
+@pytest.mark.parametrize("url", STUDENT_CELL_URLS)
+async def test_students_exports_keep_declared_choices_and_drop_deleted_students(
+    client: Any, make_student: Any, session: Any, products: Any, url: str
+) -> None:
+    measured = await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")])
+    declared = await make_student("Lê Tự Khai", data_source=DataSource.PARENT_DECLARED)
+    gone = await make_student("Đã Xóa", [("blazer", "3", "FITS", "3")], deleted=True)
+    for student, code, size in [
+        (measured, "blazer", "3"),
+        (declared, "blazer", "5"),
+        (declared, "gile", "2"),
+        (gone, "blazer", "1"),
+        (gone, "gile", "7"),
+    ]:
+        session.add(
+            ParentSizeChoice(student_id=student.id, product_id=products[code].id, size_label=size)
+        )
+    await session.commit()
+
+    rows = student_rows(url, (await client.get(url)).content)
+
+    header, body = rows[0], rows[1:]
+    assert {r[3] for r in body} == {"Nguyễn Minh Khang", "Lê Tự Khai"}
+    blazer = header.index("Áo Blazer (Vest) - cỡ phụ huynh chọn")
+    gile = header.index("Áo Gile - cỡ phụ huynh chọn")
+    by_name = {r[3]: [c or "" for c in r] for r in body}
+    assert (by_name["Nguyễn Minh Khang"][blazer], by_name["Nguyễn Minh Khang"][gile]) == ("3", "")
+    assert (by_name["Lê Tự Khai"][blazer], by_name["Lê Tự Khai"][gile]) == ("5", "2")
+    assert by_name["Lê Tự Khai"][header.index("data_source")] == "PARENT_DECLARED"
+    assert "Đã Xóa" not in {c for r in rows for c in r}
+
+
+TRIAL_URLS = ["/api/export/trials.csv", "/api/export/trials.xlsx", "/api/export/all.xlsx"]
+
+
+@pytest.mark.parametrize("url", TRIAL_URLS)
+async def test_trials_exports_never_carry_declared_students(
+    client: Any, make_student: Any, url: str
+) -> None:
+    await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")], note="đo tại trường")
+    await make_student(
+        "Lê Tự Khai",
+        [("gile", "6", "TOO_LOOSE", "6")],
+        note="khai báo của phụ huynh",
+        gender=Gender.FEMALE,
+        data_source=DataSource.PARENT_DECLARED,
+    )
+
+    cells = sheet_cells(url, (await client.get(url)).content, "Lần thử")
+
+    assert "đo tại trường" in cells
+    for declared_marker in ("khai báo của phụ huynh", "Lê Tự Khai", "6", "TOO_LOOSE", "FEMALE"):
+        assert declared_marker not in cells

@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -241,3 +242,98 @@ async def test_portal_account_routes_reject_admin_sessions(
     r = await client.request(method, path, json={"size_label": "3"} if method == "PUT" else None)
 
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
+
+
+async def declare_child(
+    parent: ParentClient, school_class: dict[str, Any], **overrides: Any
+) -> Any:
+    body = {
+        "school_id": school_class["school_id"],
+        "class_id": school_class["class_id"],
+        "full_name": "Lê Minh Anh",
+        "dob": "2017-09-01",
+        "gender": "FEMALE",
+        "height_cm": 128.5,
+        "weight_kg": 25,
+        "parent_phone": "0912345678",
+        **overrides,
+    }
+    r = await parent.post(CHILDREN, json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+@pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
+async def test_declared_child_is_unreachable_for_an_unlinked_parent(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+    method: str,
+) -> None:
+    owner, stranger = await make_parent(), await make_parent()
+    child = await declare_child(owner, school_class)
+    path = f"{CHILDREN}/{child['student_id']}" + ("" if method == "GET" else "/size-choices/blazer")
+
+    r = await stranger.request(method, path, json={"size_label": "3"} if method == "PUT" else None)
+
+    assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
+    assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 0
+
+
+async def test_declared_child_token_is_never_handed_to_any_parent_response(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    owner, stranger = await make_parent(), await make_parent()
+    child = await declare_child(owner, school_class)
+    token = (await client.get(f"/api/students/{child['student_id']}")).json()["portal_token"]
+    key = {"school_id": school_class["school_id"], "full_name": "Lê Minh Anh", "dob": "2017-09-01"}
+
+    responses = [
+        await owner.get(CHILDREN),
+        await owner.get(f"{CHILDREN}/{child['student_id']}"),
+        await stranger.post(f"{CHILDREN}/lookup", json=key),
+        await stranger.post(f"{CHILDREN}/claim", json=key),
+        await stranger.get(CHILDREN),
+    ]
+
+    assert [r.status_code for r in responses] == [200, 200, 200, 200, 200]
+    assert token not in json.dumps(child)
+    assert all(token not in r.text for r in responses)
+    guessed = await stranger.get(f"/api/public/students/{token[::-1]}")
+    assert guessed.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("height", "weight", "expected"),
+    [
+        (100, 15, "1"),
+        (119.9, 19.9, "1"),
+        (120, 20, "2"),
+        (95, 12, None),
+        (99.9, 14.9, None),
+        (165, 20, "7"),
+        (110, 12, "1"),
+        (190, 90, "7"),
+    ],
+)
+async def test_suggested_sizes_at_size_guide_edges(
+    client: AsyncClient,
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    height: float,
+    weight: float,
+    expected: str | None,
+) -> None:
+    parent = await make_parent()
+    child = await declare_child(parent, school_class, height_cm=height, weight_kg=weight)
+    token = (await client.get(f"/api/students/{child['student_id']}")).json()["portal_token"]
+
+    by_account = (await parent.get(f"{CHILDREN}/{child['student_id']}")).json()
+    by_qr = (await client.get(f"/api/public/students/{token}")).json()
+
+    assert by_account["suggested_sizes"] == by_qr["suggested_sizes"]
+    assert by_account["suggested_sizes"] == {"blazer": expected, "gile": expected}

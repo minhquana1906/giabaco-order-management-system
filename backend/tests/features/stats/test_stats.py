@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 from app.features.parent_portal.models import ParentSizeChoice
-from app.features.students.models import DataSource
+from app.features.students.models import DataSource, Gender
 
 
 def school_id(school_class: dict[str, Any]) -> str:
@@ -296,3 +296,64 @@ async def test_declared_child_with_a_choice_only_shows_up_in_orders(
     blazer = next(p for p in orders["products"] if p["product_code"] == "blazer")
     assert blazer["total"] == 1
     assert [s["count"] for s in blazer["sizes"] if s["size_label"] == "4"] == [1]
+
+
+async def test_declared_students_never_reach_any_measurement_filter_variant(
+    client: Any,
+    make_student: Any,
+    make_school: Any,
+    make_class: Any,
+    school_class: dict[str, Any],
+    session: Any,
+    products: Any,
+) -> None:
+    other = await make_school("Trường khác", "OTHER")
+    other_class = await make_class(5, "5Z", school_id=other.id)
+    extra_class = await make_class(4, "4B")
+    await make_student("A", [("blazer", "3", "FITS", "3"), ("gile", "2", "FITS", "2")])
+    await make_student(
+        "B",
+        [("blazer", "5", "FITS", "5")],
+        school_id=other.id,
+        class_id=other_class.id,
+        gender=Gender.FEMALE,
+    )
+    here, there = school_id(school_class), str(other.id)
+    urls = [
+        "/api/stats/overview",
+        f"/api/stats/overview?school_id={here}",
+        f"/api/stats/overview?school_id={there}",
+        "/api/stats/size-distribution?product=blazer",
+        "/api/stats/size-distribution?product=gile",
+        f"/api/stats/size-distribution?product=blazer&school_id={here}",
+        f"/api/stats/size-distribution?product=gile&school_id={there}",
+        f"/api/stats/class-matrix?product=blazer&school_id={here}",
+        f"/api/stats/class-matrix?product=gile&school_id={here}",
+        f"/api/stats/class-matrix?product=blazer&school_id={there}",
+    ]
+    before = {url: (await client.get(url)).json() for url in urls}
+
+    for name, klass, school, gender in [
+        ("Khai Một", extra_class, school_class["school_id"], Gender.MALE),
+        ("Khai Hai", other_class, other.id, Gender.FEMALE),
+    ]:
+        declared = await make_student(
+            name,
+            [("blazer", "2", "FITS", "2"), ("gile", "6", "FITS", "6")],
+            school_id=school,
+            class_id=klass.id,
+            gender=gender,
+            data_source=DataSource.PARENT_DECLARED,
+        )
+        for code in ("blazer", "gile"):
+            session.add(
+                ParentSizeChoice(
+                    student_id=declared.id, product_id=products[code].id, size_label="7"
+                )
+            )
+    await session.commit()
+
+    after = {url: (await client.get(url)).json() for url in urls}
+
+    for url in urls:
+        assert after[url] == before[url], url
