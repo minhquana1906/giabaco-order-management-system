@@ -22,7 +22,9 @@ make dev          # backend :8000 + frontend :5173
 
 Mở `http://127.0.0.1:5173`, đăng nhập `admin` cùng mật khẩu vừa đặt.
 
-Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tại `/parent/register` rồi đăng nhập `/parent/login`. Phụ huynh nhận hồ sơ con bằng trường + họ tên + ngày sinh, hoặc tự tạo hồ sơ con (nhãn "Phụ huynh tự khai", không tính vào dashboard đo và `export/trials`). Admin và phụ huynh dùng hai phiên độc lập trong cùng cookie.
+Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tại `/parent/register` rồi đăng nhập `/parent/login`. Phụ huynh nhận hồ sơ con bằng trường + họ tên + ngày sinh, hoặc tự tạo hồ sơ con (bắt buộc số đo, SĐT phụ huynh; tối đa 10 con mỗi tài khoản; nhãn "Phụ huynh tự khai", không tính vào dashboard đo và `export/trials`). Admin và phụ huynh dùng hai phiên độc lập trong cùng cookie.
+
+Trang chọn cỡ có ảnh sản phẩm theo giới tính (`frontend/public/products/`, nguồn gốc ở `assets/`).
 
 Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP; không có quên mật khẩu (phụ huynh liên hệ Giabaco); đặt may lại năm sau ghi đè lựa chọn cũ.
 

@@ -152,7 +152,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 - [x] **T10: `PortalPage` dùng chung cho QR và tài khoản** (M)
   - Mô tả: `PortalPage` nhận một `PortalSource` (`get`, `choose`, `remove`) thay vì `token`, cộng prop `skipIdentity` và `onBack`. Route `/p/$token` truyền source theo token. Khi `data_source = PARENT_DECLARED`: hiện "Ngày khai" thay "Ngày đo", hiện "Phụ huynh tự khai" thay danh sách lần thử trống.
   - Acceptance:
-    - [ ] `/p/:token` chạy y như trước (xem tay: xác nhận con, chọn, xác nhận, đổi)
+    - [x] `/p/:token` chạy y như trước (xem tay: xác nhận con, chọn, xác nhận, đổi)
     - [x] `PortalPage` không còn tham chiếu `token`
     - [x] `skipIdentity` bắt đầu ở bước số đo; `onBack` mặc định không hiện
   - Verify: `pnpm test && pnpm lint && pnpm tsc --noEmit` · mở `/p/<token>` thật trên điện thoại hoặc viewport hẹp
@@ -163,7 +163,7 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Mô tả: `/parent/register` và `/parent/login`, tiếng Việt, mobile-first. Ghi chú trên form: "Nhập email hoặc số điện thoại, dùng để đăng nhập lần sau". Dùng `http` client chung.
   - Acceptance:
     - [x] Đăng ký thành công thì vào `/parent`; trùng → hiện thông báo từ `message`
-    - [ ] Đăng nhập sai → thông báo lỗi, không lộ chi tiết nào sai. Có dòng "Quên mật khẩu? Liên hệ Giabaco" kèm hotline
+    - [x] Đăng nhập sai → thông báo lỗi, không lộ chi tiết nào sai. Có dòng "Quên mật khẩu? Liên hệ Giabaco" kèm hotline
     - [x] Trang `/login` của admin có link nhỏ "Phụ huynh đăng nhập tại đây" → `/parent/login` (người gõ tên miền gốc bị chuyển về `/dashboard` → `/login`)
     - [x] Không dùng `fetch` trực tiếp trong component
   - Verify: `pnpm test && pnpm lint && pnpm tsc --noEmit` · làm tay trên viewport điện thoại
@@ -173,9 +173,9 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
 - [x] **T12: Trang chủ phụ huynh và route con có bảo vệ** (M)
   - Mô tả: layout `_parent` kiểm `/parent/auth/me`, chưa đăng nhập thì về `/parent/login` (không về `/login` admin). `/parent` liệt kê con và nút "Thêm con", nút đăng xuất. `/parent/children/$studentId` dùng `PortalPage` với source theo `student_id`.
   - Acceptance:
-    - [ ] Chưa đăng nhập mở `/parent` → `/parent/login`; đăng nhập xong quay lại đúng trang
+    - [x] Chưa đăng nhập mở `/parent` → `/parent/login`; đăng nhập xong quay lại đúng trang
     - [x] Danh sách hiện đúng các con và cỡ đã chọn; mở con → chọn, đổi, xác nhận lại được
-    - [ ] Đăng xuất phụ huynh không đăng xuất admin ở cùng trình duyệt
+    - [x] Đăng xuất phụ huynh không đăng xuất admin ở cùng trình duyệt
   - Verify: `pnpm test && pnpm lint && pnpm tsc --noEmit` · làm tay: đăng nhập, mở con, đổi cỡ
   - Deps: T10, T11, T6, T7
   - Files: `frontend/src/routes/parent/_parent.tsx` (hoặc layout tương đương), `frontend/src/routes/parent/index.tsx`, `frontend/src/routes/parent/children/$studentId.tsx`, `frontend/src/features/parent_accounts/components/ChildrenList.tsx`, `frontend/src/features/parent_accounts/{api,hooks}.ts`
@@ -217,36 +217,36 @@ Cỡ: XS 1 file, S 1–2, M 3–5.
   - Files: `frontend/src/features/stats/{api,hooks}.ts`, `frontend/src/features/stats/components/OrdersCard.tsx`, `frontend/src/features/stats/components/DashboardPage.tsx`, `frontend/src/features/realtime/useRealtime.ts`
 
 ### Checkpoint C: Frontend hoàn chỉnh
-- [ ] `pnpm test`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build` xanh
+- [x] `pnpm test`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build` xanh
 - [ ] Xem tận mắt trên viewport điện thoại: đăng ký → thêm con (khớp) → chọn cỡ → đổi cỡ; đăng ký khác → tạo con → chọn cỡ
 - [ ] Review với người dùng trước khi chốt demo
 
 ## Phase 4b: Review fixes và yêu cầu bổ sung (2026-10-20)
 
-- [ ] **T16: Review fixes (backend)** (M): formula injection export, PII trong log lỗi DB, `name_key`, race `claim`/`update_student`, `ChildSummary.choices` có `product_name`, IPv6 /64, giới hạn số con, bổ sung test lỗ hổng
+- [x] **T16: Review fixes (backend)** (M): formula injection export, PII trong log lỗi DB, `name_key`, race `claim`/`update_student`, `ChildSummary.choices` có `product_name`, IPv6 /64, giới hạn số con, bổ sung test lỗ hổng
   - Files: `backend/**`
-- [ ] **T17: Review fixes (frontend)** (M): cô lập cache giữa tài khoản, logout chỉ khi thành công, reset lỗi cũ ở `AddChild`, header 320px, tên sản phẩm từ API, focus, test guard/PortalPage/NewStudent
+- [x] **T17: Review fixes (frontend)** (M): cô lập cache giữa tài khoản, logout chỉ khi thành công, reset lỗi cũ ở `AddChild`, header 320px, tên sản phẩm từ API, focus, test guard/PortalPage/NewStudent
   - Files: `frontend/**`
-- [ ] **T18: Form tạo hồ sơ con theo form admin + thông tin phụ huynh** (M)
+- [x] **T18: Form tạo hồ sơ con theo form admin + thông tin phụ huynh** (M)
   - Mô tả: bắt buộc trường, lớp, họ tên, ngày sinh, giới tính, chiều cao, cân nặng, SĐT phụ huynh; tùy chọn họ tên và email phụ huynh. Tái dùng các control của form admin (ngày sinh 3 ô chọn, hậu tố đơn vị).
-  - [ ] Backend `parent_phone` bắt buộc, `parent_name`/`parent_email` tùy chọn ở `POST`/`PUT /parent/children`; `ChildSummary` trả thông tin phụ huynh chỉ với hồ sơ tự khai
-  - [ ] Frontend form tạo và sửa có mục "Phụ huynh", tái dùng control của admin
-- [ ] **T19: Ảnh sản phẩm Gile/Blazer Nam/Nữ trên trang chọn cỡ** (S)
+  - [x] Backend `parent_phone` bắt buộc, `parent_name`/`parent_email` tùy chọn ở `POST`/`PUT /parent/children`; `ChildSummary` trả thông tin phụ huynh chỉ với hồ sơ tự khai
+  - [x] Frontend form tạo và sửa có mục "Phụ huynh", tái dùng control của admin
+- [x] **T19: Ảnh sản phẩm Gile/Blazer Nam/Nữ trên trang chọn cỡ** (S)
   - Mô tả: `PublicStudent.gender`; nút "Xem ảnh sản phẩm" mở ảnh theo giới tính, chuyển Navy/Ghi. Ảnh đã nén ở `frontend/public/products/`.
-  - [ ] Hiện đúng ảnh theo giới tính ở cả `/p/:token` và `/parent/children/:id`
+  - [x] Hiện đúng ảnh theo giới tính ở cả `/p/:token` và `/parent/children/:id`
 
 ## Phase 5: Demo ready
 
 - [x] **T15: Smoke, tài liệu, nghiệm thu** (S)
   - Mô tả: `scripts/smoke.py` thêm luồng phụ huynh (đăng ký, `me`, 401 chéo loại). Cập nhật `docs/agent/status.md` và README (đường vào `/parent`, rủi ro xác minh yếu, giới hạn đặt lại năm sau và quên mật khẩu). Chạy nghiệm thu Success Criteria 14–23.
   - Acceptance:
-    - [ ] `make smoke` xanh kèm luồng phụ huynh
-    - [ ] Success Criteria 14–23 đã chạy và ghi kết quả, riêng mục 18 bằng `docker compose logs app` sau luồng demo
-    - [ ] `docs/agent/status.md` ghi đúng hiện trạng, kể cả mục chưa kiểm chứng
+    - [x] `make smoke` xanh kèm luồng phụ huynh
+    - [x] Success Criteria 14–23 đã chạy và ghi kết quả, riêng mục 18 bằng `docker compose logs app` sau luồng demo
+    - [x] `docs/agent/status.md` ghi đúng hiện trạng, kể cả mục chưa kiểm chứng
   - Verify: `make test && make lint && make smoke`
   - Deps: T1–T14b
   - Files: `scripts/smoke.py`, `docs/agent/status.md`, `README.md`
 
 ### Checkpoint D: Hoàn tất
-- [ ] Toàn bộ Success Criteria 14–21 đạt, Success Criteria 1–13 không hồi quy
-- [ ] Không còn tham chiếu code hay tài liệu mô tả "một tài khoản duy nhất" sai với hiện trạng
+- [x] Toàn bộ Success Criteria 14–21 đạt, Success Criteria 1–13 không hồi quy
+- [x] Không còn tham chiếu code hay tài liệu mô tả "một tài khoản duy nhất" sai với hiện trạng
