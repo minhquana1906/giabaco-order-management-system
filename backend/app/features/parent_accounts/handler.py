@@ -23,6 +23,7 @@ from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, v
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
 from app.features.parent_accounts.schemas import (
+    ChildChoice,
     ChildIn,
     ChildKeyIn,
     ChildSummary,
@@ -125,15 +126,18 @@ async def children(
     if student_id is not None:
         query = query.where(Student.id == student_id)
     rows = (await session.execute(query)).all()
-    choices: dict[uuid.UUID, dict[str, str]] = defaultdict(dict)
+    choices: dict[uuid.UUID, list[ChildChoice]] = defaultdict(list)
     if rows:
         chosen = await session.execute(
-            select(ParentSizeChoice.student_id, Product.code, ParentSizeChoice.size_label)
+            select(
+                ParentSizeChoice.student_id, Product.code, Product.name, ParentSizeChoice.size_label
+            )
             .join(Product, Product.id == ParentSizeChoice.product_id)
             .where(ParentSizeChoice.student_id.in_([s.id for s, _, _ in rows]), Product.active)
+            .order_by(Product.position, Product.code)
         )
-        for sid, code, label in chosen:
-            choices[sid][code] = label
+        for sid, code, name, label in chosen:
+            choices[sid].append(ChildChoice(product_code=code, product_name=name, size_label=label))
     declared = DataSource.PARENT_DECLARED
     return [
         ChildSummary(

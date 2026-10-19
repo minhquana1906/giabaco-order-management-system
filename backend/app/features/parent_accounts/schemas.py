@@ -96,6 +96,12 @@ class LookupOut(BaseModel):
     class_name: str | None = None
 
 
+class ChildChoice(BaseModel):
+    product_code: str
+    product_name: str
+    size_label: str
+
+
 class ChildSummary(BaseModel):
     student_id: uuid.UUID
     full_name: str
@@ -108,7 +114,7 @@ class ChildSummary(BaseModel):
     parent_name: str | None
     parent_phone: str | None
     parent_email: str | None
-    choices: dict[str, str]
+    choices: list[ChildChoice]
 
 
 class ChildUpdateIn(BaseModel):

@@ -64,7 +64,7 @@ async def test_create_child_is_declared_and_linked(
         "parent_name": None,
         "parent_phone": "0912345678",
         "parent_email": None,
-        "choices": {},
+        "choices": [],
     }
     student = await session.get(Student, uuid.UUID(body["student_id"]))
     assert student is not None and student.data_source is DataSource.PARENT_DECLARED
@@ -265,7 +265,10 @@ async def test_list_children_only_returns_own_live_children_with_choices(
 
     assert r.status_code == 200
     assert [c["student_id"] for c in r.json()] == [first["student_id"], second["student_id"]]
-    assert r.json()[0]["choices"] == {"blazer": "3"} and r.json()[1]["choices"] == {}
+    assert r.json()[0]["choices"] == [
+        {"product_code": "blazer", "product_name": "Áo Blazer (Vest)", "size_label": "3"}
+    ]
+    assert r.json()[1]["choices"] == []
     assert (await theirs.get(CHILDREN)).json()[0]["full_name"] == "Phạm Gia Hân"
     assert len((await theirs.get(CHILDREN)).json()) == 1
 
@@ -780,3 +783,39 @@ async def test_parent_edit_refreshes_measured_at(
     session.expire_all()
     after = (await session.get(Student, student_id)).measured_at  # type: ignore[union-attr]
     assert after > before
+
+
+async def test_child_choices_follow_catalog_order_and_skip_inactive_products(
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    session: AsyncSession,
+    products: dict[str, Any],
+) -> None:
+    parent = await make_parent()
+    child = (await parent.post(CHILDREN, json=child_body(school_class))).json()
+    for code, size in (("gile", "2"), ("blazer", "3")):
+        session.add(
+            ParentSizeChoice(
+                student_id=uuid.UUID(child["student_id"]),
+                product_id=products[code].id,
+                size_label=size,
+            )
+        )
+    await session.commit()
+    original = {code: (p.position, p.active) for code, p in products.items()}
+
+    async def codes() -> list[str]:
+        return [c["product_code"] for c in (await parent.get(CHILDREN)).json()[0]["choices"]]
+
+    try:
+        assert await codes() == ["blazer", "gile"]
+        products["blazer"].position = 99
+        await session.commit()
+        assert await codes() == ["gile", "blazer"]
+        products["gile"].active = False
+        await session.commit()
+        assert await codes() == ["blazer"]
+    finally:
+        for code, (position, active) in original.items():
+            products[code].position, products[code].active = position, active
+        await session.commit()

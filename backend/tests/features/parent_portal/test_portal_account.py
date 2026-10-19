@@ -109,7 +109,9 @@ async def test_choice_lifecycle_through_the_account(
     assert set(first.json()) == {"product_code", "size_label", "chosen_at"}
     assert (await parent.put(url, json={"size_label": "4"})).json()["size_label"] == "4"
     assert (await parent.get(f"{CHILDREN}/{student['id']}")).json()["choices"] == {"blazer": "4"}
-    assert (await parent.get(CHILDREN)).json()[0]["choices"] == {"blazer": "4"}
+    assert (await parent.get(CHILDREN)).json()[0]["choices"] == [
+        {"product_code": "blazer", "product_name": "Áo Blazer (Vest)", "size_label": "4"}
+    ]
     detail = (await client.get(f"/api/students/{student['id']}")).json()
     assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
         ("blazer", "4")
