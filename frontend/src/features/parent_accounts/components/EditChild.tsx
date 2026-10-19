@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { Hotline, LoadError, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { Hotline, LoadError, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/http'
@@ -43,12 +43,9 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
   } else {
     body = (
       <>
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold text-navy">Sửa thông tin của con</h1>
-          <p className="text-balance text-muted-foreground">
-            {child.full_name} · {child.school_name}. Họ tên, ngày sinh và trường không sửa được.
-          </p>
-        </div>
+        <ParentHeading title="Sửa thông tin của con">
+          {child.full_name} · {child.school_name}. Họ tên, ngày sinh và trường không sửa được.
+        </ParentHeading>
         <DeclareForm
           schoolId={child.school_id}
           initial={{

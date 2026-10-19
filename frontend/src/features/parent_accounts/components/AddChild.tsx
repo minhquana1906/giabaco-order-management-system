@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { DobSelects } from '@/components/DobSelects'
 import { Field } from '@/components/Field'
 import { NativeSelect } from '@/components/NativeSelect'
-import { ContactActions, Hotline, LoadError, PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
+import { ContactActions, Hotline, LoadError, PARENT_BTN, PARENT_CONTROL, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -167,10 +167,7 @@ function ConfirmStep({
 }) {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Đúng con của bạn?</h1>
-        <p className="text-balance text-muted-foreground">Chúng tôi tìm thấy một hồ sơ khớp với thông tin bạn nhập.</p>
-      </div>
+      <ParentHeading title="Đúng con của bạn?">Chúng tôi tìm thấy một hồ sơ khớp với thông tin bạn nhập.</ParentHeading>
       <div className="relative rounded-lg bg-navy px-6 py-5 before:pointer-events-none before:absolute before:inset-[5px] before:rounded-md before:border before:border-dashed before:border-brass/60 before:content-['']">
         <p className="text-[26px] font-semibold leading-tight text-white">{match.full_name}</p>
         <p className="mt-1.5 text-[15px] text-sidebar-foreground">
@@ -197,12 +194,9 @@ function ConfirmStep({
 function ContactStep({ onBack }: { onBack: () => void }) {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Vui lòng liên hệ Giabaco</h1>
-        <p className="text-balance text-muted-foreground">
-          Có nhiều hồ sơ trùng với thông tin này nên chúng tôi cần kiểm tra giúp bạn.
-        </p>
-      </div>
+      <ParentHeading title="Vui lòng liên hệ Giabaco">
+        Có nhiều hồ sơ trùng với thông tin này nên chúng tôi cần kiểm tra giúp bạn.
+      </ParentHeading>
       <div className="mt-auto flex flex-col gap-3">
         <ContactActions />
         <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
@@ -286,10 +280,7 @@ export function AddChild() {
   } else if (step === 'declare') {
     body = (
       <>
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold text-navy">Chưa thấy hồ sơ của con</h1>
-          <p className="text-balance text-muted-foreground">Bạn nhập thông tin của con để chọn cỡ áo.</p>
-        </div>
+        <ParentHeading title="Chưa thấy hồ sơ của con">Bạn nhập thông tin của con để chọn cỡ áo.</ParentHeading>
         <dl className="rounded-lg border border-hairline bg-white px-5 py-3">
           <div className="flex items-baseline justify-between gap-4 py-1">
             <dt className="text-muted-foreground">Họ và tên</dt>
@@ -314,12 +305,7 @@ export function AddChild() {
   } else {
     body = (
       <>
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold text-navy">Thêm con</h1>
-          <p className="text-balance text-muted-foreground">
-            Nhập thông tin của con để tìm hồ sơ đã có hoặc tạo hồ sơ mới.
-          </p>
-        </div>
+        <ParentHeading title="Thêm con">Nhập thông tin của con để tìm hồ sơ đã có hoặc tạo hồ sơ mới.</ParentHeading>
         <SearchStep value={key} notice={notice} pending={lookup.isPending} error={lookup.error} onChange={setKey} onSubmit={search} />
       </>
     )

@@ -36,6 +36,15 @@ export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
   )
 }
 
+export function ParentHeading({ title, children }: { title: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h1 className="text-2xl font-semibold text-navy">{title}</h1>
+      {children ? <p className="text-balance text-muted-foreground">{children}</p> : null}
+    </div>
+  )
+}
+
 export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-col gap-4">

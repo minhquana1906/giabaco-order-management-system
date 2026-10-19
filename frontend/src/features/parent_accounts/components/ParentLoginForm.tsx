@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
-import { Hotline, PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
+import { Hotline, PARENT_BTN, PARENT_CONTROL, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,12 +31,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
 
   return (
     <ParentShell>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Đăng nhập phụ huynh</h1>
-        <p className="text-balance text-muted-foreground">
-          Xem số đo và chọn cỡ áo cho con bằng tài khoản của bạn.
-        </p>
-      </div>
+      <ParentHeading title="Đăng nhập phụ huynh">Xem số đo và chọn cỡ áo cho con bằng tài khoản của bạn.</ParentHeading>
       <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
         <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>
           {(control) => (

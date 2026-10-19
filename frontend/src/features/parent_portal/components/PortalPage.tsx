@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Check, CheckCircle2, Ruler } from 'lucide-react'
-import { ContactActions, Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { ContactActions, Hotline, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg, formatNumber } from '@/lib/format'
@@ -102,12 +102,7 @@ function StudentTag({ s }: { s: PublicStudent }) {
 function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onNo: () => void }) {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Đây có phải con của bạn?</h1>
-        <p className="text-balance text-muted-foreground">
-          Xác nhận đúng học sinh để xem số đo và chọn cỡ áo cho con.
-        </p>
-      </div>
+      <ParentHeading title="Đây có phải con của bạn?">Xác nhận đúng học sinh để xem số đo và chọn cỡ áo cho con.</ParentHeading>
       <StudentTag s={s} />
       <div className="mt-auto flex flex-col gap-3">
         <Button size="lg" className={PARENT_BTN} onClick={onYes}>
@@ -438,14 +433,9 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
   const count = s.products.filter((p) => s.choices[p.code]).length
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">{count ? 'Cỡ áo đã đăng ký' : 'Chưa đăng ký cỡ áo'}</h1>
-        <p className="text-balance text-muted-foreground">
-          {count
-            ? 'Giabaco đã nhận lựa chọn cỡ của con bạn.'
-            : 'Bạn chưa chọn cỡ cho sản phẩm nào của con.'}
-        </p>
-      </div>
+      <ParentHeading title={count ? 'Cỡ áo đã đăng ký' : 'Chưa đăng ký cỡ áo'}>
+        {count ? 'Giabaco đã nhận lựa chọn cỡ của con bạn.' : 'Bạn chưa chọn cỡ cho sản phẩm nào của con.'}
+      </ParentHeading>
       <StudentTag s={s} />
       <section aria-labelledby="chosen-title" className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-3">
