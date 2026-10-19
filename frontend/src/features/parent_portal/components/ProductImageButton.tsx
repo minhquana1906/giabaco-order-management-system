@@ -68,7 +68,6 @@ export function ProductImageButton({ product, gender, className }: ProductImageB
             <img
               key={src}
               src={src}
-              loading="lazy"
               alt={`${product.name} ${gender === 'MALE' ? 'nam' : 'nữ'}, màu ${colour === 'navy' ? 'Navy' : 'Ghi'}: kiểu dáng, chất liệu và thông số`}
               className="h-auto w-[900px] max-w-none sm:w-full"
               onError={() => setFailed(true)}
