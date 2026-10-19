@@ -42,6 +42,7 @@ async def test_name_key_matches_stored_students_whatever_the_whitespace(
         "clean": "Nguyễn Văn An",
         "dirty": "\t Nguyễn \t Văn\u00a0\u00a0An \n",
         "nbsp_edges": "\u00a0Nguyễn Văn An\u00a0",
+        "unicode_spaces": "\u2003Nguyễn\u3000Văn\u202fAn\u2009",
         "stroke": "Đặng Thị Đào",
         "longer": "Nguyễn Văn Anh",
     }
@@ -66,11 +67,9 @@ async def test_name_key_matches_stored_students_whatever_the_whitespace(
         query = select(Student.id).where(name_key(Student.full_name) == name_key(typed))
         return set(await session.scalars(query))
 
-    assert await matching("nguyen van an") == {ids["clean"], ids["dirty"], ids["nbsp_edges"]}
-    assert await matching(" NGUYỄN\tVĂN\u00a0AN\n") == {
-        ids["clean"],
-        ids["dirty"],
-        ids["nbsp_edges"],
-    }
+    an = {ids["clean"], ids["dirty"], ids["nbsp_edges"], ids["unicode_spaces"]}
+    assert await matching("nguyen van an") == an
+    assert await matching(" NGUYỄN\tVĂN\u00a0AN\n") == an
+    assert await matching("\u3000nguyen\u2003van an\u202f") == an
     assert await matching("dang thi dao") == {ids["stroke"]}
     assert await matching("ĐẶNG THỊ ĐÀO") == {ids["stroke"]}

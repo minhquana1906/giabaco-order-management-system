@@ -8,17 +8,20 @@ from sqlalchemy import func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+_WHITESPACE = r"[\s\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+"
+
 
 def name_key(value: Any) -> ColumnElement[str]:
     """SQL key: NFC, collapsed whitespace, trimmed, case- and accent-insensitive.
 
     Apply it to both the column and the bound value so SQL and Python never diverge. Whitespace
-    is collapsed before trimming because trim() only removes plain spaces, and NBSP is not in
-    Postgres' \\s for every locale.
+    is collapsed before trimming because trim() only removes plain spaces. The class is spelled
+    out like Python's str.isspace because Postgres' \\s depends on the locale (NBSP is not in it
+    for glibc).
     """
     is_sql = isinstance(value, ColumnElement) or hasattr(value, "__clause_element__")
     expr = value if is_sql else literal(value)
-    collapsed = func.regexp_replace(func.normalize(expr), r"[\s\u00a0]+", " ", "g")
+    collapsed = func.regexp_replace(func.normalize(expr), _WHITESPACE, " ", "g")
     return func.lower(func.unaccent(func.trim(collapsed)))
 
 
