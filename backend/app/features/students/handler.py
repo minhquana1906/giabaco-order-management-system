@@ -18,11 +18,13 @@ from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.events import bus
 from app.features.catalog.models import Product, School, SchoolClass
+from app.features.parent_accounts.models import ParentAccount, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
 from app.features.students.models import Fit, FittingTrial, Student
 from app.features.students.schemas import (
     ClassRef,
+    LinkedParentOut,
     NamedRef,
     ParentChoiceOut,
     StudentDetail,
@@ -337,6 +339,12 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
             .order_by(ParentSizeChoice.chosen_at)
         )
     ).all()
+    links = await session.execute(
+        select(ParentStudentLink, ParentAccount)
+        .join(ParentAccount, ParentAccount.id == ParentStudentLink.parent_id)
+        .where(ParentStudentLink.student_id == student.id)
+        .order_by(ParentStudentLink.created_at, ParentStudentLink.id)
+    )
     base = get_settings().public_base_url.rstrip("/")
     return StudentDetail(
         id=student.id,
@@ -352,6 +360,7 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
         class_=ClassRef(id=school_class.id, name=school_class.name, grade=school_class.grade),
         portal_token=student.portal_token,
         portal_url=f"{base}/p/{student.portal_token}",
+        data_source=student.data_source,
         measured_at=student.measured_at,
         created_at=student.created_at,
         updated_at=student.updated_at,
@@ -377,6 +386,17 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
                 chosen_at=c.chosen_at,
             )
             for c in choices
+        ],
+        linked_parents=[
+            LinkedParentOut(
+                parent_id=parent.id,
+                full_name=parent.full_name,
+                email=parent.email,
+                phone=parent.phone,
+                origin=link.origin,
+                linked_at=link.created_at,
+            )
+            for link, parent in links
         ],
     )
 
@@ -469,6 +489,7 @@ async def list_students(session: AsyncSession, f: ListFilters) -> StudentPage:
             height_cm=float(s.height_cm),
             weight_kg=float(s.weight_kg),
             parent_phone=s.parent_phone,
+            data_source=s.data_source,
             derived_sizes=derived[s.id],
             trial_count=len(trials_by_student[s.id]),
             has_note=any(t.note for t in trials_by_student[s.id]),

@@ -309,3 +309,95 @@ async def test_trial_unique_index_is_partial(
     await session.commit()
     session.add(new_trial())
     await session.commit()
+
+
+async def parent_child(parent: Any, school_class: dict[str, Any], name: str = "Lê Minh Anh") -> Any:
+    r = await parent.post(
+        "/api/parent/children",
+        json={
+            "school_id": school_class["school_id"],
+            "class_id": school_class["class_id"],
+            "full_name": name,
+            "dob": "2017-09-01",
+            "gender": "FEMALE",
+            "height_cm": 128.5,
+            "weight_kg": 25,
+        },
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["student_id"]
+
+
+async def test_list_and_detail_expose_data_source(
+    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+) -> None:
+    measured = (await client.post("/api/students", json=student_payload())).json()
+    declared_id = await parent_child(await make_parent(), school_class)
+
+    listed = (await client.get("/api/students")).json()["items"]
+
+    assert {i["id"]: i["data_source"] for i in listed} == {
+        measured["id"]: "ADMIN_MEASURED",
+        declared_id: "PARENT_DECLARED",
+    }
+    assert measured["data_source"] == "ADMIN_MEASURED"
+    assert (await client.get(f"/api/students/{declared_id}")).json()[
+        "data_source"
+    ] == "PARENT_DECLARED"
+
+
+async def test_admin_cannot_set_data_source(
+    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+) -> None:
+    created = await client.post(
+        "/api/students", json=student_payload(data_source="PARENT_DECLARED")
+    )
+    assert created.status_code == 201 and created.json()["data_source"] == "ADMIN_MEASURED"
+    updated = await client.put(
+        f"/api/students/{created.json()['id']}",
+        json=student_payload(data_source="PARENT_DECLARED", height_cm=127),
+    )
+    assert updated.status_code == 200 and updated.json()["data_source"] == "ADMIN_MEASURED"
+
+    declared_id = await parent_child(await make_parent(), school_class)
+    body = student_payload(full_name="Lê Minh Anh", dob="2017-09-01", data_source="ADMIN_MEASURED")
+    kept = await client.put(f"/api/students/{declared_id}", json=body)
+    assert kept.status_code == 200 and kept.json()["data_source"] == "PARENT_DECLARED"
+
+
+async def test_detail_lists_linked_parents_and_declared_choices(
+    client: AsyncClient, make_parent: Any, student_payload: Payload, school_class: dict[str, Any]
+) -> None:
+    creator = await make_parent(email="Me.Tao@Example.com", full_name="Mẹ Tạo")
+    declared_id = await parent_child(creator, school_class)
+    claimer = await make_parent(phone="0987654321", full_name="Bố Nhận")
+    claim = await claimer.post(
+        "/api/parent/children/claim",
+        json={
+            "school_id": school_class["school_id"],
+            "full_name": "le minh anh",
+            "dob": "2017-09-01",
+        },
+    )
+    assert claim.status_code == 200
+    await creator.put(
+        f"/api/parent/children/{declared_id}/size-choices/blazer", json={"size_label": "3"}
+    )
+    lonely = (await client.post("/api/students", json=student_payload())).json()
+
+    detail = (await client.get(f"/api/students/{declared_id}")).json()
+
+    parents = detail["linked_parents"]
+    assert [(p["parent_id"], p["full_name"], p["origin"]) for p in parents] == [
+        (creator.parent_id, "Mẹ Tạo", "CREATED"),
+        (claimer.parent_id, "Bố Nhận", "CLAIMED"),
+    ]
+    assert (parents[0]["email"], parents[0]["phone"]) == ("me.tao@example.com", None)
+    assert (parents[1]["email"], parents[1]["phone"]) == (None, "0987654321")
+    assert all(p["linked_at"] for p in parents)
+    assert set(parents[0]) == {"parent_id", "full_name", "email", "phone", "origin", "linked_at"}
+    assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
+        ("blazer", "3")
+    ]
+    assert detail["trials"] == []
+    assert lonely["linked_parents"] == []
