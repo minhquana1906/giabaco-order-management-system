@@ -1,15 +1,19 @@
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.features.catalog.models import Product, School, SchoolClass
+from app.features.parent_portal.models import ParentSizeChoice
 from app.features.stats.schemas import (
     ClassMatrix,
     MatrixRow,
     MatrixTotals,
+    OrderProduct,
+    Orders,
+    OrderSize,
     Overview,
     ProductUsage,
     SizeCount,
@@ -17,7 +21,7 @@ from app.features.stats.schemas import (
     SizeGuideAccuracy,
 )
 from app.features.students.fit_rules import derived_size
-from app.features.students.models import Fit, FittingTrial, Student
+from app.features.students.models import DataSource, Fit, FittingTrial, Student
 
 
 def _percent(count: int, total: int) -> float:
@@ -39,7 +43,10 @@ async def _product_by_code(session: AsyncSession, code: str) -> Product:
 
 
 async def _students(session: AsyncSession, school_id: uuid.UUID | None) -> list[Student]:
-    query = select(Student).where(Student.deleted_at.is_(None))
+    """Live students measured by an admin: parent-declared records are not measurement data."""
+    query = select(Student).where(
+        Student.deleted_at.is_(None), Student.data_source == DataSource.ADMIN_MEASURED
+    )
     if school_id is not None:
         query = query.where(Student.school_id == school_id)
     return list(await session.scalars(query))
@@ -199,3 +206,30 @@ async def class_matrix(
         rows=[rows[c.id] for c in classes],
         totals=totals,
     )
+
+
+async def orders(session: AsyncSession, school_id: uuid.UUID | None) -> Orders:
+    """Parent size choices per product and size, for live students of any data source."""
+    query = (
+        select(ParentSizeChoice.product_id, ParentSizeChoice.size_label, func.count())
+        .join(Student, Student.id == ParentSizeChoice.student_id)
+        .where(Student.deleted_at.is_(None))
+        .group_by(ParentSizeChoice.product_id, ParentSizeChoice.size_label)
+    )
+    if school_id is not None:
+        query = query.where(Student.school_id == school_id)
+    counts = {(pid, label): n for pid, label, n in await session.execute(query)}
+    products = []
+    for product in await _active_products(session):
+        sizes = [
+            OrderSize(size_label=s, count=counts.get((product.id, s), 0)) for s in product.sizes
+        ]
+        products.append(
+            OrderProduct(
+                product_code=product.code,
+                product_name=product.name,
+                sizes=sizes,
+                total=sum(s.count for s in sizes),
+            )
+        )
+    return Orders(products=products)

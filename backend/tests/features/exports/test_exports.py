@@ -6,7 +6,8 @@ import pytest
 from openpyxl import load_workbook
 
 from app.features.exports.handler import STUDENT_HEADERS, TRIAL_HEADERS
-from app.features.students.models import Gender
+from app.features.parent_portal.models import ParentSizeChoice
+from app.features.students.models import DataSource, Gender
 
 URLS = [
     "/api/export/students.csv",
@@ -66,6 +67,10 @@ async def test_students_csv(client: Any, seeded: None) -> None:
     assert header[len(STUDENT_HEADERS) :] == [
         "Cỡ vừa suy ra - Áo Blazer (Vest)",
         "Cỡ vừa suy ra - Áo Gile",
+        "Áo Blazer (Vest) - cỡ phụ huynh chọn",
+        "Áo Blazer (Vest) - thời điểm chọn",
+        "Áo Gile - cỡ phụ huynh chọn",
+        "Áo Gile - thời điểm chọn",
         "Số lần thử",
     ]
     assert len(body) == 3
@@ -127,3 +132,51 @@ async def test_empty_database_exports_headers_only(client: Any) -> None:
     rows = read_csv((await client.get("/api/export/trials.csv")).content)
 
     assert rows == [TRIAL_HEADERS]
+
+
+async def test_students_export_has_data_source_and_parent_choices(
+    client: Any, make_student: Any, session: Any, products: Any
+) -> None:
+    measured = await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")])
+    declared = await make_student("Lê Tự Khai", data_source=DataSource.PARENT_DECLARED)
+    gone = await make_student("Đã Xóa", deleted=True)
+    chosen = [(measured, "blazer", "3"), (declared, "blazer", "5"), (declared, "gile", "2")]
+    for student, code, size in [*chosen, (gone, "blazer", "1")]:
+        session.add(
+            ParentSizeChoice(student_id=student.id, product_id=products[code].id, size_label=size)
+        )
+    await session.commit()
+
+    rows = read_csv((await client.get("/api/export/students.csv")).content)
+
+    header, body = rows[0], rows[1:]
+    assert {r[3] for r in body} == {"Nguyễn Minh Khang", "Lê Tự Khai"}
+    by_name = {r[3]: r for r in body}
+    for name, source in [
+        ("Nguyễn Minh Khang", "ADMIN_MEASURED"),
+        ("Lê Tự Khai", "PARENT_DECLARED"),
+    ]:
+        assert by_name[name][header.index("data_source")] == source
+    blazer = header.index("Áo Blazer (Vest) - cỡ phụ huynh chọn")
+    gile = header.index("Áo Gile - cỡ phụ huynh chọn")
+    assert by_name["Nguyễn Minh Khang"][blazer] == "3" and by_name["Nguyễn Minh Khang"][gile] == ""
+    assert by_name["Lê Tự Khai"][blazer] == "5" and by_name["Lê Tự Khai"][gile] == "2"
+    assert by_name["Lê Tự Khai"][blazer + 1].startswith("20")
+    assert by_name["Nguyễn Minh Khang"][gile + 1] == ""
+    assert by_name["Lê Tự Khai"][header.index("Số lần thử")] == "0"
+
+
+async def test_trials_export_excludes_parent_declared_students(
+    client: Any, make_student: Any
+) -> None:
+    await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")])
+    await make_student(
+        "Lê Tự Khai", [("blazer", "4", "FITS", "4")], data_source=DataSource.PARENT_DECLARED
+    )
+
+    csv_rows = read_csv((await client.get("/api/export/trials.csv")).content)
+    xlsx_rows = read_sheet((await client.get("/api/export/trials.xlsx")).content, "Lần thử")
+    all_rows = read_sheet((await client.get("/api/export/all.xlsx")).content, "Lần thử")
+
+    assert len(csv_rows) == len(xlsx_rows) == len(all_rows) == 2
+    assert csv_rows[1][csv_rows[0].index("Cỡ thử")] == "2"

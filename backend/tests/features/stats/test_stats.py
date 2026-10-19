@@ -1,6 +1,9 @@
 import uuid
 from typing import Any
 
+from app.features.parent_portal.models import ParentSizeChoice
+from app.features.students.models import DataSource
+
 
 def school_id(school_class: dict[str, Any]) -> str:
     return str(school_class["school_id"])
@@ -12,6 +15,7 @@ async def test_stats_require_session(anon_client: Any) -> None:
         "/api/stats/overview",
         "/api/stats/size-distribution?product=blazer",
         f"/api/stats/class-matrix?product=blazer&school_id={sid}",
+        "/api/stats/orders",
     ):
         response = await anon_client.get(url)
         assert response.status_code == 401
@@ -162,3 +166,132 @@ async def test_class_matrix_validation(client: Any) -> None:
         "/api/stats/class-matrix", params={"product": "blazer", "school_id": str(uuid.uuid4())}
     )
     assert unknown.status_code == 404
+
+
+async def measured_snapshot(client: Any, school: str) -> list[Any]:
+    urls = [
+        "/api/stats/overview",
+        "/api/stats/size-distribution?product=blazer",
+        f"/api/stats/class-matrix?product=blazer&school_id={school}",
+    ]
+    return [(await client.get(url)).json() for url in urls]
+
+
+async def test_parent_declared_students_do_not_move_measurement_stats(
+    client: Any, make_student: Any, school_class: dict[str, Any], session: Any, products: Any
+) -> None:
+    await make_student("A", [("blazer", "3", "FITS", "3")])
+    before = await measured_snapshot(client, school_id(school_class))
+    declared = await make_student("Khai", data_source=DataSource.PARENT_DECLARED)
+    sneaky = await make_student(
+        "Khai Co Thu", [("blazer", "2", "FITS", "3")], data_source=DataSource.PARENT_DECLARED
+    )
+    for student in (declared, sneaky):
+        session.add(
+            ParentSizeChoice(
+                student_id=student.id, product_id=products["blazer"].id, size_label="5"
+            )
+        )
+    await session.commit()
+
+    assert await measured_snapshot(client, school_id(school_class)) == before
+
+
+async def test_orders_count_every_data_source_but_not_deleted_students(
+    client: Any, make_student: Any, session: Any, products: Any
+) -> None:
+    measured = await make_student("A", [("blazer", "3", "FITS", "3")])
+    declared = await make_student("Khai", data_source=DataSource.PARENT_DECLARED)
+    another = await make_student("B")
+    gone = await make_student("Gone", deleted=True)
+    for student, code, size in [
+        (measured, "blazer", "3"),
+        (declared, "blazer", "3"),
+        (declared, "gile", "2"),
+        (another, "blazer", "4"),
+        (gone, "blazer", "3"),
+    ]:
+        session.add(
+            ParentSizeChoice(student_id=student.id, product_id=products[code].id, size_label=size)
+        )
+    await session.commit()
+
+    body = (await client.get("/api/stats/orders")).json()
+
+    by_code = {p["product_code"]: p for p in body["products"]}
+    assert set(by_code) == {"blazer", "gile"}
+    blazer = by_code["blazer"]
+    assert blazer["product_name"] == "Áo Blazer (Vest)" and blazer["total"] == 3
+    assert [s["size_label"] for s in blazer["sizes"]] == ["1", "2", "3", "4", "5", "6", "7"]
+    assert {s["size_label"]: s["count"] for s in blazer["sizes"] if s["count"]} == {"3": 2, "4": 1}
+    assert by_code["gile"]["total"] == 1
+    assert {s["size_label"]: s["count"] for s in by_code["gile"]["sizes"] if s["count"]} == {"2": 1}
+
+
+async def test_orders_school_filter(
+    client: Any,
+    make_student: Any,
+    make_school: Any,
+    make_class: Any,
+    school_class: dict[str, Any],
+    session: Any,
+    products: Any,
+) -> None:
+    other = await make_school("Trường khác", "OTHER")
+    other_class = await make_class(1, "X1", school_id=other.id)
+    mine = await make_student("A")
+    theirs = await make_student("B", school_id=other.id, class_id=other_class.id)
+    for student in (mine, theirs):
+        session.add(
+            ParentSizeChoice(
+                student_id=student.id, product_id=products["blazer"].id, size_label="3"
+            )
+        )
+    await session.commit()
+
+    scoped = (
+        await client.get("/api/stats/orders", params={"school_id": school_id(school_class)})
+    ).json()
+    everything = (await client.get("/api/stats/orders")).json()
+
+    assert next(p for p in scoped["products"] if p["product_code"] == "blazer")["total"] == 1
+    assert next(p for p in everything["products"] if p["product_code"] == "blazer")["total"] == 2
+
+
+async def test_orders_empty_has_zero_filled_sizes(client: Any) -> None:
+    body = (await client.get("/api/stats/orders")).json()
+
+    assert [p["total"] for p in body["products"]] == [0, 0]
+    assert all(s["count"] == 0 for p in body["products"] for s in p["sizes"])
+
+
+async def test_declared_child_with_a_choice_only_shows_up_in_orders(
+    client: Any, make_student: Any, make_parent: Any, school_class: dict[str, Any]
+) -> None:
+    await make_student("A", [("blazer", "3", "FITS", "3")])
+    before = await measured_snapshot(client, school_id(school_class))
+    parent = await make_parent()
+    child = (
+        await parent.post(
+            "/api/parent/children",
+            json={
+                "school_id": school_class["school_id"],
+                "class_id": school_class["class_id"],
+                "full_name": "Lê Minh Anh",
+                "dob": "2017-09-01",
+                "gender": "FEMALE",
+                "height_cm": 128.5,
+                "weight_kg": 25,
+            },
+        )
+    ).json()
+
+    await parent.put(
+        f"/api/parent/children/{child['student_id']}/size-choices/blazer", json={"size_label": "4"}
+    )
+
+    assert await measured_snapshot(client, school_id(school_class)) == before
+    orders = (await client.get("/api/stats/orders")).json()
+    blazer = next(p for p in orders["products"] if p["product_code"] == "blazer")
+    assert blazer["total"] == 1
+    assert [s["count"] for s in blazer["sizes"] if s["size_label"] == "4"] == [1]
