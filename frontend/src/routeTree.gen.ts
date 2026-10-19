@@ -14,9 +14,15 @@ import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
 import { Route as PTokenRouteImport } from './routes/p/$token'
+import { Route as ParentParentRouteImport } from './routes/parent/_parent'
+import { Route as ParentLoginRouteImport } from './routes/parent/login'
+import { Route as ParentRegisterRouteImport } from './routes/parent/register'
 import { Route as AdminStudentsIndexRouteImport } from './routes/_admin/students/index'
 import { Route as AdminStudentsStudentIdRouteImport } from './routes/_admin/students/$studentId'
 import { Route as AdminStudentsNewRouteImport } from './routes/_admin/students/new'
+import { Route as ParentParentIndexRouteImport } from './routes/parent/_parent/index'
+import { Route as ParentParentChildrenStudentIdRouteImport } from './routes/parent/_parent/children/$studentId'
+import { Route as ParentParentChildrenNewRouteImport } from './routes/parent/_parent/children/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,6 +48,21 @@ const PTokenRoute = PTokenRouteImport.update({
   path: '/p/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParentParentRoute = ParentParentRouteImport.update({
+  id: '/parent/_parent',
+  path: '/parent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParentLoginRoute = ParentLoginRouteImport.update({
+  id: '/parent/login',
+  path: '/parent/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParentRegisterRoute = ParentRegisterRouteImport.update({
+  id: '/parent/register',
+  path: '/parent/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminStudentsIndexRoute = AdminStudentsIndexRouteImport.update({
   id: '/students/',
   path: '/students/',
@@ -57,24 +78,51 @@ const AdminStudentsNewRoute = AdminStudentsNewRouteImport.update({
   path: '/students/new',
   getParentRoute: () => AdminRoute,
 } as any)
+const ParentParentIndexRoute = ParentParentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ParentParentRoute,
+} as any)
+const ParentParentChildrenStudentIdRoute =
+  ParentParentChildrenStudentIdRouteImport.update({
+    id: '/children/$studentId',
+    path: '/children/$studentId',
+    getParentRoute: () => ParentParentRoute,
+  } as any)
+const ParentParentChildrenNewRoute = ParentParentChildrenNewRouteImport.update({
+  id: '/children/new',
+  path: '/children/new',
+  getParentRoute: () => ParentParentRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
+  '/parent': typeof ParentParentRouteWithChildren
+  '/parent/login': typeof ParentLoginRoute
+  '/parent/register': typeof ParentRegisterRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
   '/students/': typeof AdminStudentsIndexRoute
+  '/parent/': typeof ParentParentIndexRoute
+  '/parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
+  '/parent/children/new': typeof ParentParentChildrenNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
+  '/parent/login': typeof ParentLoginRoute
+  '/parent/register': typeof ParentRegisterRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
   '/students': typeof AdminStudentsIndexRoute
+  '/parent': typeof ParentParentIndexRoute
+  '/parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
+  '/parent/children/new': typeof ParentParentChildrenNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -83,9 +131,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_admin/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
+  '/parent/_parent': typeof ParentParentRouteWithChildren
+  '/parent/login': typeof ParentLoginRoute
+  '/parent/register': typeof ParentRegisterRoute
   '/_admin/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/_admin/students/new': typeof AdminStudentsNewRoute
   '/_admin/students/': typeof AdminStudentsIndexRoute
+  '/parent/_parent/': typeof ParentParentIndexRoute
+  '/parent/_parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
+  '/parent/_parent/children/new': typeof ParentParentChildrenNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -94,18 +148,29 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/p/$token'
+    | '/parent'
+    | '/parent/login'
+    | '/parent/register'
     | '/students/$studentId'
     | '/students/new'
     | '/students/'
+    | '/parent/'
+    | '/parent/children/$studentId'
+    | '/parent/children/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/dashboard'
     | '/p/$token'
+    | '/parent/login'
+    | '/parent/register'
     | '/students/$studentId'
     | '/students/new'
     | '/students'
+    | '/parent'
+    | '/parent/children/$studentId'
+    | '/parent/children/new'
   id:
     | '__root__'
     | '/'
@@ -113,9 +178,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/_admin/dashboard'
     | '/p/$token'
+    | '/parent/_parent'
+    | '/parent/login'
+    | '/parent/register'
     | '/_admin/students/$studentId'
     | '/_admin/students/new'
     | '/_admin/students/'
+    | '/parent/_parent/'
+    | '/parent/_parent/children/$studentId'
+    | '/parent/_parent/children/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -123,6 +194,9 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   PTokenRoute: typeof PTokenRoute
+  ParentParentRoute: typeof ParentParentRouteWithChildren
+  ParentLoginRoute: typeof ParentLoginRoute
+  ParentRegisterRoute: typeof ParentRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -162,6 +236,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/parent/_parent': {
+      id: '/parent/_parent'
+      path: '/parent'
+      fullPath: '/parent'
+      preLoaderRoute: typeof ParentParentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parent/login': {
+      id: '/parent/login'
+      path: '/parent/login'
+      fullPath: '/parent/login'
+      preLoaderRoute: typeof ParentLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parent/register': {
+      id: '/parent/register'
+      path: '/parent/register'
+      fullPath: '/parent/register'
+      preLoaderRoute: typeof ParentRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_admin/students/': {
       id: '/_admin/students/'
       path: '/students'
@@ -183,6 +278,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStudentsNewRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/parent/_parent/': {
+      id: '/parent/_parent/'
+      path: '/'
+      fullPath: '/parent/'
+      preLoaderRoute: typeof ParentParentIndexRouteImport
+      parentRoute: typeof ParentParentRoute
+    }
+    '/parent/_parent/children/$studentId': {
+      id: '/parent/_parent/children/$studentId'
+      path: '/children/$studentId'
+      fullPath: '/parent/children/$studentId'
+      preLoaderRoute: typeof ParentParentChildrenStudentIdRouteImport
+      parentRoute: typeof ParentParentRoute
+    }
+    '/parent/_parent/children/new': {
+      id: '/parent/_parent/children/new'
+      path: '/children/new'
+      fullPath: '/parent/children/new'
+      preLoaderRoute: typeof ParentParentChildrenNewRouteImport
+      parentRoute: typeof ParentParentRoute
+    }
   }
 }
 
@@ -202,11 +318,30 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ParentParentRouteChildren {
+  ParentParentIndexRoute: typeof ParentParentIndexRoute
+  ParentParentChildrenStudentIdRoute: typeof ParentParentChildrenStudentIdRoute
+  ParentParentChildrenNewRoute: typeof ParentParentChildrenNewRoute
+}
+
+const ParentParentRouteChildren: ParentParentRouteChildren = {
+  ParentParentIndexRoute: ParentParentIndexRoute,
+  ParentParentChildrenStudentIdRoute: ParentParentChildrenStudentIdRoute,
+  ParentParentChildrenNewRoute: ParentParentChildrenNewRoute,
+}
+
+const ParentParentRouteWithChildren = ParentParentRoute._addFileChildren(
+  ParentParentRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   PTokenRoute: PTokenRoute,
+  ParentParentRoute: ParentParentRouteWithChildren,
+  ParentLoginRoute: ParentLoginRoute,
+  ParentRegisterRoute: ParentRegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -129,7 +129,7 @@ function Help({ onBack }: { onBack: () => void }) {
   )
 }
 
-function Measurements({ s, onNext }: { s: PublicStudent; onNext: () => void }) {
+function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => void; onEdit?: () => void }) {
   const byProduct = s.products
     .map((p) => ({
       p,
@@ -178,6 +178,11 @@ function Measurements({ s, onNext }: { s: PublicStudent; onNext: () => void }) {
         <Button size="lg" className={primaryBtn} onClick={onNext}>
           Tiếp tục
         </Button>
+        {onEdit ? (
+          <Button variant="outline" size="lg" className={`${primaryBtn} mt-3`} onClick={onEdit}>
+            Sửa thông tin
+          </Button>
+        ) : null}
       </div>
     </>
   )
@@ -420,7 +425,7 @@ function Review({
   )
 }
 
-function Overview({ s, onChange }: { s: PublicStudent; onChange: () => void }) {
+function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => void; onEdit?: () => void }) {
   const count = s.products.filter((p) => s.choices[p.code]).length
   return (
     <>
@@ -488,6 +493,11 @@ function Overview({ s, onChange }: { s: PublicStudent; onChange: () => void }) {
         <Button size="lg" className={primaryBtn} onClick={onChange}>
           Đổi lựa chọn
         </Button>
+        {onEdit ? (
+          <Button variant="outline" size="lg" className={primaryBtn} onClick={onEdit}>
+            Sửa thông tin
+          </Button>
+        ) : null}
         <Hotline />
       </div>
     </>
@@ -524,9 +534,10 @@ interface PortalPageProps {
   source: PortalSource
   skipIdentity?: boolean
   onBack?: () => void
+  onEdit?: () => void
 }
 
-export function PortalPage({ source, skipIdentity = false, onBack }: PortalPageProps) {
+export function PortalPage({ source, skipIdentity = false, onBack, onEdit }: PortalPageProps) {
   const query = usePortalStudent(source)
   const save = useSaveChoices(source)
   const [stepState, setStep] = useState<Step | null>(null)
@@ -583,7 +594,13 @@ export function PortalPage({ source, skipIdentity = false, onBack }: PortalPageP
   } else if (step === 'identity') {
     body = <Identity s={s} onYes={() => setStep('measure')} onNo={() => setStep('help')} />
   } else if (step === 'measure') {
-    body = <Measurements s={s} onNext={() => setStep('choose')} />
+    body = (
+      <Measurements
+        s={s}
+        onNext={() => setStep('choose')}
+        onEdit={onEdit && s.data_source === 'PARENT_DECLARED' ? onEdit : undefined}
+      />
+    )
   } else if (step === 'choose') {
     body = (
       <Choose
@@ -609,7 +626,7 @@ export function PortalPage({ source, skipIdentity = false, onBack }: PortalPageP
       />
     )
   } else {
-    body = <Overview s={s} onChange={edit} />
+    body = <Overview s={s} onChange={edit} onEdit={onEdit && s.data_source === 'PARENT_DECLARED' ? onEdit : undefined} />
   }
 
   return (
