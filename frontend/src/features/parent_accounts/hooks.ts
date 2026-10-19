@@ -1,6 +1,8 @@
 import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import { pathSource } from '@/features/parent_portal/api'
 import { parentAuthApi, parentChildrenApi, type ChildKey, type DeclaredBody, type CreateChildBody, type ParentAccount } from './api'
 
@@ -35,6 +37,7 @@ export function useParentLogin() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (body: Parameters<typeof parentAuthApi.login>[0]) => {
+      queryClient.removeQueries({ queryKey: parentKeys.all })
       await parentAuthApi.login(body)
       return confirmSession(queryClient)
     },
@@ -45,6 +48,7 @@ export function useParentRegister() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (body: Parameters<typeof parentAuthApi.register>[0]) => {
+      queryClient.removeQueries({ queryKey: parentKeys.all })
       await parentAuthApi.register(body)
       return confirmSession(queryClient)
     },
@@ -55,11 +59,18 @@ export function useParentLogout() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   return useMutation({
-    mutationFn: parentAuthApi.logout,
-    onSettled: async () => {
+    mutationFn: async () => {
+      try {
+        await parentAuthApi.logout()
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 401)) throw error
+      }
+    },
+    onSuccess: async () => {
       queryClient.removeQueries({ queryKey: parentKeys.all })
       await navigate({ to: '/parent/login', search: {} })
     },
+    onError: (error) => toast.error(requestErrorMessage(error, 'Chưa đăng xuất được. Vui lòng thử lại.')),
   })
 }
 
