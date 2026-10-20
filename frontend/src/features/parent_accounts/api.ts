@@ -66,9 +66,6 @@ export interface DeclaredBody {
   gender: Gender
   height_cm: number
   weight_kg: number
-  parent_phone: string
-  parent_name: string | null
-  parent_email: string | null
 }
 
 export type CreateChildBody = ChildKey & DeclaredBody

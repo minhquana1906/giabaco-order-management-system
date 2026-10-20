@@ -58,9 +58,6 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
             gender: child.gender,
             height: student.height_cm == null ? '' : String(student.height_cm),
             weight: student.weight_kg == null ? '' : String(student.weight_kg),
-            parent_phone: child.parent_phone ?? '',
-            parent_name: child.parent_name ?? '',
-            parent_email: child.parent_email ?? '',
           }}
           submitLabel="Lưu thông tin"
           pendingLabel="Đang lưu…"

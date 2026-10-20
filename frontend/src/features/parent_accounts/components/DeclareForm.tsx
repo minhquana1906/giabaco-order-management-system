@@ -6,7 +6,6 @@ import { UnitInput } from '@/components/UnitInput'
 import { ActionBar, Panel } from '@/components/ParentPage'
 import { LoadError, PARENT_ACTION, PARENT_ACTION_PRIMARY, PARENT_CONTROL } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { focusFirstInvalid } from '@/lib/formFocus'
 import {
@@ -27,9 +26,6 @@ const EMPTY_DECLARED: DeclaredValues = {
   gender: '',
   height: '',
   weight: '',
-  parent_phone: '',
-  parent_name: '',
-  parent_email: '',
 }
 
 interface DeclareFormProps {
@@ -82,9 +78,6 @@ export function DeclareForm({
     gender: api.gender,
     height: api.height_cm,
     weight: api.weight_kg,
-    parent_phone: api.parent_phone,
-    parent_name: api.parent_name,
-    parent_email: api.parent_email,
     ...clientErrors,
   }
   const formError = childErrorMessage(error, 'Chưa lưu được thông tin. Vui lòng thử lại.')
@@ -104,7 +97,7 @@ export function DeclareForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:gap-8">
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+      <div className="lg:max-w-[560px]">
         <Panel title="Học sinh">
           {summary}
           <Field id="class_id" label="Lớp" error={errors.class_id}>
@@ -159,50 +152,6 @@ export function DeclareForm({
               )}
             </Field>
           </div>
-        </Panel>
-        <Panel title="Người liên hệ">
-          <Field id="parent_phone" label="Số điện thoại" error={errors.parent_phone}>
-            {(control) => (
-              <Input
-                {...control}
-                name="tel"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                className={PARENT_CONTROL}
-                value={values.parent_phone}
-                onChange={(e) => set('parent_phone', e.target.value)}
-              />
-            )}
-          </Field>
-          <Field id="parent_name" label="Họ tên" error={errors.parent_name}>
-            {(control) => (
-              <Input
-                {...control}
-                name="name"
-                autoComplete="name"
-                className={PARENT_CONTROL}
-                value={values.parent_name}
-                onChange={(e) => set('parent_name', e.target.value)}
-              />
-            )}
-          </Field>
-          <Field id="parent_email" label="Email (không bắt buộc)" error={errors.parent_email}>
-            {(control) => (
-              <Input
-                {...control}
-                name="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                autoCapitalize="none"
-                spellCheck={false}
-                className={PARENT_CONTROL}
-                value={values.parent_email}
-                onChange={(e) => set('parent_email', e.target.value)}
-              />
-            )}
-          </Field>
         </Panel>
       </div>
       {formError ? (

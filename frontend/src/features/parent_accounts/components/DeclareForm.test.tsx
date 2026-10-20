@@ -29,37 +29,36 @@ async function fillChild(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Cân nặng (kg)'), '24')
 }
 
-describe('DeclareForm parent section', () => {
-  it('requires the parent phone and focuses the first invalid field', async () => {
+describe('DeclareForm', () => {
+  it('does not ask for parent contact details', async () => {
+    setup()
+    await screen.findByLabelText('Lớp')
+    expect(screen.queryByText('Người liên hệ')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Số điện thoại')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument()
+  })
+
+  it('focuses the first invalid field on submit', async () => {
     const { user, onSubmit } = setup()
-    await fillChild(user)
+    await screen.findByLabelText('Lớp')
     await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
-    expect(await screen.findByText('Vui lòng nhập số điện thoại.')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText('Số điện thoại')).toHaveFocus())
+    expect(await screen.findByText('Vui lòng chọn lớp.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Lớp')).toHaveFocus())
   })
 
-  it('submits optional parent fields as null when left empty', async () => {
+  it('submits only the student fields', async () => {
     const { user, onSubmit } = setup()
     await fillChild(user)
-    await user.type(screen.getByLabelText('Số điện thoại'), '0912345678')
     await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({
-      class_id: 'c1',
-      gender: 'FEMALE',
-      height_cm: 126.5,
-      weight_kg: 24,
-      parent_phone: '0912345678',
-      parent_name: null,
-      parent_email: null,
-    })
+    expect(onSubmit).toHaveBeenCalledWith({ class_id: 'c1', gender: 'FEMALE', height_cm: 126.5, weight_kg: 24 })
   })
 
-  it('maps server 422 errors onto the parent fields', async () => {
-    setup(new ApiError(422, 'validation_error', 'x', { parent_phone: 'Số điện thoại không hợp lệ' }))
-    expect(await screen.findByText('Số điện thoại không hợp lệ')).toBeInTheDocument()
+  it('maps server 422 errors onto the student fields', async () => {
+    setup(new ApiError(422, 'validation_error', 'x', { height_cm: 'Chiều cao không hợp lệ' }))
+    expect(await screen.findByText('Chiều cao không hợp lệ')).toBeInTheDocument()
     expect(screen.queryByText(/Chưa lưu được/)).not.toBeInTheDocument()
   })
 })
