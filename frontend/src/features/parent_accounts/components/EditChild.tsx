@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
-import { Hotline, LoadError, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
+import { BackLink, PageHead, Panel } from '@/components/ParentPage'
+import { LoadError, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/http'
@@ -30,23 +31,26 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
       </div>
     )
   } else if (children.isError) {
-    body = <LoadError message="Chưa tải được thông tin." onRetry={() => void children.refetch()} />
+    body = (
+      <Panel flush>
+        <LoadError message="Chưa tải được thông tin." onRetry={() => void children.refetch()} />
+      </Panel>
+    )
   } else if (!child) {
     body = (
-      <div role="alert" className="flex flex-col gap-4">
-        <p className="font-medium text-destructive">Hồ sơ này không còn trong tài khoản.</p>
-        <Button size="lg" className={PARENT_BTN} onClick={onClose}>
-          Quay lại
-        </Button>
-        <Hotline />
-      </div>
+      <Panel flush>
+        <div role="alert" className="flex flex-col gap-4">
+          <p className="font-medium text-destructive">Hồ sơ này không còn trong tài khoản.</p>
+          <Button size="lg" className={PARENT_BTN} onClick={onClose}>
+            Quay lại
+          </Button>
+        </div>
+      </Panel>
     )
   } else {
     body = (
       <>
-        <ParentHeading title="Sửa thông tin">
-          {child.full_name} · {child.school_name}
-        </ParentHeading>
+        <PageHead title="Sửa thông tin" meta={`${child.full_name} · ${child.school_name}`} />
         <DeclareForm
           schoolId={child.school_id}
           initial={{
@@ -80,7 +84,8 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
   }
 
   return (
-    <ParentShell actions={<AccountNav />} onBack={onClose} backLabel="Hồ sơ học sinh" width="md">
+    <ParentShell actions={<AccountNav current="list" />} width="wide">
+      <BackLink label="Hồ sơ học sinh" onClick={onClose} />
       {body}
     </ParentShell>
   )

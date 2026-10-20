@@ -1,10 +1,10 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Field } from '@/components/Field'
-import { FormSection } from '@/components/FormSection'
 import { GenderToggle } from '@/components/GenderToggle'
 import { NativeSelect } from '@/components/NativeSelect'
 import { UnitInput } from '@/components/UnitInput'
-import { LoadError, PARENT_BTN_INLINE, PARENT_CONTROL } from '@/components/ParentShell'
+import { ActionBar, Panel } from '@/components/ParentPage'
+import { LoadError, PARENT_ACTION, PARENT_ACTION_PRIMARY, PARENT_CONTROL } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -41,6 +41,7 @@ interface DeclareFormProps {
   error: unknown
   onSubmit: (body: DeclaredBody) => void
   secondary?: { label: string; onClick: () => void }
+  summary?: ReactNode
 }
 
 export function DeclareForm({
@@ -52,6 +53,7 @@ export function DeclareForm({
   error,
   onSubmit,
   secondary,
+  summary,
 }: DeclareFormProps) {
   const classes = useParentClasses(schoolId)
   const [values, setValues] = useState<DeclaredValues>(initial)
@@ -101,127 +103,130 @@ export function DeclareForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-6">
-      <Field id="class_id" label="Lớp" error={errors.class_id} className="lg:col-start-1">
-        {(control) => (
-          <NativeSelect
-            {...control}
-            className={PARENT_CONTROL}
-            value={values.class_id}
-            onChange={(e) => set('class_id', e.target.value)}
-          >
-            <option value="">Chọn lớp</option>
-            {classes.data.map((c) => (
-              <option key={c.id} value={c.id}>
-                Lớp {c.name}
-              </option>
-            ))}
-          </NativeSelect>
-        )}
-      </Field>
-      <FormSection title="Học sinh" className="lg:col-start-1">
-        <GenderToggle
-          value={values.gender}
-          error={errors.gender}
-          legendClassName="text-base"
-          optionClassName="min-h-[52px] text-lg font-semibold"
-          onChange={(g) => set('gender', g)}
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="height" label="Chiều cao (cm)" error={errors.height}>
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+        <Panel title="Học sinh">
+          {summary}
+          <Field id="class_id" label="Lớp" error={errors.class_id}>
             {(control) => (
-              <UnitInput
+              <NativeSelect
                 {...control}
-                name="height"
-                unit="cm"
-                placeholder={`${HEIGHT_RANGE.min}–${HEIGHT_RANGE.max}`}
                 className={PARENT_CONTROL}
-                value={values.height}
-                onChange={(e) => set('height', e.target.value)}
+                value={values.class_id}
+                onChange={(e) => set('class_id', e.target.value)}
+              >
+                <option value="">Chọn lớp</option>
+                {classes.data.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Lớp {c.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </Field>
+          <GenderToggle
+            value={values.gender}
+            error={errors.gender}
+            legendClassName="text-base"
+            optionClassName="min-h-[52px] text-lg font-semibold"
+            onChange={(g) => set('gender', g)}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Field id="height" label="Chiều cao (cm)" error={errors.height}>
+              {(control) => (
+                <UnitInput
+                  {...control}
+                  name="height"
+                  unit="cm"
+                  placeholder={`${HEIGHT_RANGE.min}–${HEIGHT_RANGE.max}`}
+                  className={PARENT_CONTROL}
+                  value={values.height}
+                  onChange={(e) => set('height', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field id="weight" label="Cân nặng (kg)" error={errors.weight}>
+              {(control) => (
+                <UnitInput
+                  {...control}
+                  name="weight"
+                  unit="kg"
+                  placeholder={`${WEIGHT_RANGE.min}–${WEIGHT_RANGE.max}`}
+                  className={PARENT_CONTROL}
+                  value={values.weight}
+                  onChange={(e) => set('weight', e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
+        </Panel>
+        <Panel title="Người liên hệ">
+          <Field id="parent_phone" label="Số điện thoại" error={errors.parent_phone}>
+            {(control) => (
+              <Input
+                {...control}
+                name="tel"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className={PARENT_CONTROL}
+                value={values.parent_phone}
+                onChange={(e) => set('parent_phone', e.target.value)}
               />
             )}
           </Field>
-          <Field id="weight" label="Cân nặng (kg)" error={errors.weight}>
+          <Field id="parent_name" label="Họ tên" error={errors.parent_name}>
             {(control) => (
-              <UnitInput
+              <Input
                 {...control}
-                name="weight"
-                unit="kg"
-                placeholder={`${WEIGHT_RANGE.min}–${WEIGHT_RANGE.max}`}
+                name="name"
+                autoComplete="name"
                 className={PARENT_CONTROL}
-                value={values.weight}
-                onChange={(e) => set('weight', e.target.value)}
+                value={values.parent_name}
+                onChange={(e) => set('parent_name', e.target.value)}
               />
             )}
           </Field>
-        </div>
-      </FormSection>
-      <FormSection title="Người liên hệ" className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <Field id="parent_phone" label="Số điện thoại" error={errors.parent_phone}>
-          {(control) => (
-            <Input
-              {...control}
-              name="tel"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              className={PARENT_CONTROL}
-              value={values.parent_phone}
-              onChange={(e) => set('parent_phone', e.target.value)}
-            />
-          )}
-        </Field>
-        <Field id="parent_name" label="Họ tên" error={errors.parent_name}>
-          {(control) => (
-            <Input
-              {...control}
-              name="name"
-              autoComplete="name"
-              className={PARENT_CONTROL}
-              value={values.parent_name}
-              onChange={(e) => set('parent_name', e.target.value)}
-            />
-          )}
-        </Field>
-        <Field id="parent_email" label="Email (không bắt buộc)" error={errors.parent_email}>
-          {(control) => (
-            <Input
-              {...control}
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              spellCheck={false}
-              className={PARENT_CONTROL}
-              value={values.parent_email}
-              onChange={(e) => set('parent_email', e.target.value)}
-            />
-          )}
-        </Field>
-      </FormSection>
+          <Field id="parent_email" label="Email (không bắt buộc)" error={errors.parent_email}>
+            {(control) => (
+              <Input
+                {...control}
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={PARENT_CONTROL}
+                value={values.parent_email}
+                onChange={(e) => set('parent_email', e.target.value)}
+              />
+            )}
+          </Field>
+        </Panel>
+      </div>
       {formError ? (
-        <p role="alert" className="font-medium text-destructive lg:col-span-2">
+        <p role="alert" className="font-medium text-destructive">
           {formError}
         </p>
       ) : null}
-      <div className="mt-auto flex flex-col gap-3 lg:col-span-2 lg:mt-0 lg:flex-row-reverse lg:justify-start">
-        <Button type="submit" size="lg" className={PARENT_BTN_INLINE} disabled={pending}>
-          {pending ? pendingLabel : submitLabel}
-        </Button>
+      <ActionBar stack>
         {secondary ? (
           <Button
             type="button"
             variant="outline"
             size="lg"
-            className={PARENT_BTN_INLINE}
+            className={PARENT_ACTION}
             disabled={pending}
             onClick={secondary.onClick}
           >
             {secondary.label}
           </Button>
         ) : null}
-      </div>
+        <Button type="submit" size="lg" className={PARENT_ACTION_PRIMARY} disabled={pending}>
+          {pending ? pendingLabel : submitLabel}
+        </Button>
+      </ActionBar>
     </form>
   )
 }

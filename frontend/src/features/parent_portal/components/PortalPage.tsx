@@ -1,14 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Check, CheckCircle2, Ruler } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { CheckCircle2, Ruler } from 'lucide-react'
 import {
-  ContactActions,
-  Hotline,
-  PARENT_ACTIONS,
-  PARENT_BTN,
-  PARENT_BTN_INLINE,
-  ParentHeading,
-  ParentShell,
-} from '@/components/ParentShell'
+  ActionBar,
+  BackLink,
+  PageHead,
+  PageTitle,
+  Panel,
+  StatusPill,
+  Stepper,
+  StudentTag,
+} from '@/components/ParentPage'
+import { ContactActions, PARENT_ACTION, PARENT_ACTION_PRIMARY, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg, formatNumber } from '@/lib/format'
@@ -25,40 +27,27 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DEFAULT_COLOUR, colourLabel, type ProductColour } from '@/lib/productColour'
-import { useMediaQuery } from '@/lib/useMediaQuery'
+import { DEFAULT_COLOUR, type ProductColour } from '@/lib/productColour'
 import type { PortalSource, PublicProduct, PublicStudent } from '../api'
-import { derivedSize, initialPicks, initialStep, pickChanges, type Picks } from '../choices'
+import {
+  canContinue,
+  derivedSize,
+  initialPicks,
+  initialStep,
+  missingColours,
+  pickChanges,
+  suggestionFor,
+  type Picks,
+} from '../choices'
 import { usePortalStudent, useSaveChoices } from '../hooks'
-import { productImageSrc } from '../productImages'
+import { productImage } from '../productImages'
 import { SIZE_CHARTS } from '../sizeCharts'
-import { ColourSelect } from './ColourSelect'
+import { ColourChip, ColourSelect } from './ColourSelect'
 import { ProductImage } from './ProductImage'
-import { ProductImageButton } from './ProductImageButton'
 
 type Step = 'identity' | 'help' | 'measure' | 'choose' | 'review' | 'overview'
 
 type Success = { savedAt?: string; first: boolean }
-
-const STEP_LABELS = ['Thông tin', 'Chọn cỡ', 'Xác nhận']
-
-function StepDots({ n }: { n: 1 | 2 | 3 }) {
-  return (
-    <div className="flex items-center gap-3" aria-label={`Bước ${n}/3: ${STEP_LABELS[n - 1]}`}>
-      <span className="text-sm font-medium text-muted-foreground">
-        Bước {n}/3 · {STEP_LABELS[n - 1]}
-      </span>
-      <div className="flex gap-1.5" aria-hidden="true">
-        {[1, 2, 3].map((i) => (
-          <span
-            key={i}
-            className={cn('size-3 rounded-full border border-brass', i <= n ? 'bg-brass' : 'bg-transparent')}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export interface NotFoundCopy {
   title: string
@@ -70,68 +59,83 @@ const LINK_NOT_FOUND: NotFoundCopy = {
   text: 'Liên kết này không đúng hoặc đã hết hiệu lực.',
 }
 
+const studentDetail = (s: PublicStudent) => `Lớp ${s.class_name} · ${s.school_name}`
+
 function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFoundCopy; onRetry: () => void }) {
   const status = error instanceof ApiError ? error.status : 0
   if (status === 404) {
     return (
-      <>
-        <h1 className="text-2xl font-semibold text-navy">{notFound.title}</h1>
+      <Panel flush>
+        <PageTitle>{notFound.title}</PageTitle>
         <p>{notFound.text}</p>
         <ContactActions />
-      </>
+      </Panel>
     )
   }
   const text = requestErrorMessage(error, 'Có lỗi xảy ra, vui lòng thử lại.')
   return (
-    <div role="alert" className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold text-navy">Chưa tải được trang</h1>
-      <p>{text}</p>
-      <Button size="lg" className={PARENT_BTN} onClick={onRetry}>
-        Thử lại
-      </Button>
-      <Hotline />
+    <Panel flush>
+      <div role="alert" className="flex flex-col gap-4">
+        <PageTitle>Chưa tải được trang</PageTitle>
+        <p>{text}</p>
+        <Button size="lg" className={PARENT_BTN} onClick={onRetry}>
+          Thử lại
+        </Button>
+      </div>
+    </Panel>
+  )
+}
+
+function StatRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4 lg:py-3">
+      <dt className="text-[15px] text-muted-foreground">{label}</dt>
+      <dd className="text-base font-semibold tabular-nums text-navy sm:text-xl lg:text-2xl">{children}</dd>
     </div>
   )
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function MeasurementsPanel({ s, onEdit }: { s: PublicStudent; onEdit?: () => void }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-3 last:border-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium">{children}</dd>
-    </div>
-  )
-}
-
-function StudentTag({ s, className }: { s: PublicStudent; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "relative rounded-lg bg-navy px-6 py-5 before:pointer-events-none before:absolute before:inset-[5px] before:rounded-md before:border before:border-dashed before:border-brass/60 before:content-['']",
-        className,
-      )}
+    <Panel
+      title="Số đo"
+      action={
+        s.data_source === 'PARENT_DECLARED' ? (
+          <span className="rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Tự khai báo</span>
+        ) : null
+      }
+      footer={
+        onEdit ? (
+          <Button variant="outline" size="lg" className="h-12 text-base" onClick={onEdit}>
+            Sửa thông tin
+          </Button>
+        ) : null
+      }
     >
-      <p className="text-[26px] font-semibold leading-tight text-white">{s.full_name}</p>
-      <p className="mt-1.5 text-[15px] text-sidebar-foreground">
-        Lớp {s.class_name} · {s.school_name}
-      </p>
-    </div>
+      <dl className="grid grid-cols-3 gap-4 lg:-my-3 lg:grid-cols-1 lg:gap-0 lg:divide-y lg:divide-hairline">
+        <StatRow label="Chiều cao">{formatCm(s.height_cm)}</StatRow>
+        <StatRow label="Cân nặng">{formatKg(s.weight_kg)}</StatRow>
+        <StatRow label={s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo'}>
+          {formatDate(s.measured_at)}
+        </StatRow>
+      </dl>
+    </Panel>
   )
 }
 
 function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onNo: () => void }) {
   return (
     <>
-      <ParentHeading title="Xác nhận học sinh" />
-      <StudentTag s={s} />
-      <div className="mt-auto flex flex-col gap-3">
-        <Button size="lg" className={PARENT_BTN} onClick={onYes}>
-          Đúng, tiếp tục
-        </Button>
-        <Button variant="outline" size="lg" className={PARENT_BTN} onClick={onNo}>
+      <PageHead title="Xác nhận học sinh" divider={false} />
+      <StudentTag name={s.full_name} detail={studentDetail(s)} />
+      <ActionBar>
+        <Button variant="outline" size="lg" className={PARENT_ACTION} onClick={onNo}>
           Không đúng
         </Button>
-      </div>
+        <Button size="lg" className={PARENT_ACTION_PRIMARY} onClick={onYes}>
+          Đúng, tiếp tục
+        </Button>
+      </ActionBar>
     </>
   )
 }
@@ -139,13 +143,11 @@ function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onN
 function Help({ onBack }: { onBack: () => void }) {
   return (
     <>
-      <h1 className="text-xl font-semibold text-navy">Liên hệ Giabaco để được hỗ trợ</h1>
-      <div className="mt-auto flex flex-col gap-3">
-        <ContactActions />
-        <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
-          Quay lại
-        </Button>
-      </div>
+      <PageHead title="Liên hệ Giabaco để được hỗ trợ" divider={false} />
+      <ContactActions />
+      <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
+        Quay lại
+      </Button>
     </>
   )
 }
@@ -161,73 +163,57 @@ function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => v
     .filter((x) => x.trials.length > 0)
   return (
     <>
-      <StepDots n={1} />
-      <h1 className="text-xl font-semibold text-navy">Số đo</h1>
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-8">
-        <dl className="rounded-lg border border-hairline bg-white px-5 py-2">
-          <Row label="Chiều cao">{formatCm(s.height_cm)}</Row>
-          <Row label="Cân nặng">{formatKg(s.weight_kg)}</Row>
-          <Row label={s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo'}>{formatDate(s.measured_at)}</Row>
-        </dl>
-        <div className="flex flex-col gap-6">
-          {byProduct.length === 0 ? (
-            s.data_source === 'PARENT_DECLARED' ? (
-              <div className="rounded-lg border border-hairline bg-white px-5 py-4">
-                <p className="font-semibold text-navy">Tự khai báo</p>
-                <p className="text-muted-foreground">Chưa có kết quả thử áo.</p>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Chưa có lần thử áo nào được ghi nhận.</p>
-            )
-          ) : (
-            byProduct.map(({ p, trials }) => (
-              <section key={p.code} className="flex flex-col gap-2">
-                <h2 className="font-semibold text-navy">{p.name}</h2>
-                <ul className="rounded-lg border border-hairline bg-white px-5">
+      <PageHead title={s.full_name} meta={studentDetail(s)} aside={<Stepper current={1} />} />
+      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <MeasurementsPanel s={s} onEdit={onEdit} />
+        {byProduct.length === 0 ? (
+          <Panel title="Kết quả thử áo">
+            <p className="text-muted-foreground">
+              {s.data_source === 'PARENT_DECLARED'
+                ? 'Chưa có kết quả thử áo.'
+                : 'Chưa có lần thử áo nào được ghi nhận.'}
+            </p>
+          </Panel>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+            {byProduct.map(({ p, trials }) => (
+              <Panel key={p.code} title={p.name}>
+                <ul className="-my-1 flex flex-col divide-y divide-hairline">
                   {trials.map((t) => (
-                    <li
-                      key={t.size_label}
-                      className="flex items-center justify-between border-b border-hairline py-3 last:border-0"
-                    >
+                    <li key={t.size_label} className="flex items-center justify-between gap-3 py-3">
                       <SizeLabel label={t.size_label} scale="lg" />
-                      <span className="font-medium">{FIT_LABEL[t.fit]}</span>
+                      <span
+                        className={cn(
+                          'text-lg',
+                          t.fit === 'FITS' ? 'font-semibold text-navy' : 'text-muted-foreground',
+                        )}
+                      >
+                        {FIT_LABEL[t.fit]}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              </section>
-            ))
-          )}
-        </div>
+              </Panel>
+            ))}
+          </div>
+        )}
       </div>
-      <div className={PARENT_ACTIONS}>
-        <Button size="lg" className={PARENT_BTN_INLINE} onClick={onNext}>
+      <ActionBar>
+        <Button size="lg" className={PARENT_ACTION_PRIMARY} onClick={onNext}>
           Tiếp tục
         </Button>
-        {onEdit ? (
-          <Button variant="outline" size="lg" className={PARENT_BTN_INLINE} onClick={onEdit}>
-            Sửa thông tin
-          </Button>
-        ) : null}
-      </div>
+      </ActionBar>
     </>
   )
 }
 
-function SizeChartButton({
-  product,
-  selected,
-  className,
-}: {
-  product: PublicProduct
-  selected?: string
-  className?: string
-}) {
+function SizeChartButton({ product, selected }: { product: PublicProduct; selected?: string }) {
   const chart = SIZE_CHARTS[product.code]
   if (!chart) return null
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" className={cn('h-11 self-start', className)}>
+        <Button type="button" variant="outline" className="h-11 self-start px-3 text-[15px] md:px-4">
           <Ruler /> Xem bảng thông số
         </Button>
       </DialogTrigger>
@@ -278,23 +264,30 @@ function SizeChartButton({
   )
 }
 
+const OPTION_FOCUS =
+  'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring'
+
 function Choose({
   s,
-  initial,
+  picked,
   onBack,
   onNext,
 }: {
   s: PublicStudent
-  initial: Picks
+  picked: Picks | null
   onBack: () => void
   onNext: (picks: Picks) => void
 }) {
-  const [picks, setPicks] = useState<Picks>(initial)
-  const [colours, setColours] = useState<Record<string, ProductColour>>(() =>
-    Object.fromEntries(s.products.map((p) => [p.code, initial[p.code]?.colour ?? DEFAULT_COLOUR])),
+  const suggestions = useMemo(() => Object.fromEntries(s.products.map((p) => [p.code, suggestionFor(p, s)])), [s])
+  const [picks, setPicks] = useState<Picks>(() => picked ?? initialPicks(s.products, s.choices, suggestions))
+  const [colours, setColours] = useState<Record<string, ProductColour | null>>(() =>
+    Object.fromEntries(s.products.map((p) => [p.code, picks[p.code]?.colour ?? null])),
   )
   const setSize = (code: string, size: string) =>
-    setPicks((v) => ({ ...v, [code]: { size_label: size, colour: colours[code] ?? DEFAULT_COLOUR } }))
+    setPicks((v) => ({
+      ...v,
+      [code]: { size_label: size, colour: colours[code] ?? null },
+    }))
   const setColour = (code: string, colour: ProductColour) => {
     setColours((v) => ({ ...v, [code]: colour }))
     setPicks((v) => {
@@ -302,195 +295,166 @@ function Choose({
       return current ? { ...v, [code]: { ...current, colour } } : v
     })
   }
-  const answered = s.products.every((p) => picks[p.code] !== undefined)
-  const hasSaved = Object.keys(s.choices).length > 0
-  const unchanged = Object.keys(pickChanges(s.products, picks, s.choices)).length === 0
-  const anySize = s.products.some((p) => picks[p.code])
-  const hint = !answered
-    ? null
-    : hasSaved && unchanged
-      ? 'Lựa chọn chưa thay đổi.'
-      : !hasSaved && !anySize
-        ? 'Chưa chọn cỡ cho sản phẩm nào.'
-        : null
-  const ready = answered && !hint
-  const wide = useMediaQuery('(min-width: 1024px)')
+  const [attempted, setAttempted] = useState(false)
+  const unset = missingColours(s.products, picks)
+  const ready = canContinue(s.products, picks, s.choices)
+  const next = () => {
+    if (unset.length > 0) {
+      setAttempted(true)
+      document.getElementsByName(`colour-${unset[0]}`)[0]?.focus()
+      return
+    }
+    onNext(picks)
+  }
   return (
     <>
-      <StepDots n={2} />
-      <h1 className="text-xl font-semibold text-navy">Chọn cỡ đăng ký</h1>
-      {s.products.map((p) => {
-        const suggested = derivedSize(p, s.trials)
-        const guide = s.data_source === 'PARENT_DECLARED' ? (s.suggested_sizes[p.code] ?? null) : null
-        const labelId = `prod-${p.code}`
-        const colourId = `colour-label-${p.code}`
-        const sizeId = `size-label-${p.code}`
-        const pick = picks[p.code]
-        const colour = colours[p.code] ?? DEFAULT_COLOUR
-        const inlineImage = wide && productImageSrc(p.code, s.gender, colour) !== null
-        return (
-          <section
-            key={p.code}
-            className={cn(
-              'flex flex-col gap-3 rounded-lg border border-hairline bg-white p-4 lg:p-6',
-              inlineImage && 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-8',
-            )}
-          >
-            {inlineImage ? (
-              <ProductImage product={p} gender={s.gender} colour={colour} scrollClassName="lg:max-h-[640px]" />
-            ) : null}
-            <div className="flex min-w-0 flex-col gap-3">
-              <h2 id={labelId} className="font-semibold text-navy">
-                {p.name}
-              </h2>
-              {guide ? (
-                <p className="-mt-1 text-[15px] text-muted-foreground">
-                  Gợi ý theo bảng cỡ: <span className="font-semibold text-navy">Cỡ {guide}</span>
-                </p>
-              ) : null}
-              <div className="grid grid-cols-2 gap-2 lg:flex">
-                <SizeChartButton
+      <PageHead title={s.full_name} meta={studentDetail(s)} aside={<Stepper current={2} />} />
+      <div className="flex flex-col gap-6">
+        {s.products.map((p) => {
+          const suggestion = suggestions[p.code]
+          const labelId = `prod-${p.code}`
+          const colourId = `colour-label-${p.code}`
+          const sizeId = `size-label-${p.code}`
+          const pick = picks[p.code]
+          const colour = colours[p.code] ?? null
+          const preview = colour ?? DEFAULT_COLOUR
+          const hasImage = productImage(p.code, s.gender, preview) !== null
+          const colourMissing = attempted && unset.includes(p.code)
+          return (
+            <section
+              key={p.code}
+              aria-labelledby={labelId}
+              className={cn(
+                'grid gap-x-4 gap-y-5 rounded-lg border border-hairline bg-white p-4 md:p-5 lg:p-6',
+                hasImage
+                  ? 'grid-cols-[88px_minmax(0,1fr)] md:grid-cols-[220px_minmax(0,1fr)] md:gap-x-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-x-8'
+                  : 'grid-cols-1',
+              )}
+            >
+              {hasImage ? (
+                <ProductImage
                   product={p}
-                  selected={pick?.size_label}
-                  className="w-full px-2 text-sm lg:w-auto lg:px-4"
+                  gender={s.gender}
+                  colour={preview}
+                  sizes="(min-width: 1024px) 300px, (min-width: 768px) 220px, 88px"
+                  className="self-start md:row-span-2"
                 />
-                {inlineImage ? null : (
-                  <ProductImageButton product={p} gender={s.gender} colour={colour} className="w-full px-2 text-sm" />
-                )}
+              ) : null}
+              <div className="flex min-w-0 flex-col justify-center gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
+                <h2 id={labelId} className="text-xl font-semibold text-navy lg:text-2xl">
+                  {p.name}
+                </h2>
+                <SizeChartButton product={p} selected={pick?.size_label} />
               </div>
-              <p id={colourId} className="text-sm font-medium text-muted-foreground">
-                Màu sắc
-              </p>
-              <ColourSelect
-                productCode={p.code}
-                labelledBy={`${labelId} ${colourId}`}
-                value={colour}
-                onChange={(c) => setColour(p.code, c)}
-              />
-              <p id={sizeId} className="text-sm font-medium text-muted-foreground">
-                Cỡ
-              </p>
-              <div
-                role="radiogroup"
-                aria-labelledby={`${labelId} ${sizeId}`}
-                className="grid grid-cols-3 gap-2 lg:grid-cols-4"
-              >
-                {p.sizes.map((size) => {
-                  const on = pick?.size_label === size
-                  const hintText =
-                    suggested === size ? 'Nhân viên đo thấy vừa' : guide === size ? 'Gợi ý theo bảng cỡ' : null
-                  return (
-                    <label
-                      key={size}
-                      className={cn(
-                        'relative flex min-h-[52px] cursor-pointer flex-col items-center justify-center rounded-md border px-1 py-1 text-lg font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                        on ? 'border-2 border-navy bg-navy text-white' : 'border-input bg-card hover:bg-accent',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        name={p.code}
-                        value={size}
-                        checked={on}
-                        onChange={() => setSize(p.code, size)}
-                      />
-                      <span>Cỡ {size}</span>
-                      {hintText ? (
-                        <span className={cn('text-[11px] font-medium leading-tight', on ? 'text-brass' : 'text-navy')}>
-                          {hintText}
-                        </span>
-                      ) : null}
-                      {on ? (
-                        <Check
-                          className="absolute right-1 top-1 size-4 text-brass"
-                          strokeWidth={3}
-                          aria-hidden="true"
-                        />
-                      ) : null}
-                    </label>
-                  )
-                })}
+              <div className={cn('flex min-w-0 flex-col gap-5', hasImage && 'col-span-2 md:col-span-1')}>
+                <div className="flex flex-col gap-2 sm:max-w-[360px]">
+                  <p id={colourId} className="text-[15px] font-medium text-muted-foreground">
+                    Màu sắc
+                  </p>
+                  <ColourSelect
+                    productCode={p.code}
+                    labelledBy={`${labelId} ${colourId}`}
+                    value={colour}
+                    invalid={colourMissing}
+                    onChange={(c) => setColour(p.code, c)}
+                  />
+                  {colourMissing ? (
+                    <p role="alert" className="text-[15px] font-medium text-destructive">
+                      Chọn màu
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p id={sizeId} className="text-[15px] font-medium text-muted-foreground">
+                    Cỡ
+                  </p>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby={`${labelId} ${sizeId}`}
+                    className="grid grid-cols-[repeat(auto-fit,minmax(68px,1fr))] gap-2 pt-2"
+                  >
+                    {p.sizes.map((size) => {
+                      const on = pick?.size_label === size
+                      const badge = suggestion?.size === size ? suggestion : null
+                      return (
+                        <label
+                          key={size}
+                          className={cn(
+                            'relative flex min-h-14 cursor-pointer items-center justify-center rounded-md border px-1 py-1 text-lg font-semibold',
+                            OPTION_FOCUS,
+                            on ? 'border-2 border-navy bg-navy text-white' : 'border-input bg-card hover:bg-accent',
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            className="sr-only"
+                            name={p.code}
+                            value={size}
+                            checked={on}
+                            onChange={() => setSize(p.code, size)}
+                          />
+                          <span>Cỡ {size}</span>
+                          {badge ? (
+                            <>
+                              {' '}
+                              <span
+                                className={cn(
+                                  'absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 text-xs font-semibold leading-[18px]',
+                                  on ? 'border-white bg-white text-navy' : 'border-navy/30 bg-secondary text-navy',
+                                )}
+                              >
+                                {badge.source === 'trial' ? 'Thử vừa' : 'Gợi ý'}{' '}
+                                <span className="sr-only">
+                                  {badge.source === 'trial' ? 'theo nhân viên đo' : 'theo bảng cỡ'}
+                                </span>
+                              </span>
+                            </>
+                          ) : null}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+                <label
+                  className={cn(
+                    'flex min-h-12 cursor-pointer items-center gap-3 rounded-md border px-4 sm:w-fit sm:min-w-[300px]',
+                    OPTION_FOCUS,
+                    pick === null ? 'border-2 border-navy font-semibold' : 'border-input',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    className="size-5 accent-[var(--navy)]"
+                    name={p.code}
+                    value=""
+                    checked={pick === null}
+                    onChange={() => setPicks((v) => ({ ...v, [p.code]: null }))}
+                  />
+                  Không đăng ký sản phẩm này
+                </label>
               </div>
-              <label
-                className={cn(
-                  'flex min-h-[52px] cursor-pointer items-center gap-3 rounded-md border px-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                  pick === null ? 'border-2 border-navy font-semibold' : 'border-input',
-                )}
-              >
-                <input
-                  type="radio"
-                  className="size-5 accent-[var(--navy)]"
-                  name={p.code}
-                  value=""
-                  checked={pick === null}
-                  onChange={() => setPicks((v) => ({ ...v, [p.code]: null }))}
-                />
-                Không đăng ký sản phẩm này
-              </label>
-            </div>
-          </section>
-        )
-      })}
-      <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-2 border-t border-hairline bg-background/95 px-4 py-3 backdrop-blur lg:static lg:mx-0 lg:mt-0 lg:flex-row lg:items-center lg:justify-end lg:gap-6 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-        <div aria-live="polite">
-          {hint ? <p className="text-center text-[15px] text-muted-foreground lg:text-right">{hint}</p> : null}
-        </div>
-        <div className="grid grid-cols-[1fr_2fr] gap-3 lg:grid-cols-[160px_240px]">
-          <Button variant="outline" size="lg" className="h-[52px] text-[17px]" onClick={onBack}>
-            Quay lại
-          </Button>
-          <Button size="lg" className="h-[52px] text-[17px]" disabled={!ready} onClick={() => onNext(picks)}>
-            Tiếp tục
-          </Button>
-        </div>
+            </section>
+          )
+        })}
       </div>
+      <ActionBar>
+        <Button variant="outline" size="lg" className={PARENT_ACTION} onClick={onBack}>
+          Quay lại
+        </Button>
+        <Button size="lg" className={PARENT_ACTION_PRIMARY} disabled={!ready} onClick={next}>
+          Tiếp tục
+        </Button>
+      </ActionBar>
     </>
   )
 }
 
 function ChoiceValue({ size, colour }: { size: string; colour: ProductColour | null }) {
-  const label = colourLabel(colour)
   return (
-    <span className="flex shrink-0 items-center gap-2">
-      <SizeLabel label={size} scale="lg" />
-      {label ? <span className="text-[15px] font-medium text-navy">{label}</span> : null}
+    <span className="flex shrink-0 items-center gap-4">
+      <ColourChip colour={colour} className="text-[15px]" />
+      <SizeLabel label={size} scale="lg" className="px-4 py-2 text-xl" />
     </span>
-  )
-}
-
-function SelectionCard({ s, picks }: { s: PublicStudent; picks: Picks }) {
-  return (
-    <div className="rounded-lg border border-hairline bg-white px-5 py-4">
-      <p className="text-[22px] font-semibold leading-tight text-navy">{s.full_name}</p>
-      <p className="text-muted-foreground">Lớp {s.class_name}</p>
-      <ul className="mt-2">
-        {s.products.map((p) => {
-          const pick = picks[p.code]
-          return (
-            <li
-              key={p.code}
-              className="flex items-center justify-between gap-3 border-b border-hairline py-3 last:border-0"
-            >
-              <span className="flex flex-col items-start gap-1">
-                {p.name}
-                <ProductImageButton
-                  product={p}
-                  gender={s.gender}
-                  colour={pick?.colour ?? DEFAULT_COLOUR}
-                  className="h-11 px-3 text-sm"
-                />
-              </span>
-              {pick ? (
-                <ChoiceValue size={pick.size_label} colour={pick.colour} />
-              ) : (
-                <span className="text-muted-foreground">Không đăng ký</span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
   )
 }
 
@@ -511,22 +475,52 @@ function Review({
 }) {
   return (
     <>
-      <StepDots n={3} />
-      <h1 className="text-xl font-semibold text-navy">Xác nhận lựa chọn</h1>
-      <SelectionCard s={s} picks={picked} />
+      <PageHead title={s.full_name} meta={studentDetail(s)} aside={<Stepper current={3} />} />
+      <ul className="grid gap-4 md:grid-cols-2 lg:gap-6">
+        {s.products.map((p) => {
+          const pick = picked[p.code]
+          const colour = pick?.colour ?? null
+          return (
+            <li
+              key={p.code}
+              className={cn(
+                'grid items-center gap-4 rounded-lg border p-4 lg:p-5',
+                pick
+                  ? 'grid-cols-[88px_minmax(0,1fr)] border-hairline bg-white lg:grid-cols-[132px_minmax(0,1fr)] lg:gap-6'
+                  : 'border-dashed border-input bg-transparent',
+              )}
+            >
+              {pick && colour ? (
+                <ProductImage product={p} gender={s.gender} colour={colour} sizes="(min-width: 1024px) 132px, 88px" />
+              ) : null}
+              <div className="flex min-w-0 flex-col items-start gap-2">
+                <h2 className={cn('text-lg font-semibold', pick ? 'text-navy' : 'text-muted-foreground')}>{p.name}</h2>
+                {pick ? (
+                  <>
+                    <SizeLabel label={pick.size_label} scale="lg" className="px-4 py-2 text-xl" />
+                    <ColourChip colour={colour} className="text-base" />
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Không đăng ký</p>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
       {error ? (
         <p role="alert" className="font-medium text-destructive">
           {requestErrorMessage(error, 'Chưa lưu được lựa chọn. Vui lòng thử lại.')}
         </p>
       ) : null}
-      <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-3 border-t border-hairline bg-background/95 px-4 py-3 backdrop-blur lg:static lg:mx-0 lg:mt-0 lg:flex-row-reverse lg:justify-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-        <Button size="lg" className={PARENT_BTN_INLINE} disabled={pending} onClick={onConfirm}>
-          {pending ? 'Đang lưu…' : 'Xác nhận đăng ký'}
-        </Button>
-        <Button variant="outline" size="lg" className={PARENT_BTN_INLINE} disabled={pending} onClick={onBack}>
+      <ActionBar>
+        <Button variant="outline" size="lg" className={PARENT_ACTION} disabled={pending} onClick={onBack}>
           Quay lại sửa
         </Button>
-      </div>
+        <Button size="lg" className={PARENT_ACTION_PRIMARY} disabled={pending} onClick={onConfirm}>
+          {pending ? 'Đang lưu…' : 'Xác nhận đăng ký'}
+        </Button>
+      </ActionBar>
     </>
   )
 }
@@ -535,32 +529,30 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
   const count = s.products.filter((p) => s.choices[p.code]).length
   return (
     <>
-      <ParentHeading title={count ? 'Cỡ áo đã đăng ký' : 'Chưa đăng ký cỡ áo'} />
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-8 lg:gap-y-6">
-        <StudentTag s={s} className="lg:col-start-1 lg:row-start-1" />
-        <section
-          aria-labelledby="chosen-title"
-          className="flex flex-col gap-2 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+      <PageHead
+        title={s.full_name}
+        meta={studentDetail(s)}
+        aside={<StatusPill done={count > 0}>{count > 0 ? 'Đã đăng ký' : 'Chưa đăng ký'}</StatusPill>}
+      />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-8">
+        <Panel
+          title="Cỡ đã chọn"
+          footer={
+            <Button size="lg" className="h-12 text-base sm:min-w-[200px]" onClick={onChange}>
+              Đổi lựa chọn
+            </Button>
+          }
         >
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="chosen-title" className="font-semibold text-navy">
-              Cỡ đã chọn
-            </h2>
-            <span className="text-[15px] tabular-nums text-muted-foreground">
-              {count}/{s.products.length} sản phẩm
-            </span>
-          </div>
-          <ul className="rounded-lg border border-hairline bg-white px-5">
+          <ul className="-my-2 flex flex-col divide-y divide-hairline">
             {s.products.map((p) => {
               const choice = s.choices[p.code]
               const measured = derivedSize(p, s.trials)
               return (
-                <li
-                  key={p.code}
-                  className="flex items-center justify-between gap-4 border-b border-hairline py-4 last:border-0"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{p.name}</span>
+                <li key={p.code} className="flex items-center justify-between gap-4 py-4">
+                  <div className="flex min-w-0 flex-col">
+                    <span className={cn('text-lg font-semibold', choice ? 'text-navy' : 'text-muted-foreground')}>
+                      {p.name}
+                    </span>
                     {measured ? (
                       <span className="text-sm text-muted-foreground">Nhân viên đo thấy vừa Cỡ {measured}</span>
                     ) : null}
@@ -574,37 +566,8 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
               )
             })}
           </ul>
-        </section>
-        <section aria-labelledby="measure-title" className="flex flex-col gap-2 lg:col-start-1 lg:row-start-2">
-          <h2 id="measure-title" className="font-semibold text-navy">
-            Số đo
-          </h2>
-          <dl className="grid grid-cols-3 divide-x divide-hairline rounded-lg border border-hairline bg-white">
-            {[
-              ['Chiều cao', formatCm(s.height_cm)],
-              ['Cân nặng', formatKg(s.weight_kg)],
-              [s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo', formatDate(s.measured_at)],
-            ].map(([label, value]) => (
-              <div key={label} className="flex flex-col gap-0.5 px-3 py-3">
-                <dt className="text-sm text-muted-foreground">{label}</dt>
-                <dd className="font-semibold tabular-nums text-navy">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      </div>
-      <div className="mt-auto flex flex-col gap-3 lg:mt-0 lg:gap-6">
-        <div className="flex flex-col gap-3 lg:flex-row-reverse lg:justify-start">
-          <Button size="lg" className={PARENT_BTN_INLINE} onClick={onChange}>
-            Đổi lựa chọn
-          </Button>
-          {onEdit ? (
-            <Button variant="outline" size="lg" className={PARENT_BTN_INLINE} onClick={onEdit}>
-              Sửa thông tin
-            </Button>
-          ) : null}
-        </div>
-        <Hotline />
+        </Panel>
+        <MeasurementsPanel s={s} onEdit={onEdit} />
       </div>
     </>
   )
@@ -694,7 +657,7 @@ export function PortalPage({
   if (query.isPending) {
     body = (
       <div role="status" aria-label="Đang tải" className="flex flex-col gap-4">
-        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-10 w-2/3" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-[52px] w-full" />
       </div>
@@ -711,7 +674,7 @@ export function PortalPage({
     body = (
       <Choose
         s={s}
-        initial={picked ?? initialPicks(s.products, s.choices)}
+        picked={picked}
         onBack={() => setStep(Object.keys(s.choices).length > 0 ? 'overview' : 'measure')}
         onNext={(p) => {
           save.reset()
@@ -735,11 +698,11 @@ export function PortalPage({
     body = <Overview s={s} onChange={edit} onEdit={editDeclared} />
   }
 
-  const compact = !s || step === 'identity' || step === 'help'
-  const width = compact ? 'sm' : step === 'measure' || step === 'review' ? 'md' : 'lg'
+  const intro = s ? step === 'identity' || step === 'help' : query.isError || !skipIdentity
 
   return (
-    <ParentShell actions={actions} onBack={onBack} focusKey={step} width={width} panel={compact}>
+    <ParentShell actions={actions} focusKey={step} width={intro ? 'narrow' : 'wide'} center={intro}>
+      {onBack && !(s && intro) ? <BackLink label="Thông tin học sinh" onClick={onBack} /> : null}
       {body}
       <SuccessDialog success={success} onClose={() => setSuccess(null)} />
     </ParentShell>

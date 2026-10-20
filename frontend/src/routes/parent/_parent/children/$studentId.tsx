@@ -43,7 +43,7 @@ function ChildPage({ studentId }: { studentId: string }) {
   return (
     <PortalPage
       source={source}
-      actions={<AccountNav />}
+      actions={<AccountNav current="list" />}
       skipIdentity
       notFound={CHILD_NOT_FOUND}
       onBack={() => void navigate({ to: '/parent' })}

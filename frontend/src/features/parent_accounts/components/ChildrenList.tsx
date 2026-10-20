@@ -1,24 +1,19 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, Plus } from 'lucide-react'
-import { Hotline, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
+import { ChevronRight, Plus, UserPlus } from 'lucide-react'
+import { ActionBar, PageHead, Panel } from '@/components/ParentPage'
+import { LoadError, PARENT_ACTION_PRIMARY, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { colourLabel } from '@/lib/productColour'
+import { ColourChip } from '@/features/parent_portal/components/ColourSelect'
 import { requestErrorMessage } from '@/lib/requestError'
-import { cn } from '@/lib/utils'
 import type { ChildSummary } from '../api'
 import { useChildren } from '../hooks'
 import { AccountNav } from './AccountNav'
 
-function AddChildButton({ primary, className }: { primary: boolean; className?: string }) {
+function AddChildLink({ className }: { className: string }) {
   return (
-    <Button
-      asChild
-      size="lg"
-      variant={primary ? 'default' : 'outline'}
-      className={cn(PARENT_BTN, 'lg:w-auto lg:min-w-[220px] lg:self-start', className)}
-    >
+    <Button asChild size="lg" className={className}>
       <Link to="/parent/children/new">
         <Plus /> Thêm hồ sơ mới
       </Link>
@@ -28,39 +23,41 @@ function AddChildButton({ primary, className }: { primary: boolean; className?: 
 
 function ChildCard({ child }: { child: ChildSummary }) {
   return (
-    <li className="lg:h-full">
+    <li>
       <Link
         to="/parent/children/$studentId"
         params={{ studentId: child.student_id }}
-        className="flex min-h-11 items-center gap-3 lg:h-full rounded-lg border border-hairline bg-white px-5 py-4 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group flex h-full min-h-11 flex-col gap-4 rounded-lg border border-hairline bg-white p-5 outline-none transition-colors hover:border-navy/40 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div>
-            <p className="text-xl font-semibold leading-tight text-navy">{child.full_name}</p>
-            <p className="text-[15px] text-muted-foreground">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-balance text-xl font-semibold leading-tight text-navy">{child.full_name}</p>
+            <p className="mt-1 text-[15px] text-muted-foreground">
               Lớp {child.class_name} · {child.school_name}
             </p>
           </div>
-          {child.data_source === 'PARENT_DECLARED' ? (
-            <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Tự khai báo</p>
-          ) : null}
+          <ChevronRight className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </div>
+        {child.data_source === 'PARENT_DECLARED' ? (
+          <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Tự khai báo</p>
+        ) : null}
+        <div className="mt-auto border-t border-hairline pt-4">
           {child.choices.length > 0 ? (
-            <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Cỡ đã chọn">
+            <ul className="flex flex-col gap-3" aria-label="Cỡ đã chọn">
               {child.choices.map((choice) => (
-                <li key={choice.product_code} className="flex items-center gap-2 text-[15px]">
-                  <span className="text-muted-foreground">{choice.product_name}</span>
-                  <SizeLabel label={choice.size_label} scale="md" />
-                  {colourLabel(choice.colour) ? (
-                    <span className="font-medium text-navy">{colourLabel(choice.colour)}</span>
-                  ) : null}
+                <li key={choice.product_code} className="flex items-center justify-between gap-3">
+                  <span className="text-[15px] text-muted-foreground">{choice.product_name}</span>
+                  <span className="flex items-center gap-3">
+                    <ColourChip colour={choice.colour} className="text-[15px]" />
+                    <SizeLabel label={choice.size_label} scale="md" />
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[15px] font-medium text-navy">Chưa chọn cỡ áo</p>
+            <p className="font-semibold text-navy">Chưa chọn cỡ áo</p>
           )}
         </div>
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </Link>
     </li>
   )
@@ -72,52 +69,46 @@ export function ChildrenList() {
   let body
   if (children.isPending) {
     body = (
-      <div role="status" aria-label="Đang tải" className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-28 w-full" />
+      <div role="status" aria-label="Đang tải" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-44 w-full" />
+        <Skeleton className="h-44 w-full" />
       </div>
     )
   } else if (children.isError) {
     body = (
-      <div role="alert" className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-navy">Chưa tải được danh sách</h2>
-        <p>{requestErrorMessage(children.error, 'Có lỗi xảy ra, vui lòng thử lại.')}</p>
-        <Button size="lg" className={PARENT_BTN} onClick={() => void children.refetch()}>
-          Thử lại
-        </Button>
-        <Hotline />
-      </div>
+      <Panel flush className="mx-auto w-full max-w-[520px]">
+        <LoadError
+          message={requestErrorMessage(children.error, 'Chưa tải được danh sách. Vui lòng thử lại.')}
+          onRetry={() => void children.refetch()}
+        />
+      </Panel>
     )
   } else if (children.data.length === 0) {
     body = (
-      <div className="flex flex-1 flex-col gap-4">
-        <div className="rounded-lg border border-dashed border-input bg-white px-5 py-6">
-          <p className="text-lg font-semibold text-navy">Chưa có hồ sơ</p>
-        </div>
-        <div className="mt-auto lg:mt-0">
-          <AddChildButton primary />
-        </div>
+      <div className="flex flex-col items-center gap-5 rounded-lg border border-dashed border-input bg-white px-6 py-14 text-center">
+        <UserPlus className="size-10 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
+        <p className="text-xl font-semibold text-navy">Chưa có hồ sơ</p>
+        <AddChildLink className={`${PARENT_BTN} sm:w-auto sm:min-w-[240px]`} />
       </div>
     )
   } else {
     body = (
       <>
-        <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {children.data.map((child) => (
             <ChildCard key={child.student_id} child={child} />
           ))}
         </ul>
-        <div className="mt-auto flex flex-col gap-3 lg:mt-0">
-          <AddChildButton primary={false} className="lg:hidden" />
-          <Hotline />
-        </div>
+        <ActionBar className="md:hidden">
+          <AddChildLink className={PARENT_ACTION_PRIMARY} />
+        </ActionBar>
       </>
     )
   }
 
   return (
-    <ParentShell actions={<AccountNav logoutOnMobile />} width="lg">
-      <ParentHeading title="Thông tin học sinh" />
+    <ParentShell actions={<AccountNav current="list" />} width="wide">
+      <PageHead title="Thông tin học sinh" divider={false} />
       {body}
     </ParentShell>
   )

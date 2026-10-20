@@ -1,7 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
-import { Hotline, PARENT_BTN, PARENT_CONTROL, ParentHeading, ParentShell } from '@/components/ParentShell'
+import { PageHead, Panel } from '@/components/ParentPage'
+import { PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,53 +31,55 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
   }
 
   return (
-    <ParentShell panel>
-      <ParentHeading title="Đăng nhập" />
-      <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
-        <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>
-          {(control) => (
-            <Input
-              {...control}
-              name="identifier"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className={PARENT_CONTROL}
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value)
-                setErrors((v) => ({ ...v, identifier: undefined }))
-              }}
-            />
-          )}
-        </Field>
-        <Field id="password" label="Mật khẩu" error={errors.password}>
-          {(control) => (
-            <PasswordInput
-              {...control}
-              name="password"
-              autoComplete="current-password"
-              className={PARENT_CONTROL}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                setErrors((v) => ({ ...v, password: undefined }))
-              }}
-            />
-          )}
-        </Field>
-        {login.isError ? (
-          <p role="alert" className="font-medium text-destructive">
-            {authErrorMessage(login.error, 'Không đăng nhập được. Vui lòng thử lại.')}
-          </p>
-        ) : null}
-        <Button type="submit" size="lg" className={PARENT_BTN} disabled={login.isPending}>
-          {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
-        </Button>
+    <ParentShell center>
+      <PageHead title="Đăng nhập" divider={false} />
+      <form ref={formRef} onSubmit={submit} noValidate>
+        <Panel flush>
+          <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>
+            {(control) => (
+              <Input
+                {...control}
+                name="identifier"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className={PARENT_CONTROL}
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value)
+                  setErrors((v) => ({ ...v, identifier: undefined }))
+                }}
+              />
+            )}
+          </Field>
+          <Field id="password" label="Mật khẩu" error={errors.password}>
+            {(control) => (
+              <PasswordInput
+                {...control}
+                name="password"
+                autoComplete="current-password"
+                className={PARENT_CONTROL}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setErrors((v) => ({ ...v, password: undefined }))
+                }}
+              />
+            )}
+          </Field>
+          {login.isError ? (
+            <p role="alert" className="font-medium text-destructive">
+              {authErrorMessage(login.error, 'Không đăng nhập được. Vui lòng thử lại.')}
+            </p>
+          ) : null}
+          <Button type="submit" size="lg" className={PARENT_BTN} disabled={login.isPending}>
+            {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
+          </Button>
+        </Panel>
       </form>
-      <div className="flex flex-col gap-1 border-t border-hairline pt-4">
-        <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 text-muted-foreground">
+        <p>
           Chưa có tài khoản?{' '}
           <Link
             to="/parent/register"
@@ -86,7 +89,13 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
             Đăng ký
           </Link>
         </p>
-        <Hotline lead="Quên mật khẩu?" />
+        <p>
+          Quên mật khẩu? Vui lòng liên hệ Giabaco (
+          <a className="font-semibold text-navy underline" href="tel:0835352004">
+            0835352004
+          </a>
+          ).
+        </p>
       </div>
     </ParentShell>
   )

@@ -90,7 +90,7 @@ describe('PortalPage', () => {
     expect(await screen.findByRole('heading', { name: 'Liên kết không hợp lệ' })).toBeInTheDocument()
   })
 
-  it('prefills a legacy choice with navy, requires re-confirming it, and saves the picked colour', async () => {
+  it('leaves the colour of a legacy choice unselected, requires picking one, and saves it', async () => {
     const choose = vi.fn(async () => ({ chosen_at: '2026-10-02T00:00:00Z' }))
     const source = {
       ...stubSource(async () => student({ choices: { blazer: { size_label: '2', colour: null } } })),
@@ -100,16 +100,62 @@ describe('PortalPage', () => {
     renderPage(source, { skipIdentity: true })
 
     await user.click(await screen.findByRole('button', { name: 'Đổi lựa chọn' }))
-    expect(screen.getByRole('radio', { name: 'Navy' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Navy' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Ghi' })).not.toBeChecked()
     expect(screen.getByRole('radio', { name: 'Cỡ 2' })).toBeChecked()
-    expect(screen.getByRole('button', { name: 'Tiếp tục' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Chọn màu')
+    expect(screen.queryByRole('button', { name: 'Xác nhận đăng ký' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: 'Ghi' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
     expect(screen.getByText('Ghi')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Xác nhận đăng ký' }))
     expect(choose).toHaveBeenCalledWith('blazer', { size_label: '2', colour: 'ghi' })
+  })
+
+  it('preselects the size-chart suggestion with a badge, without a colour, until the parent picks one', async () => {
+    const choose = vi.fn(async () => ({ chosen_at: '2026-10-02T00:00:00Z' }))
+    const source = {
+      ...stubSource(async () => student({ data_source: 'PARENT_DECLARED', suggested_sizes: { blazer: '3' } })),
+      choose,
+    }
+    const user = userEvent.setup()
+    renderPage(source, { skipIdentity: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Tiếp tục' }))
+    expect(screen.getByRole('radio', { name: 'Cỡ 3 Gợi ý theo bảng cỡ' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Cỡ 2' })).not.toBeChecked()
+    expect(screen.queryByText(/Gợi ý theo bảng cỡ:/)).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Navy' })).not.toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Chọn màu')
+
+    await user.click(screen.getByRole('radio', { name: 'Navy' }))
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    await user.click(screen.getByRole('button', { name: 'Xác nhận đăng ký' }))
+    expect(choose).toHaveBeenCalledWith('blazer', { size_label: '3', colour: 'navy' })
+  })
+
+  it('lets a saved choice win over the suggestion', async () => {
+    const source = stubSource(async () =>
+      student({
+        data_source: 'PARENT_DECLARED',
+        suggested_sizes: { blazer: '3' },
+        choices: { blazer: { size_label: '1', colour: 'navy' } },
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage(source, { skipIdentity: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Đổi lựa chọn' }))
+    expect(screen.getByRole('radio', { name: 'Cỡ 1' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /^Cỡ 3/ })).not.toBeChecked()
   })
 
   it('keeps continue disabled while the saved choice is unchanged', async () => {

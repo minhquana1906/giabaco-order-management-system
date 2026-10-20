@@ -1,7 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Field } from '@/components/Field'
-import { PARENT_BTN, PARENT_CONTROL, ParentHeading, ParentShell } from '@/components/ParentShell'
+import { PageHead, Panel } from '@/components/ParentPage'
+import { PARENT_BTN, PARENT_CONTROL, ParentShell } from '@/components/ParentShell'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,78 +55,77 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
       : null
 
   return (
-    <ParentShell width="md" panel>
-      <ParentHeading title="Tạo tài khoản" />
-      <form
-        ref={formRef}
-        onSubmit={submit}
-        noValidate
-        className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-5"
-      >
-        <Field id="full_name" label="Họ và tên" error={errors.full_name} className="lg:col-start-1 lg:row-start-1">
-          {(control) => (
-            <Input
-              {...control}
-              name="name"
-              autoComplete="name"
-              className={PARENT_CONTROL}
-              value={values.full_name}
-              onChange={(e) => set('full_name', e.target.value)}
-            />
-          )}
-        </Field>
-        <Field id="email" label="Email" error={errors.email} className="lg:col-start-1 lg:row-start-2">
-          {(control) => (
-            <Input
-              {...control}
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              spellCheck={false}
-              className={PARENT_CONTROL}
-              value={values.email}
-              onChange={(e) => set('email', e.target.value)}
-            />
-          )}
-        </Field>
-        <Field id="phone" label="Số điện thoại" error={errors.phone} className="lg:col-start-2 lg:row-start-1">
-          {(control) => (
-            <Input
-              {...control}
-              name="tel"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              className={PARENT_CONTROL}
-              value={values.phone}
-              onChange={(e) => set('phone', e.target.value)}
-            />
-          )}
-        </Field>
-        <Field id="password" label="Mật khẩu" error={errors.password} className="lg:col-start-2 lg:row-start-2">
-          {(control) => (
-            <PasswordInput
-              {...control}
-              name="new-password"
-              autoComplete="new-password"
-              className={PARENT_CONTROL}
-              value={values.password}
-              onChange={(e) => set('password', e.target.value)}
-            />
-          )}
-        </Field>
-        {formError ? (
-          <p role="alert" className="font-medium text-destructive lg:col-span-2">
-            {formError}
-          </p>
-        ) : null}
-        <Button type="submit" size="lg" className={`${PARENT_BTN} lg:col-span-2`} disabled={register.isPending}>
-          {register.isPending ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}
-        </Button>
+    <ParentShell width="form" center>
+      <PageHead title="Tạo tài khoản" divider={false} />
+      <form ref={formRef} onSubmit={submit} noValidate>
+        <Panel flush>
+          <div className="grid gap-5 md:grid-cols-2 md:gap-x-6">
+            <Field id="full_name" label="Họ và tên" error={errors.full_name}>
+              {(control) => (
+                <Input
+                  {...control}
+                  name="name"
+                  autoComplete="name"
+                  className={PARENT_CONTROL}
+                  value={values.full_name}
+                  onChange={(e) => set('full_name', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field id="phone" label="Số điện thoại" error={errors.phone}>
+              {(control) => (
+                <Input
+                  {...control}
+                  name="tel"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className={PARENT_CONTROL}
+                  value={values.phone}
+                  onChange={(e) => set('phone', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field id="email" label="Email" error={errors.email}>
+              {(control) => (
+                <Input
+                  {...control}
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className={PARENT_CONTROL}
+                  value={values.email}
+                  onChange={(e) => set('email', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field id="password" label="Mật khẩu" error={errors.password}>
+              {(control) => (
+                <PasswordInput
+                  {...control}
+                  name="new-password"
+                  autoComplete="new-password"
+                  className={PARENT_CONTROL}
+                  value={values.password}
+                  onChange={(e) => set('password', e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
+          {formError ? (
+            <p role="alert" className="font-medium text-destructive">
+              {formError}
+            </p>
+          ) : null}
+          <Button type="submit" size="lg" className={PARENT_BTN} disabled={register.isPending}>
+            {register.isPending ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}
+          </Button>
+        </Panel>
       </form>
-      <p className="border-t border-hairline pt-4 text-muted-foreground">
+      <p className="text-muted-foreground">
         Đã có tài khoản?{' '}
         <Link
           to="/parent/login"
