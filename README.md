@@ -48,6 +48,13 @@ Thử QR trên điện thoại trong LAN: chạy `pnpm dev --host` trong `fronte
 | `make smoke` | Build image production, smoke trong container, tự dọn |
 | `make hash` | Hash mật khẩu admin cho `.env` production |
 | `make up` / `make logs` | Trên server: chạy và theo dõi stack production |
+| `make staff ARGS="add lan"` | Trên server: tạo tài khoản nhân viên (hỏi mật khẩu). Cũng có `passwd`, `disable`, `enable <user>`, `list` |
+
+## CI/CD
+
+`.github/workflows/ci-cd.yml`: PR vào `main` chạy backend (ruff, mypy, pytest), frontend (eslint, tsc, vitest, build) và `make smoke`. Push hoặc merge vào `main` chạy thêm job `deploy`: mở IAP tunnel tới VM, gửi bản release qua SSH tới `scripts/deploy.sh` (khóa CI chỉ chạy được script này). Script `pg_dump` DB vào `~/backups` (giữ 10 bản), thay code, `docker compose up -d --build app`, chờ `healthz`; workflow kiểm tra lại cả hai host. Rollback: chạy workflow thủ công (`Run workflow`) với `ref` là commit cũ.
+
+Thiết lập một lần (gcloud và gh đã đăng nhập): `bash scripts/setup-cd.sh`. Script tạo service account + Workload Identity Federation (chỉ repo này, nhánh `main`), cài khóa deploy và `ADMIN_HOST` trên VM, đặt secrets/variables cho repo.
 
 ## Cấu trúc
 
