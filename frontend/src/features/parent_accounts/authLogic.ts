@@ -5,6 +5,7 @@ export interface RegisterValues {
   email: string
   phone: string
   password: string
+  confirm_password: string
 }
 
 export type RegisterErrors = Partial<Record<keyof RegisterValues, string>>
@@ -25,13 +26,12 @@ export function validateRegister(values: RegisterValues): RegisterErrors {
   const email = values.email.trim()
   const phone = values.phone.trim()
   if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên.'
-  if (!email && !phone) errors.email = 'Nhập email hoặc số điện thoại để đăng nhập lần sau.'
-  else {
-    if (email && !EMAIL_PATTERN.test(email)) errors.email = 'Email chưa đúng định dạng.'
-    if (phone && !isValidPhone(phone)) errors.phone = 'Số điện thoại chưa đúng định dạng.'
-  }
+  if (email && !EMAIL_PATTERN.test(email)) errors.email = 'Email chưa đúng định dạng.'
+  if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.'
+  else if (!isValidPhone(phone)) errors.phone = 'Số điện thoại chưa đúng định dạng.'
   if (values.password.length < MIN_PASSWORD_LENGTH)
     errors.password = `Mật khẩu cần ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`
+  if (values.confirm_password !== values.password) errors.confirm_password = 'Mật khẩu xác nhận không khớp.'
   return errors
 }
 
@@ -45,12 +45,10 @@ export function validateLogin(values: { identifier: string; password: string }):
 }
 
 export function toRegisterBody(values: RegisterValues): RegisterBody {
-  const email = values.email.trim()
-  const phone = values.phone.trim()
   return {
     full_name: values.full_name.trim(),
-    ...(email ? { email } : {}),
-    ...(phone ? { phone } : {}),
+    phone: values.phone.trim(),
+    email: values.email.trim() || null,
     password: values.password,
   }
 }

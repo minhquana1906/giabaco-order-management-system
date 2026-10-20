@@ -14,8 +14,8 @@ export interface ParentAccount {
 
 export interface RegisterBody {
   full_name: string
-  email?: string
-  phone?: string
+  phone: string
+  email: string | null
   password: string
 }
 

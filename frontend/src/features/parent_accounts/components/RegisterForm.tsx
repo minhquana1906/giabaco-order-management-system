@@ -12,7 +12,7 @@ import { toRegisterBody, validateRegister, type RegisterErrors, type RegisterVal
 import { useParentRegister } from '../hooks'
 import { authErrorMessage } from './authErrors'
 
-const EMPTY: RegisterValues = { full_name: '', email: '', phone: '', password: '' }
+const EMPTY: RegisterValues = { full_name: '', email: '', phone: '', password: '', confirm_password: '' }
 
 function serverFieldErrors(error: unknown): RegisterErrors {
   if (!(error instanceof ApiError) || error.status !== 422 || !error.fields) return {}
@@ -55,66 +55,76 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
       : null
 
   return (
-    <ParentShell width="form" center>
+    <ParentShell center>
       <PageHead title="Tạo tài khoản" divider={false} />
       <form ref={formRef} onSubmit={submit} noValidate>
         <Panel flush>
-          <div className="grid gap-5 md:grid-cols-2 md:gap-x-6">
-            <Field id="full_name" label="Họ và tên" error={errors.full_name}>
-              {(control) => (
-                <Input
-                  {...control}
-                  name="name"
-                  autoComplete="name"
-                  className={PARENT_CONTROL}
-                  value={values.full_name}
-                  onChange={(e) => set('full_name', e.target.value)}
-                />
-              )}
-            </Field>
-            <Field id="phone" label="Số điện thoại" error={errors.phone}>
-              {(control) => (
-                <Input
-                  {...control}
-                  name="tel"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  className={PARENT_CONTROL}
-                  value={values.phone}
-                  onChange={(e) => set('phone', e.target.value)}
-                />
-              )}
-            </Field>
-            <Field id="email" label="Email" error={errors.email}>
-              {(control) => (
-                <Input
-                  {...control}
-                  name="email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  className={PARENT_CONTROL}
-                  value={values.email}
-                  onChange={(e) => set('email', e.target.value)}
-                />
-              )}
-            </Field>
-            <Field id="password" label="Mật khẩu" error={errors.password}>
-              {(control) => (
-                <PasswordInput
-                  {...control}
-                  name="new-password"
-                  autoComplete="new-password"
-                  className={PARENT_CONTROL}
-                  value={values.password}
-                  onChange={(e) => set('password', e.target.value)}
-                />
-              )}
-            </Field>
-          </div>
+          <Field id="full_name" label="Họ và tên" error={errors.full_name}>
+            {(control) => (
+              <Input
+                {...control}
+                name="name"
+                autoComplete="name"
+                className={PARENT_CONTROL}
+                value={values.full_name}
+                onChange={(e) => set('full_name', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field id="email" label="Email (không bắt buộc)" error={errors.email}>
+            {(control) => (
+              <Input
+                {...control}
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={PARENT_CONTROL}
+                value={values.email}
+                onChange={(e) => set('email', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field id="phone" label="Số điện thoại" error={errors.phone}>
+            {(control) => (
+              <Input
+                {...control}
+                name="tel"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className={PARENT_CONTROL}
+                value={values.phone}
+                onChange={(e) => set('phone', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field id="password" label="Mật khẩu" error={errors.password}>
+            {(control) => (
+              <PasswordInput
+                {...control}
+                name="new-password"
+                autoComplete="new-password"
+                className={PARENT_CONTROL}
+                value={values.password}
+                onChange={(e) => set('password', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field id="confirm_password" label="Xác nhận mật khẩu" error={errors.confirm_password}>
+            {(control) => (
+              <PasswordInput
+                {...control}
+                name="confirm-password"
+                autoComplete="new-password"
+                className={PARENT_CONTROL}
+                value={values.confirm_password}
+                onChange={(e) => set('confirm_password', e.target.value)}
+              />
+            )}
+          </Field>
           {formError ? (
             <p role="alert" className="font-medium text-destructive">
               {formError}

@@ -1,22 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import { initialsOf, safeParentRedirect, toRegisterBody, validateLogin, validateRegister } from './authLogic'
 
-const valid = { full_name: 'Nguyễn Thị Lan', email: 'lan@example.com', phone: '', password: 'matkhau123' }
+const valid = {
+  full_name: 'Nguyễn Thị Lan',
+  email: 'lan@example.com',
+  phone: '0912 345 678',
+  password: 'matkhau123',
+  confirm_password: 'matkhau123',
+}
 
 describe('validateRegister', () => {
-  it('accepts email only', () => {
+  it('accepts a complete form, with or without email', () => {
     expect(validateRegister(valid)).toEqual({})
+    expect(validateRegister({ ...valid, email: '' })).toEqual({})
   })
-  it('accepts phone only, with or without country code', () => {
-    expect(validateRegister({ ...valid, email: '', phone: '0912 345 678' })).toEqual({})
-    expect(validateRegister({ ...valid, email: '', phone: '+84912345678' })).toEqual({})
+  it('accepts a phone with country code', () => {
+    expect(validateRegister({ ...valid, phone: '+84912345678' })).toEqual({})
   })
-  it('requires email or phone', () => {
-    expect(validateRegister({ ...valid, email: ' ' }).email).toBeDefined()
+  it('requires a phone', () => {
+    expect(validateRegister({ ...valid, phone: ' ' }).phone).toBeDefined()
   })
   it('rejects malformed email, phone and short password', () => {
-    const errors = validateRegister({ ...valid, email: 'lan@', phone: '12', password: '1234567' })
+    const errors = validateRegister({
+      ...valid,
+      email: 'lan@',
+      phone: '12',
+      password: '1234567',
+      confirm_password: '1234567',
+    })
     expect(Object.keys(errors).sort()).toEqual(['email', 'password', 'phone'])
+  })
+  it('requires the confirmation to match the password', () => {
+    expect(validateRegister({ ...valid, confirm_password: 'matkhau124' }).confirm_password).toBe(
+      'Mật khẩu xác nhận không khớp.',
+    )
   })
   it('requires a name', () => {
     expect(validateRegister({ ...valid, full_name: '  ' }).full_name).toBeDefined()
@@ -24,10 +41,11 @@ describe('validateRegister', () => {
 })
 
 describe('toRegisterBody', () => {
-  it('omits empty identifiers and trims', () => {
-    expect(toRegisterBody({ ...valid, full_name: ' Lan ', phone: ' ' })).toEqual({
+  it('trims, sends null for an empty email and drops the confirmation', () => {
+    expect(toRegisterBody({ ...valid, full_name: ' Lan ', phone: ' 0912345678 ', email: ' ' })).toEqual({
       full_name: 'Lan',
-      email: 'lan@example.com',
+      phone: '0912345678',
+      email: null,
       password: 'matkhau123',
     })
   })
