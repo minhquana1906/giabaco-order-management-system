@@ -337,6 +337,7 @@ function Choose({
                   gender={s.gender}
                   colour={preview}
                   sizes="(min-width: 1024px) 300px, (min-width: 768px) 220px, 88px"
+                  magnifier
                   className="self-start md:row-span-2"
                 />
               ) : null}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { productImage } from './productImages'
+import { lensTravel, productImage } from './productImages'
 
 describe('productImage', () => {
   it('maps product, gender and colour to the full and 900px webp sheets', () => {
@@ -12,5 +12,17 @@ describe('productImage', () => {
   })
   it('returns null for products without a sheet', () => {
     expect(productImage('cravat', 'MALE', 'navy')).toBeNull()
+  })
+})
+
+describe('lensTravel', () => {
+  const rect = { left: 100, top: 50, width: 300, height: 200 }
+  it('maps the pointer to the lens travel range, centred in the middle', () => {
+    expect(lensTravel(250, 150, rect)).toEqual({ x: 0.5, y: 0.5 })
+  })
+  it('clamps the lens inside the image near the edges', () => {
+    expect(lensTravel(100, 50, rect)).toEqual({ x: 0, y: 0 })
+    expect(lensTravel(400, 250, rect)).toEqual({ x: 1, y: 1 })
+    expect(lensTravel(0, 0, rect)).toEqual({ x: 0, y: 0 })
   })
 })
