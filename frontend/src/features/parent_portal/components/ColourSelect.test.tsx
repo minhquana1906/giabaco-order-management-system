@@ -19,4 +19,16 @@ describe('ColourSelect', () => {
     await userEvent.setup().click(screen.getByRole('radio', { name: 'Ghi' }))
     expect(onChange).toHaveBeenCalledWith('ghi')
   })
+
+  it('leaves both colours unselected for a legacy choice and flags the group when invalid', () => {
+    render(
+      <>
+        <span id="lbl">Màu sắc</span>
+        <ColourSelect productCode="blazer" labelledBy="lbl" value={null} invalid onChange={vi.fn()} />
+      </>,
+    )
+    expect(screen.getByRole('radio', { name: 'Navy' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Ghi' })).not.toBeChecked()
+    expect(screen.getByRole('radiogroup', { name: 'Màu sắc' })).toHaveAttribute('aria-invalid', 'true')
+  })
 })
