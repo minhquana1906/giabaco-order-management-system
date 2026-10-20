@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
-from app.core.security import parent_match_limiter
-from app.features.parent_accounts.models import LinkOrigin, ParentStudentLink
+from app.core.security import hash_password, parent_match_limiter
+from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, FittingTrial, Student
 from tests.conftest import (
@@ -504,6 +504,30 @@ async def test_create_child_copies_account_contact_and_ignores_client_contact(
     assert log is not None and log.after is not None
     after = log.after
     assert (after["parent_name"], after["parent_phone"], after["parent_email"]) == contact
+
+
+async def test_child_of_legacy_account_without_phone_gets_null_phone(
+    anon_client: AsyncClient, school_class: dict[str, Any], session: AsyncSession
+) -> None:
+    session.add(
+        ParentAccount(
+            full_name="Mẹ Cũ", email="old@example.com", password_hash=hash_password("mat-khau-123")
+        )
+    )
+    await session.commit()
+    login = await anon_client.post(
+        "/api/parent/auth/login", json={"identifier": "old@example.com", "password": "mat-khau-123"}
+    )
+    assert login.status_code == 200
+
+    r = await anon_client.post(CHILDREN, json=child_body(school_class))
+
+    assert r.status_code == 201
+    assert (r.json()["parent_name"], r.json()["parent_phone"], r.json()["parent_email"]) == (
+        "Mẹ Cũ",
+        None,
+        "old@example.com",
+    )
 
 
 async def test_parent_edit_refreshes_contact_from_account_and_ignores_client_contact(
