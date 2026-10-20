@@ -140,3 +140,39 @@ async def test_size_choice_colour_migration_round_trip(monkeypatch: pytest.Monke
     finally:
         with psycopg.connect(SERVER_DSN, autocommit=True) as server:
             server.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
+
+
+async def test_staff_accounts_migration_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
+    name = f"guniform_migration_{uuid.uuid4().hex[:8]}"
+    scratch_dsn = SERVER_DSN.rsplit("/", 1)[0] + f"/{name}"
+    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    monkeypatch.setattr(
+        "app.core.config.get_settings",
+        lambda: SimpleNamespace(
+            database_url=scratch_dsn.replace("postgresql://", "postgresql+psycopg://")
+        ),
+    )
+    has_table = "SELECT count(*) FROM information_schema.tables WHERE table_name = 'staff_accounts'"
+    with psycopg.connect(SERVER_DSN, autocommit=True) as server:
+        server.execute(f'CREATE DATABASE "{name}"')
+    try:
+        await asyncio.to_thread(command.upgrade, cfg, "0003")
+        assert scalar(scratch_dsn, has_table) == 0
+
+        await asyncio.to_thread(command.upgrade, cfg, "0004")
+
+        assert scalar(scratch_dsn, has_table) == 1
+        with psycopg.connect(scratch_dsn, autocommit=True) as db:
+            db.execute("INSERT INTO staff_accounts (username, password_hash) VALUES ('lan', 'h')")
+            with pytest.raises(psycopg.errors.UniqueViolation):
+                db.execute(
+                    "INSERT INTO staff_accounts (username, password_hash) VALUES ('lan', 'h')"
+                )
+
+        await asyncio.to_thread(command.downgrade, cfg, "0003")
+
+        assert scalar(scratch_dsn, has_table) == 0
+    finally:
+        with psycopg.connect(SERVER_DSN, autocommit=True) as server:
+            server.execute(f'DROP DATABASE "{name}" WITH (FORCE)')

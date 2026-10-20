@@ -67,7 +67,8 @@ async def _clean() -> AsyncIterator[None]:
     async with SessionLocal() as s:
         await s.execute(
             text(
-                "TRUNCATE audit_logs, parent_student_links, parent_accounts, parent_size_choices, "
+                "TRUNCATE staff_accounts, audit_logs, parent_student_links, parent_accounts, "
+                "parent_size_choices, "
                 "fitting_trials, students, school_classes, schools"
             )
         )

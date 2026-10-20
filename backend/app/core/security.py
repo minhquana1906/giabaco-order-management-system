@@ -12,11 +12,13 @@ from collections.abc import Callable, MutableMapping
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Request
+from sqlalchemy import text
 from starlette.datastructures import Headers
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
+from app.core.db import SessionLocal
 from app.core.errors import ApiError
 
 ADMIN_ACTOR = "admin"
@@ -53,11 +55,25 @@ def verify_password(password_hash: str | None, password: str) -> bool:
     return ok and password_hash is not None
 
 
-def require_admin(request: Request) -> str:
-    """Dependency: return actor or raise 401."""
-    if request.session.get(SESSION_KEY) != get_settings().admin_username:
-        raise ApiError(401, "unauthorized", "Cần đăng nhập")
-    return ADMIN_ACTOR
+def staff_actor(username: str) -> str:
+    """Audit actor for a staff account."""
+    return f"staff:{username}"
+
+
+async def require_admin(request: Request) -> str:
+    """Dependency: return actor or raise 401. Staff rows are checked on every request."""
+    username = request.session.get(SESSION_KEY)
+    if isinstance(username, str):
+        if username == get_settings().admin_username:
+            return ADMIN_ACTOR
+        async with SessionLocal() as session:
+            active = await session.scalar(
+                text("SELECT 1 FROM staff_accounts WHERE username = :u AND disabled_at IS NULL"),
+                {"u": username},
+            )
+        if active:
+            return staff_actor(username)
+    raise ApiError(401, "unauthorized", "Cần đăng nhập")
 
 
 def require_parent(request: Request) -> uuid.UUID:
