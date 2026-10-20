@@ -14,7 +14,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Request
 from sqlalchemy import text
 from starlette.datastructures import Headers
-from starlette.responses import RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
@@ -211,6 +211,59 @@ class HttpsRedirectMiddleware:
                 await RedirectResponse(url, status_code=308)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
+
+
+def _under(path: str, prefix: str) -> bool:
+    return path == prefix or path.startswith(prefix + "/")
+
+
+ADMIN_PAGES = ("/", "/login", "/students", "/dashboard")
+PARENT_PAGES = ("/parent", "/p")
+PARENT_APIS = ("/api/parent", "/api/public")
+
+
+class HostSplitMiddleware:
+    """Serve admin and parent surfaces on separate hosts; each side hides the other's."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        admin_host: str,
+        public_base_url: str,
+        is_admin_api: Callable[[str], bool],
+    ) -> None:
+        self.app = app
+        self.admin_host = admin_host.lower()
+        self.public_base_url = public_base_url.rstrip("/")
+        self.is_admin_api = is_admin_api
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path: str = scope["path"]
+        host = Headers(scope=scope).get("host", "").rsplit(":", 1)[0].lower()
+        on_admin = host == self.admin_host
+        response: Response | None = None
+        if on_admin:
+            if any(_under(path, p) for p in PARENT_APIS):
+                response = _not_found()
+            elif any(_under(path, p) for p in PARENT_PAGES):
+                query = scope["query_string"].decode()
+                url = f"{self.public_base_url}{path}{'?' + query if query else ''}"
+                response = RedirectResponse(url, status_code=302)
+        elif self.is_admin_api(path):
+            response = _not_found()
+        elif path == "/" or any(_under(path, p) for p in ADMIN_PAGES[1:]):
+            response = RedirectResponse("/parent", status_code=302)
+        if response is None:
+            await self.app(scope, receive, send)
+        else:
+            await response(scope, receive, send)
+
+
+def _not_found() -> Response:
+    return JSONResponse({"error": {"code": "not_found", "message": "Not found"}}, status_code=404)
 
 
 def main(argv: list[str]) -> int:
