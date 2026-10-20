@@ -18,7 +18,6 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
-from app.core.db import SessionLocal
 from app.core.errors import ApiError
 
 ADMIN_ACTOR = "admin"
@@ -66,6 +65,8 @@ async def require_admin(request: Request) -> str:
     if isinstance(username, str):
         if username == get_settings().admin_username:
             return ADMIN_ACTOR
+        from app.core.db import SessionLocal
+
         async with SessionLocal() as session:
             active = await session.scalar(
                 text("SELECT 1 FROM staff_accounts WHERE username = :u AND disabled_at IS NULL"),
