@@ -61,7 +61,8 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
     class_2a2 = await other_class(client, school_class)
     declared_id = await declare(mother, school_class)
     await mother.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer", json={"size_label": "3"}
+        f"/api/parent/children/{declared_id}/size-choices/blazer",
+        json={"size_label": "3", "colour": "navy"},
     )
     before = (await client.get(f"/api/students/{declared_id}")).json()
 
@@ -100,7 +101,7 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
     parent_view = (await mother.get(f"/api/parent/children/{declared_id}")).json()
     assert parent_view["data_source"] == "ADMIN_MEASURED" and parent_view["height_cm"] == 126.5
     assert [t["size_label"] for t in parent_view["trials"]] == ["2"]
-    assert parent_view["choices"] == {"blazer": "3"}
+    assert parent_view["choices"] == {"blazer": {"size_label": "3", "colour": "navy"}}
     claim = await father.post(
         "/api/parent/children/claim",
         json={
@@ -405,7 +406,8 @@ async def test_admin_edit_of_a_declared_record_takes_ownership(
     mother = await make_parent()
     declared_id = await declare(mother, school_class)
     await mother.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer", json={"size_label": "3"}
+        f"/api/parent/children/{declared_id}/size-choices/blazer",
+        json={"size_label": "3", "colour": "navy"},
     )
     before = (await client.get(f"/api/students/{declared_id}")).json()
 

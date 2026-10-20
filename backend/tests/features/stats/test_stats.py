@@ -275,7 +275,8 @@ async def test_declared_child_with_a_choice_only_shows_up_in_orders(
     child = await declare_child(parent, school_class)
 
     await parent.put(
-        f"/api/parent/children/{child['student_id']}/size-choices/blazer", json={"size_label": "4"}
+        f"/api/parent/children/{child['student_id']}/size-choices/blazer",
+        json={"size_label": "4", "colour": "navy"},
     )
 
     assert await measured_snapshot(client, school_id(school_class)) == before

@@ -11,6 +11,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validat
 
 from app.core.phone import normalize_phone
 from app.core.text import reject_control_chars
+from app.features.parent_portal.models import Colour
 from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -100,6 +101,7 @@ class ChildChoice(BaseModel):
     product_code: str
     product_name: str
     size_label: str
+    colour: Colour | None
 
 
 class ChildSummary(BaseModel):

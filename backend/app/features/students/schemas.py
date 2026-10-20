@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.phone import normalize_phone
 from app.features.parent_accounts.models import LinkOrigin
+from app.features.parent_portal.models import Colour
 from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Fit, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -112,6 +113,7 @@ class ParentChoiceOut(BaseModel):
     product_code: str
     product_name: str
     size_label: str
+    colour: Colour | None
     chosen_at: datetime
 
 

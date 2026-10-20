@@ -62,8 +62,10 @@ def _plain(value: Any) -> Any:
     return getattr(value, "value", value)
 
 
-def _choice_cells(choice: ParentSizeChoice | None) -> tuple[Any, Any]:
-    return (choice.size_label, _plain(choice.chosen_at)) if choice else (None, None)
+def _choice_cells(choice: ParentSizeChoice | None) -> tuple[Any, Any, Any]:
+    if choice is None:
+        return (None, None, None)
+    return (choice.size_label, choice.colour, _plain(choice.chosen_at))
 
 
 async def _load(
@@ -119,7 +121,11 @@ async def students_dataset(session: AsyncSession) -> Dataset:
         *(
             header
             for p in active
-            for header in (f"{p.name} - cỡ phụ huynh chọn", f"{p.name} - thời điểm chọn")
+            for header in (
+                f"{p.name} - cỡ phụ huynh chọn",
+                f"{p.name} - màu phụ huynh chọn",
+                f"{p.name} - thời điểm chọn",
+            )
         ),
         "Số lần thử",
     ]

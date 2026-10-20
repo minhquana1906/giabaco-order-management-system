@@ -26,7 +26,7 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     for parent in (mother, father):
         assert (await parent.post(CLAIM, json=claim_key(school_class))).status_code == 200
     url = f"/api/parent/children/{student['id']}"
-    await mother.put(f"{url}/size-choices/blazer", json={"size_label": "3"})
+    await mother.put(f"{url}/size-choices/blazer", json={"size_label": "3", "colour": "navy"})
 
     async with bus.subscribe() as queue:
         r = await client.delete(f"/api/students/{student['id']}/parents/{mother.parent_id}")
@@ -35,7 +35,7 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     assert r.status_code == 204 and r.content == b""
     assert (await mother.get(url)).status_code == 404
     assert (
-        await mother.put(f"{url}/size-choices/blazer", json={"size_label": "4"})
+        await mother.put(f"{url}/size-choices/blazer", json={"size_label": "4", "colour": "navy"})
     ).status_code == 404
     assert (await mother.get("/api/parent/children")).json() == []
     assert (await father.get(url)).status_code == 200

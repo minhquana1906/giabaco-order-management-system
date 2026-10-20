@@ -105,19 +105,28 @@ async def test_choice_lifecycle_through_the_account(
     url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
 
     async with bus.subscribe() as queue:
-        first = await parent.put(url, json={"size_label": "3"})
+        first = await parent.put(url, json={"size_label": "3", "colour": "navy"})
         assert queue.get_nowait() == {"choices"}
     assert first.status_code == 200
-    assert set(first.json()) == {"product_code", "size_label", "chosen_at"}
-    assert (await parent.put(url, json={"size_label": "4"})).json()["size_label"] == "4"
-    assert (await parent.get(f"{CHILDREN}/{student['id']}")).json()["choices"] == {"blazer": "4"}
+    assert set(first.json()) == {"product_code", "size_label", "colour", "chosen_at"}
+    assert first.json()["colour"] == "navy"
+    second = await parent.put(url, json={"size_label": "4", "colour": "ghi"})
+    assert (second.json()["size_label"], second.json()["colour"]) == ("4", "ghi")
+    assert (await parent.get(f"{CHILDREN}/{student['id']}")).json()["choices"] == {
+        "blazer": {"size_label": "4", "colour": "ghi"}
+    }
     assert (await parent.get(CHILDREN)).json()[0]["choices"] == [
-        {"product_code": "blazer", "product_name": "Áo Blazer (Vest)", "size_label": "4"}
+        {
+            "product_code": "blazer",
+            "product_name": "Áo Blazer (Vest)",
+            "size_label": "4",
+            "colour": "ghi",
+        }
     ]
     detail = (await client.get(f"/api/students/{student['id']}")).json()
-    assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
-        ("blazer", "4")
-    ]
+    assert [
+        (c["product_code"], c["size_label"], c["colour"]) for c in detail["parent_choices"]
+    ] == [("blazer", "4", "ghi")]
 
     async with bus.subscribe() as queue:
         assert (await parent.delete(url)).status_code == 204
@@ -134,12 +143,17 @@ async def test_choice_lifecycle_through_the_account(
     ).all()
     assert [log.action for log in logs] == ["choice.set", "choice.set", "choice.clear"]
     assert {log.actor for log in logs} == {f"parent:{parent.parent_id}"}
-    assert logs[0].before is None and logs[0].after == {"product_code": "blazer", "size_label": "3"}
-    assert logs[1].before == {"size_label": "3"} and logs[1].after == {
+    assert logs[0].before is None and logs[0].after == {
+        "product_code": "blazer",
+        "size_label": "3",
+        "colour": "navy",
+    }
+    assert logs[1].before == {"size_label": "3", "colour": "navy"} and logs[1].after == {
         "product_code": "blazer",
         "size_label": "4",
+        "colour": "ghi",
     }
-    assert logs[2].before == {"product_code": "blazer", "size_label": "4"}
+    assert logs[2].before == {"product_code": "blazer", "size_label": "4", "colour": "ghi"}
 
 
 async def test_qr_path_keeps_the_plain_parent_actor(
@@ -149,7 +163,7 @@ async def test_qr_path_keeps_the_plain_parent_actor(
 
     await client.put(
         f"/api/public/students/{created['portal_token']}/size-choices/blazer",
-        json={"size_label": "3"},
+        json={"size_label": "3", "colour": "navy"},
     )
 
     log = await session.scalar(select(AuditLog).where(AuditLog.action == "choice.set"))
@@ -167,9 +181,9 @@ async def test_choice_validation_through_the_account(
     student = await claimed_with_pii(client, parent, student_payload, school_class)
     base = f"{CHILDREN}/{student['id']}/size-choices"
 
-    bad_size = await parent.put(f"{base}/blazer", json={"size_label": "99"})
-    unknown_product = await parent.put(f"{base}/nope", json={"size_label": "3"})
-    empty = await parent.put(f"{base}/blazer", json={"size_label": ""})
+    bad_size = await parent.put(f"{base}/blazer", json={"size_label": "99", "colour": "navy"})
+    unknown_product = await parent.put(f"{base}/nope", json={"size_label": "3", "colour": "navy"})
+    empty = await parent.put(f"{base}/blazer", json={"size_label": "", "colour": "navy"})
 
     assert bad_size.status_code == 422 and bad_size.json()["error"]["code"] == "validation_error"
     assert unknown_product.status_code == 404
@@ -208,7 +222,9 @@ async def test_unlinked_or_foreign_children_are_not_found(
         for who in (stranger, owner) if student_id != linked["id"] else (stranger,):
             path = f"{CHILDREN}/{student_id}" + ("" if method == "GET" else "/size-choices/blazer")
             r = await who.request(
-                method, path, json={"size_label": "3"} if method == "PUT" else None
+                method,
+                path,
+                json={"size_label": "3", "colour": "navy"} if method == "PUT" else None,
             )
             assert r.status_code == 404, (who is owner, student_id, method)
             assert r.json()["error"]["code"] == "not_found"
@@ -225,10 +241,10 @@ async def test_a_parent_cannot_clear_another_parents_choice(
     owner, stranger = await make_parent(), await make_parent()
     student = await claimed_with_pii(client, owner, student_payload, school_class)
     url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
-    await owner.put(url, json={"size_label": "3"})
+    await owner.put(url, json={"size_label": "3", "colour": "navy"})
 
     assert (await stranger.delete(url)).status_code == 404
-    assert (await stranger.put(url, json={"size_label": "5"})).status_code == 404
+    assert (await stranger.put(url, json={"size_label": "5", "colour": "navy"})).status_code == 404
 
     choice = await session.scalar(select(ParentSizeChoice))
     assert choice is not None and choice.size_label == "3"
@@ -240,7 +256,9 @@ async def test_portal_account_routes_reject_admin_sessions(
 ) -> None:
     path = f"{CHILDREN}/{uuid.uuid4()}" + ("" if method == "GET" else "/size-choices/blazer")
 
-    r = await client.request(method, path, json={"size_label": "3"} if method == "PUT" else None)
+    r = await client.request(
+        method, path, json={"size_label": "3", "colour": "navy"} if method == "PUT" else None
+    )
 
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
 
@@ -257,7 +275,9 @@ async def test_declared_child_is_unreachable_for_an_unlinked_parent(
     child = await declare_child(owner, school_class)
     path = f"{CHILDREN}/{child['student_id']}" + ("" if method == "GET" else "/size-choices/blazer")
 
-    r = await stranger.request(method, path, json={"size_label": "3"} if method == "PUT" else None)
+    r = await stranger.request(
+        method, path, json={"size_label": "3", "colour": "navy"} if method == "PUT" else None
+    )
 
     assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
     assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 0

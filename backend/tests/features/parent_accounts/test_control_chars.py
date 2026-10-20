@@ -66,6 +66,6 @@ async def test_child_name_rejects_control_characters(
 async def test_public_path_parameters_reject_control_characters(
     anon_client: AsyncClient, method: str, path: str
 ) -> None:
-    r = await anon_client.request(method, path, json={"size_label": "3"})
+    r = await anon_client.request(method, path, json={"size_label": "3", "colour": "navy"})
 
     assert r.status_code == 422 and r.json()["error"]["code"] == "validation_error"

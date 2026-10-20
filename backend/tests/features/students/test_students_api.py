@@ -367,7 +367,8 @@ async def test_detail_lists_linked_parents_and_declared_choices(
     )
     assert claim.status_code == 200
     await creator.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer", json={"size_label": "3"}
+        f"/api/parent/children/{declared_id}/size-choices/blazer",
+        json={"size_label": "3", "colour": "navy"},
     )
     lonely = (await client.post("/api/students", json=student_payload())).json()
 

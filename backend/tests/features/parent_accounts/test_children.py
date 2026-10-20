@@ -240,6 +240,7 @@ async def test_list_children_only_returns_own_live_children_with_choices(
             student_id=uuid.UUID(first["student_id"]),
             product_id=products["blazer"].id,
             size_label="3",
+            colour="ghi",
         )
     )
     await session.commit()
@@ -250,7 +251,12 @@ async def test_list_children_only_returns_own_live_children_with_choices(
     assert r.status_code == 200
     assert [c["student_id"] for c in r.json()] == [first["student_id"], second["student_id"]]
     assert r.json()[0]["choices"] == [
-        {"product_code": "blazer", "product_name": "Áo Blazer (Vest)", "size_label": "3"}
+        {
+            "product_code": "blazer",
+            "product_name": "Áo Blazer (Vest)",
+            "size_label": "3",
+            "colour": "ghi",
+        }
     ]
     assert r.json()[1]["choices"] == []
     assert (await theirs.get(CHILDREN)).json()[0]["full_name"] == "Phạm Gia Hân"

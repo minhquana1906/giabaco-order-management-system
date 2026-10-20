@@ -31,7 +31,7 @@ async def put_choice(
 ) -> ChoiceOut:
     student = await handler.student_by_token(session, token)
     return await handler.set_choice(
-        session, student, handler.PARENT_ACTOR, product_code, payload.size_label
+        session, student, handler.PARENT_ACTOR, product_code, payload.size_label, payload.colour
     )
 
 
@@ -59,7 +59,7 @@ async def put_child_choice(
 ) -> ChoiceOut:
     student = await handler.student_by_link(session, parent_id, student_id)
     return await handler.set_choice(
-        session, student, parent_actor(parent_id), product_code, payload.size_label
+        session, student, parent_actor(parent_id), product_code, payload.size_label, payload.colour
     )
 
 

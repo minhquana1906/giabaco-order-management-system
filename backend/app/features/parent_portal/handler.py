@@ -12,9 +12,10 @@ from app.core.errors import ApiError
 from app.core.events import bus
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.parent_accounts.models import ParentStudentLink
-from app.features.parent_portal.models import ParentSizeChoice
+from app.features.parent_portal.models import Colour, ParentSizeChoice
 from app.features.parent_portal.schemas import (
     ChoiceOut,
+    PublicChoice,
     PublicProduct,
     PublicStudent,
     PublicTrial,
@@ -105,7 +106,11 @@ async def get_public_student(session: AsyncSession, student: Student) -> PublicS
             if t.product_id in by_id
         ],
         products=[PublicProduct(code=p.code, name=p.name, sizes=p.sizes) for p in products],
-        choices={by_id[c.product_id].code: c.size_label for c in choices if c.product_id in by_id},
+        choices={
+            by_id[c.product_id].code: PublicChoice(size_label=c.size_label, colour=c.colour)
+            for c in choices
+            if c.product_id in by_id
+        },
         suggested_sizes={
             p.code: suggest(
                 float(student.height_cm), float(student.weight_kg), p.size_guide, p.sizes
@@ -116,7 +121,12 @@ async def get_public_student(session: AsyncSession, student: Student) -> PublicS
 
 
 async def set_choice(
-    session: AsyncSession, student: Student, actor: str, product_code: str, size_label: str
+    session: AsyncSession,
+    student: Student,
+    actor: str,
+    product_code: str,
+    size_label: str,
+    colour: Colour,
 ) -> ChoiceOut:
     """Upsert a size choice for a product; the one path shared by QR and account parents."""
     product = await _active_product(session, product_code)
@@ -129,25 +139,31 @@ async def set_choice(
             ParentSizeChoice.student_id == student.id, ParentSizeChoice.product_id == product.id
         )
     )
-    before = {"size_label": choice.size_label} if choice else None
+    before = {"size_label": choice.size_label, "colour": choice.colour} if choice else None
     chosen_at = datetime.now(UTC)
     stmt = pg_insert(ParentSizeChoice).values(
-        student_id=student.id, product_id=product.id, size_label=size_label, chosen_at=chosen_at
+        student_id=student.id,
+        product_id=product.id,
+        size_label=size_label,
+        colour=colour,
+        chosen_at=chosen_at,
     )
     choice_id = await session.scalar(
         stmt.on_conflict_do_update(
             index_elements=["student_id", "product_id"],
-            set_={"size_label": size_label, "chosen_at": chosen_at},
+            set_={"size_label": size_label, "colour": colour, "chosen_at": chosen_at},
         ).returning(ParentSizeChoice.id)
     )
     assert choice_id is not None
     await audit.record(
         session, actor, "choice.set", "parent_size_choice", choice_id, before,
-        {"product_code": product_code, "size_label": size_label},
+        {"product_code": product_code, "size_label": size_label, "colour": colour},
     )  # fmt: skip
     await session.commit()
     bus.publish("choices")
-    return ChoiceOut(product_code=product_code, size_label=size_label, chosen_at=chosen_at)
+    return ChoiceOut(
+        product_code=product_code, size_label=size_label, colour=colour, chosen_at=chosen_at
+    )
 
 
 async def clear_choice(
@@ -162,7 +178,11 @@ async def clear_choice(
     )
     if choice is None:
         return
-    before = {"product_code": product_code, "size_label": choice.size_label}
+    before = {
+        "product_code": product_code,
+        "size_label": choice.size_label,
+        "colour": choice.colour,
+    }
     await session.delete(choice)
     await audit.record(
         session, actor, "choice.clear", "parent_size_choice", choice.id, before, None

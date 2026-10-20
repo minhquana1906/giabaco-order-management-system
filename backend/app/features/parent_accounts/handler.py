@@ -125,14 +125,20 @@ async def children(
     if rows:
         chosen = await session.execute(
             select(
-                ParentSizeChoice.student_id, Product.code, Product.name, ParentSizeChoice.size_label
+                ParentSizeChoice.student_id,
+                Product.code,
+                Product.name,
+                ParentSizeChoice.size_label,
+                ParentSizeChoice.colour,
             )
             .join(Product, Product.id == ParentSizeChoice.product_id)
             .where(ParentSizeChoice.student_id.in_([s.id for s, _, _ in rows]), Product.active)
             .order_by(Product.position, Product.code)
         )
-        for sid, code, name, label in chosen:
-            choices[sid].append(ChildChoice(product_code=code, product_name=name, size_label=label))
+        for sid, code, name, label, colour in chosen:
+            choices[sid].append(
+                ChildChoice(product_code=code, product_name=name, size_label=label, colour=colour)
+            )
     declared = DataSource.PARENT_DECLARED
     return [
         ChildSummary(

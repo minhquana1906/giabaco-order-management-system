@@ -78,7 +78,7 @@ check("parent claim", call(parent, "POST", "/api/parent/children/claim", match)[
 status, resp = call(parent, "GET", "/api/parent/children")
 child = json.load(resp)[0]
 check("parent choose size", call(
-    parent, "PUT", f"/api/parent/children/{child['student_id']}/size-choices/blazer", {"size_label": "3"}
+    parent, "PUT", f"/api/parent/children/{child['student_id']}/size-choices/blazer", {"size_label": "3", "colour": "navy"}
 )[0], 200)
 status, resp = call(authed, "GET", "/api/stats/orders")
 check("orders count", status, 200)

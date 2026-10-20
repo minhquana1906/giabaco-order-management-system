@@ -428,6 +428,7 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
                 product_code=products[c.product_id].code,
                 product_name=products[c.product_id].name,
                 size_label=c.size_label,
+                colour=c.colour,
                 chosen_at=c.chosen_at,
             )
             for c in choices

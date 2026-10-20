@@ -155,7 +155,7 @@ async def test_failed_commit_on_choice_set_publishes_nothing_and_stores_nothing(
 
     async with bus.subscribe() as queue:
         r = await (parent if kind == "account" else client).put(
-            choice_url(kind, student), json={"size_label": "3"}
+            choice_url(kind, student), json={"size_label": "3", "colour": "navy"}
         )
 
         assert_server_error(r)
@@ -177,7 +177,9 @@ async def test_failed_commit_on_choice_clear_publishes_nothing_and_keeps_the_cho
     parent = await make_parent()
     student = await claimed_student(client, parent, student_payload, school_class)
     actor = parent if kind == "account" else client
-    assert (await actor.put(choice_url(kind, student), json={"size_label": "3"})).status_code == 200
+    assert (
+        await actor.put(choice_url(kind, student), json={"size_label": "3", "colour": "navy"})
+    ).status_code == 200
     break_commits()
 
     async with bus.subscribe() as queue:
@@ -193,9 +195,9 @@ async def test_failed_commit_on_choice_clear_publishes_nothing_and_keeps_the_cho
 @pytest.mark.parametrize(
     ("method", "product", "body", "status"),
     [
-        ("PUT", "blazer", {"size_label": "99"}, 422),
-        ("PUT", "blazer", {"size_label": ""}, 422),
-        ("PUT", "nope", {"size_label": "3"}, 404),
+        ("PUT", "blazer", {"size_label": "99", "colour": "navy"}, 422),
+        ("PUT", "blazer", {"size_label": "", "colour": "navy"}, 422),
+        ("PUT", "nope", {"size_label": "3", "colour": "navy"}, 404),
         ("DELETE", "nope", None, 404),
     ],
 )
@@ -226,7 +228,7 @@ async def test_choices_event_is_not_published_for_an_unknown_token_or_child(
     client: AsyncClient, make_parent: MakeParent, method: str
 ) -> None:
     parent = await make_parent()
-    body = {"size_label": "3"} if method == "PUT" else None
+    body = {"size_label": "3", "colour": "navy"} if method == "PUT" else None
 
     async with bus.subscribe() as queue:
         by_token = await client.request(

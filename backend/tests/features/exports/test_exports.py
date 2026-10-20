@@ -69,8 +69,10 @@ async def test_students_csv(client: Any, seeded: None) -> None:
         "Cỡ vừa suy ra - Áo Blazer (Vest)",
         "Cỡ vừa suy ra - Áo Gile",
         "Áo Blazer (Vest) - cỡ phụ huynh chọn",
+        "Áo Blazer (Vest) - màu phụ huynh chọn",
         "Áo Blazer (Vest) - thời điểm chọn",
         "Áo Gile - cỡ phụ huynh chọn",
+        "Áo Gile - màu phụ huynh chọn",
         "Áo Gile - thời điểm chọn",
         "Số lần thử",
     ]
@@ -144,7 +146,12 @@ async def test_students_export_has_data_source_and_parent_choices(
     chosen = [(measured, "blazer", "3"), (declared, "blazer", "5"), (declared, "gile", "2")]
     for student, code, size in [*chosen, (gone, "blazer", "1")]:
         session.add(
-            ParentSizeChoice(student_id=student.id, product_id=products[code].id, size_label=size)
+            ParentSizeChoice(
+                student_id=student.id,
+                product_id=products[code].id,
+                size_label=size,
+                colour="ghi" if student is declared and code == "blazer" else None,
+            )
         )
     await session.commit()
 
@@ -162,8 +169,10 @@ async def test_students_export_has_data_source_and_parent_choices(
     gile = header.index("Áo Gile - cỡ phụ huynh chọn")
     assert by_name["Nguyễn Minh Khang"][blazer] == "3" and by_name["Nguyễn Minh Khang"][gile] == ""
     assert by_name["Lê Tự Khai"][blazer] == "5" and by_name["Lê Tự Khai"][gile] == "2"
-    assert by_name["Lê Tự Khai"][blazer + 1].startswith("20")
-    assert by_name["Nguyễn Minh Khang"][gile + 1] == ""
+    assert by_name["Lê Tự Khai"][blazer + 1] == "ghi"
+    assert by_name["Nguyễn Minh Khang"][blazer + 1] == ""
+    assert by_name["Lê Tự Khai"][blazer + 2].startswith("20")
+    assert by_name["Nguyễn Minh Khang"][gile + 2] == ""
     assert by_name["Lê Tự Khai"][header.index("Số lần thử")] == "0"
 
 
