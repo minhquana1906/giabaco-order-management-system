@@ -41,36 +41,37 @@ function renderPage(source: PortalSource, props: Partial<Parameters<typeof Porta
 }
 
 describe('PortalPage', () => {
-  it('labels parent-declared measurements as declared and explains their origin', async () => {
+  it('labels parent-declared measurements as declared', async () => {
     renderPage(stubSource(async () => student({ data_source: 'PARENT_DECLARED' })), { skipIdentity: true })
 
-    expect(await screen.findByRole('heading', { name: 'Số đo của con' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Số đo' })).toBeInTheDocument()
     expect(screen.getByText('Ngày khai')).toBeInTheDocument()
     expect(screen.queryByText('Ngày đo')).not.toBeInTheDocument()
-    expect(screen.getByText('Số đo do bạn khai, chưa có kết quả thử áo.')).toBeInTheDocument()
+    expect(screen.getByText('Tự khai báo')).toBeInTheDocument()
+    expect(screen.getByText('Chưa có kết quả thử áo.')).toBeInTheDocument()
   })
 
   it('asks for identity confirmation unless skipIdentity is set', async () => {
     renderPage(stubSource(async () => student()))
-    expect(await screen.findByRole('heading', { name: 'Đây có phải con của bạn?' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Xác nhận học sinh' })).toBeInTheDocument()
   })
 
   it('skips identity for account flows and labels admin measurements as measured', async () => {
     renderPage(stubSource(async () => student()), { skipIdentity: true })
     expect(await screen.findByText('Ngày đo')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Đây có phải con của bạn?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Xác nhận học sinh' })).not.toBeInTheDocument()
   })
 
   it('shows a back button only when the caller provides onBack', async () => {
     const source = stubSource(async () => student())
     renderPage(source, { skipIdentity: true })
     await screen.findByText('Ngày đo')
-    expect(screen.queryByRole('button', { name: /Các con của bạn/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Thông tin học sinh/ })).not.toBeInTheDocument()
   })
 
   it('renders the back button when onBack is given', async () => {
     renderPage(stubSource(async () => student()), { skipIdentity: true, onBack: vi.fn() })
-    expect(await screen.findByRole('button', { name: /Các con của bạn/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Thông tin học sinh/ })).toBeInTheDocument()
   })
 
   it('uses caller-supplied copy for a missing record', async () => {

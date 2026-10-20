@@ -28,10 +28,14 @@ export function ContactActions() {
 export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
   return (
     <p className="text-muted-foreground">
-      {lead} Gọi{' '}
-      <a className="inline-flex min-h-11 items-center font-semibold text-navy underline" href={`tel:${HOTLINE}`}>
-        {HOTLINE}
-      </a>
+      <span className="block">{lead}</span>
+      <span className="block">
+        Vui lòng liên hệ Giabaco (
+        <a className="inline-flex min-h-11 items-center font-semibold text-navy underline" href={`tel:${HOTLINE}`}>
+          {HOTLINE}
+        </a>
+        ).
+      </span>
     </p>
   )
 }
@@ -65,7 +69,7 @@ interface ParentShellProps {
   focusKey?: string
 }
 
-export function ParentShell({ children, actions, onBack, backLabel = 'Các con của bạn', focusKey }: ParentShellProps) {
+export function ParentShell({ children, actions, onBack, backLabel = 'Thông tin học sinh', focusKey }: ParentShellProps) {
   const mainRef = useRef<HTMLElement>(null)
   const firstKey = useRef(focusKey)
 

@@ -13,7 +13,7 @@ function RegisterPage() {
   const { redirect: target } = Route.useSearch()
   const router = useRouter()
   useEffect(() => {
-    document.title = 'Tạo tài khoản phụ huynh · G-UNIFORM'
+    document.title = 'Tạo tài khoản · G-UNIFORM'
   }, [])
   return <RegisterForm redirect={target} onSuccess={() => router.history.push(target ?? '/parent')} />
 }

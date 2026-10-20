@@ -29,12 +29,12 @@ afterEach(() => vi.unstubAllGlobals())
 
 async function searchUntilConfirm(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(await screen.findByLabelText('Trường'), 's1')
-  await user.type(screen.getByLabelText('Họ và tên của con'), 'Nguyễn Văn An')
+  await user.type(screen.getByLabelText('Họ và tên học sinh'), 'Nguyễn Văn An')
   await user.selectOptions(screen.getByLabelText('Ngày'), '14')
   await user.selectOptions(screen.getByLabelText('Tháng'), '3')
   await user.selectOptions(screen.getByLabelText('Năm'), '2018')
   await user.click(screen.getByRole('button', { name: 'Tìm hồ sơ' }))
-  await screen.findByRole('heading', { name: 'Đúng con của bạn?' })
+  await screen.findByRole('heading', { name: 'Xác nhận học sinh' })
 }
 
 function renderAddChild() {
@@ -54,9 +54,9 @@ describe('AddChild', () => {
     await user.click(screen.getByRole('button', { name: 'Đúng, nhận hồ sơ này' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Chưa nhận được hồ sơ')
 
-    await user.click(screen.getByRole('button', { name: 'Không phải con tôi' }))
+    await user.click(screen.getByRole('button', { name: 'Không đúng' }))
     await user.click(await screen.findByRole('button', { name: 'Tìm hồ sơ' }))
-    await screen.findByRole('heading', { name: 'Đúng con của bạn?' })
+    await screen.findByRole('heading', { name: 'Xác nhận học sinh' })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })

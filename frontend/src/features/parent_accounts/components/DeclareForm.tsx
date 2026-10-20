@@ -105,7 +105,7 @@ export function DeclareForm({
       <Field id="class_id" label="Lớp" error={errors.class_id}>
         {(control) => (
           <NativeSelect {...control} className={PARENT_CONTROL} value={values.class_id} onChange={(e) => set('class_id', e.target.value)}>
-            <option value="">Chọn lớp của con</option>
+            <option value="">Chọn lớp</option>
             {classes.data.map((c) => (
               <option key={c.id} value={c.id}>
                 Lớp {c.name}
@@ -151,13 +151,8 @@ export function DeclareForm({
           </Field>
         </div>
       </FormSection>
-      <FormSection title="Phụ huynh">
-        <Field
-          id="parent_phone"
-          label="Số điện thoại phụ huynh"
-          hint="Có thể nhập +84; hệ thống tự chuẩn hóa về dạng 0xxxxxxxxx."
-          error={errors.parent_phone}
-        >
+      <FormSection title="Người liên hệ">
+        <Field id="parent_phone" label="Số điện thoại" error={errors.parent_phone}>
           {(control) => (
             <Input
               {...control}
@@ -171,7 +166,7 @@ export function DeclareForm({
             />
           )}
         </Field>
-        <Field id="parent_name" label="Họ tên phụ huynh (không bắt buộc)" error={errors.parent_name}>
+        <Field id="parent_name" label="Họ tên" error={errors.parent_name}>
           {(control) => (
             <Input
               {...control}

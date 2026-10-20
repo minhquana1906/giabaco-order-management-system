@@ -29,7 +29,7 @@ export function outcomeAfterClaimError(error: unknown): StepOutcome | null {
 
 export function outcomeAfterCreateError(error: unknown): StepOutcome | null {
   if (error instanceof ApiError && error.code === 'child_exists') {
-    return { step: 'search', notice: 'Đã có hồ sơ của con trong hệ thống. Hãy tìm lại để nhận hồ sơ đó.' }
+    return { step: 'search', notice: 'Hồ sơ này đã có trong hệ thống. Hãy tìm lại để nhận hồ sơ đó.' }
   }
   return null
 }
@@ -38,8 +38,8 @@ export type ChildKeyErrors = Partial<Record<keyof ChildKey, string>>
 
 export function validateChildKey(values: ChildKey, today: string): ChildKeyErrors {
   const errors: ChildKeyErrors = {}
-  if (!values.school_id) errors.school_id = 'Vui lòng chọn trường của con.'
-  if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên của con.'
+  if (!values.school_id) errors.school_id = 'Vui lòng chọn trường.'
+  if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên học sinh.'
   if (!values.dob || values.dob > today) errors.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
   return errors
 }
@@ -68,21 +68,21 @@ export function parseMeasure(text: string): number | null {
 
 function measureError(text: string, label: string, unit: string, range: { min: number; max: number }) {
   const value = parseMeasure(text)
-  if (value === null) return `Vui lòng nhập ${label} của con.`
+  if (value === null) return `Vui lòng nhập ${label}.`
   if (value < range.min || value > range.max) return `${label[0]!.toUpperCase()}${label.slice(1)} cần từ ${range.min} đến ${range.max} ${unit}.`
   return undefined
 }
 
 export function validateDeclared(values: DeclaredValues): DeclaredErrors {
   const errors: DeclaredErrors = {}
-  if (!values.class_id) errors.class_id = 'Vui lòng chọn lớp của con.'
+  if (!values.class_id) errors.class_id = 'Vui lòng chọn lớp.'
   if (!values.gender) errors.gender = 'Vui lòng chọn giới tính.'
   const height = measureError(values.height, 'chiều cao', 'cm', HEIGHT_RANGE)
   if (height) errors.height = height
   const weight = measureError(values.weight, 'cân nặng', 'kg', WEIGHT_RANGE)
   if (weight) errors.weight = weight
   const phone = values.parent_phone.trim()
-  if (!phone) errors.parent_phone = 'Nhập số điện thoại phụ huynh.'
+  if (!phone) errors.parent_phone = 'Vui lòng nhập số điện thoại.'
   else if (!isValidPhone(phone)) errors.parent_phone = 'Số điện thoại chưa đúng định dạng.'
   const email = values.parent_email.trim()
   if (email && !EMAIL_PATTERN.test(email)) errors.parent_email = 'Email chưa đúng định dạng.'

@@ -1,19 +1,19 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight, LogOut, Plus } from 'lucide-react'
-import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
+import { Hotline, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { colourLabel } from '@/lib/productColour'
 import { requestErrorMessage } from '@/lib/requestError'
 import type { ChildSummary } from '../api'
-import { useChildren, useParentLogout, useParentMe } from '../hooks'
+import { useChildren, useParentLogout } from '../hooks'
 
 function AddChildButton({ primary }: { primary: boolean }) {
   return (
     <Button asChild size="lg" variant={primary ? 'default' : 'outline'} className={PARENT_BTN}>
       <Link to="/parent/children/new">
-        <Plus /> Thêm con
+        <Plus /> Thêm hồ sơ mới
       </Link>
     </Button>
   )
@@ -35,7 +35,7 @@ function ChildCard({ child }: { child: ChildSummary }) {
             </p>
           </div>
           {child.data_source === 'PARENT_DECLARED' ? (
-            <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Phụ huynh tự khai</p>
+            <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Tự khai báo</p>
           ) : null}
           {child.choices.length > 0 ? (
             <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Cỡ đã chọn">
@@ -59,7 +59,6 @@ function ChildCard({ child }: { child: ChildSummary }) {
 
 export function ChildrenList() {
   const children = useChildren()
-  const me = useParentMe()
   const logout = useParentLogout()
 
   const logoutButton = (
@@ -91,8 +90,7 @@ export function ChildrenList() {
     body = (
       <div className="flex flex-1 flex-col gap-4">
         <div className="rounded-lg border border-dashed border-input bg-white px-5 py-6">
-          <p className="text-lg font-semibold text-navy">Chưa có hồ sơ con</p>
-          <p className="mt-1 text-muted-foreground">Thêm con để xem số đo và chọn cỡ áo cho con.</p>
+          <p className="text-lg font-semibold text-navy">Chưa có hồ sơ</p>
         </div>
         <div className="mt-auto">
           <AddChildButton primary />
@@ -117,10 +115,7 @@ export function ChildrenList() {
 
   return (
     <ParentShell actions={logoutButton}>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold text-navy">Các con của bạn</h1>
-        {me.data ? <p className="text-muted-foreground">Xin chào, {me.data.full_name}.</p> : null}
-      </div>
+      <ParentHeading title="Thông tin học sinh" />
       {body}
     </ParentShell>
   )

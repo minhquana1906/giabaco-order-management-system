@@ -16,7 +16,7 @@ function Page() {
 
 const CHILD_NOT_FOUND = {
   title: 'Không tìm thấy hồ sơ',
-  text: 'Hồ sơ này không còn trong tài khoản của bạn',
+  text: 'Hồ sơ này không còn trong tài khoản.',
 }
 
 function ChildPage({ studentId }: { studentId: string }) {

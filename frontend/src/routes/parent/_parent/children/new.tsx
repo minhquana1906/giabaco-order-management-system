@@ -8,7 +8,7 @@ export const Route = createFileRoute('/parent/_parent/children/new')({
 
 function Page() {
   useEffect(() => {
-    document.title = 'Thêm con · G-UNIFORM'
+    document.title = 'Thêm hồ sơ mới · G-UNIFORM'
   }, [])
   return <AddChild />
 }

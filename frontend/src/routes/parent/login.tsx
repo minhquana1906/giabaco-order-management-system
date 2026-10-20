@@ -13,7 +13,7 @@ function LoginPage() {
   const { redirect: target } = Route.useSearch()
   const router = useRouter()
   useEffect(() => {
-    document.title = 'Đăng nhập phụ huynh · G-UNIFORM'
+    document.title = 'Đăng nhập · G-UNIFORM'
   }, [])
   return <ParentLoginForm redirect={target} onSuccess={() => router.history.push(target ?? '/parent')} />
 }

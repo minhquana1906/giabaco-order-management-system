@@ -90,7 +90,7 @@ function SearchStep({
   if (schools.data.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-muted-foreground">Chưa có trường nào để chọn. Vui lòng liên hệ Giabaco để được hỗ trợ.</p>
+        <p className="text-muted-foreground">Chưa có trường nào để chọn.</p>
         <ContactActions />
       </div>
     )
@@ -106,7 +106,7 @@ function SearchStep({
       <Field id="school_id" label="Trường" error={errors.school_id}>
         {(control) => (
           <NativeSelect {...control} className={PARENT_CONTROL} value={value.school_id} onChange={(e) => set('school_id', e.target.value)}>
-            <option value="">Chọn trường của con</option>
+            <option value="">Chọn trường</option>
             {schools.data.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -116,9 +116,9 @@ function SearchStep({
         )}
       </Field>
       <div className="-mt-3">
-        <Hotline lead="Không thấy trường của con? Liên hệ Giabaco." />
+        <Hotline lead="Bạn không tìm thấy trường?" />
       </div>
-      <Field id="full_name" label="Họ và tên của con" error={errors.full_name}>
+      <Field id="full_name" label="Họ và tên học sinh" error={errors.full_name}>
         {(control) => (
           <Input
             {...control}
@@ -167,7 +167,7 @@ function ConfirmStep({
 }) {
   return (
     <>
-      <ParentHeading title="Đúng con của bạn?">Chúng tôi tìm thấy một hồ sơ khớp với thông tin bạn nhập.</ParentHeading>
+      <ParentHeading title="Xác nhận học sinh" />
       <div className="relative rounded-lg bg-navy px-6 py-5 before:pointer-events-none before:absolute before:inset-[5px] before:rounded-md before:border before:border-dashed before:border-brass/60 before:content-['']">
         <p className="text-[26px] font-semibold leading-tight text-white">{match.full_name}</p>
         <p className="mt-1.5 text-[15px] text-sidebar-foreground">
@@ -184,7 +184,7 @@ function ConfirmStep({
           {pending ? 'Đang xử lý…' : 'Đúng, nhận hồ sơ này'}
         </Button>
         <Button variant="outline" size="lg" className={PARENT_BTN} disabled={pending} onClick={onNo}>
-          Không phải con tôi
+          Không đúng
         </Button>
       </div>
     </>
@@ -194,9 +194,7 @@ function ConfirmStep({
 function ContactStep({ onBack }: { onBack: () => void }) {
   return (
     <>
-      <ParentHeading title="Vui lòng liên hệ Giabaco">
-        Có nhiều hồ sơ trùng với thông tin này nên chúng tôi cần kiểm tra giúp bạn.
-      </ParentHeading>
+      <ParentHeading title="Vui lòng liên hệ Giabaco">Có nhiều hồ sơ trùng với thông tin này.</ParentHeading>
       <div className="mt-auto flex flex-col gap-3">
         <ContactActions />
         <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
@@ -272,7 +270,7 @@ export function AddChild() {
         pending={claim.isPending}
         error={claim.error}
         onYes={confirm}
-        onNo={() => goBackToSearch('Hãy kiểm tra lại họ tên, ngày sinh và trường rồi tìm lại. Nếu vẫn chưa đúng, liên hệ Giabaco.')}
+        onNo={() => goBackToSearch()}
       />
     )
   } else if (step === 'contact') {
@@ -280,7 +278,7 @@ export function AddChild() {
   } else if (step === 'declare') {
     body = (
       <>
-        <ParentHeading title="Chưa thấy hồ sơ của con">Bạn nhập thông tin của con để chọn cỡ áo.</ParentHeading>
+        <ParentHeading title="Chưa có hồ sơ" />
         <dl className="rounded-lg border border-hairline bg-white px-5 py-3">
           <div className="flex items-baseline justify-between gap-4 py-1">
             <dt className="text-muted-foreground">Họ và tên</dt>
@@ -305,7 +303,7 @@ export function AddChild() {
   } else {
     body = (
       <>
-        <ParentHeading title="Thêm con">Nhập thông tin của con để tìm hồ sơ đã có hoặc tạo hồ sơ mới.</ParentHeading>
+        <ParentHeading title="Thêm hồ sơ mới" />
         <SearchStep value={key} notice={notice} pending={lookup.isPending} error={lookup.error} onChange={setKey} onSubmit={search} />
       </>
     )

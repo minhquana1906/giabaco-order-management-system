@@ -31,7 +31,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
 
   return (
     <ParentShell>
-      <ParentHeading title="Đăng nhập phụ huynh">Xem số đo và chọn cỡ áo cho con bằng tài khoản của bạn.</ParentHeading>
+      <ParentHeading title="Đăng nhập" />
       <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
         <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>
           {(control) => (
@@ -86,7 +86,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
             Đăng ký
           </Link>
         </p>
-        <Hotline lead="Quên mật khẩu? Liên hệ Giabaco." />
+        <Hotline lead="Quên mật khẩu?" />
       </div>
     </ParentShell>
   )

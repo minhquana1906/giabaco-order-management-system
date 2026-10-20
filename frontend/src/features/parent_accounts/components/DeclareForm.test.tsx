@@ -36,14 +36,14 @@ describe('DeclareForm parent section', () => {
     await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
-    expect(await screen.findByText('Nhập số điện thoại phụ huynh.')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText('Số điện thoại phụ huynh')).toHaveFocus())
+    expect(await screen.findByText('Vui lòng nhập số điện thoại.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Số điện thoại')).toHaveFocus())
   })
 
   it('submits optional parent fields as null when left empty', async () => {
     const { user, onSubmit } = setup()
     await fillChild(user)
-    await user.type(screen.getByLabelText('Số điện thoại phụ huynh'), '0912345678')
+    await user.type(screen.getByLabelText('Số điện thoại'), '0912345678')
     await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
     expect(onSubmit).toHaveBeenCalledWith({

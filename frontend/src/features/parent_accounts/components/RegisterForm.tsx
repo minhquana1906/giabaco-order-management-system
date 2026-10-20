@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { focusFirstInvalid } from '@/lib/formFocus'
 import { ApiError } from '@/lib/http'
-import { MIN_PASSWORD_LENGTH, toRegisterBody, validateRegister, type RegisterErrors, type RegisterValues } from '../authLogic'
+import { toRegisterBody, validateRegister, type RegisterErrors, type RegisterValues } from '../authLogic'
 import { useParentRegister } from '../hooks'
 import { authErrorMessage } from './authErrors'
 
@@ -55,9 +55,9 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
 
   return (
     <ParentShell>
-      <ParentHeading title="Tạo tài khoản phụ huynh">Dùng tài khoản này để xem số đo và chọn cỡ áo cho con.</ParentHeading>
+      <ParentHeading title="Tạo tài khoản" />
       <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
-        <Field id="full_name" label="Họ và tên của bạn" error={errors.full_name}>
+        <Field id="full_name" label="Họ và tên" error={errors.full_name}>
           {(control) => (
             <Input
               {...control}
@@ -69,47 +69,37 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
             />
           )}
         </Field>
-        <fieldset className="flex flex-col gap-5">
-          <legend className="mb-2 text-[15px] text-muted-foreground">
-            Nhập email hoặc số điện thoại, dùng để đăng nhập lần sau
-          </legend>
-          <Field id="email" label="Email" error={errors.email}>
-            {(control) => (
-              <Input
-                {...control}
-                name="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                autoCapitalize="none"
-                spellCheck={false}
-                className={PARENT_CONTROL}
-                value={values.email}
-                onChange={(e) => set('email', e.target.value)}
-              />
-            )}
-          </Field>
-          <Field id="phone" label="Số điện thoại" error={errors.phone}>
-            {(control) => (
-              <Input
-                {...control}
-                name="tel"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                className={PARENT_CONTROL}
-                value={values.phone}
-                onChange={(e) => set('phone', e.target.value)}
-              />
-            )}
-          </Field>
-        </fieldset>
-        <Field
-          id="password"
-          label="Mật khẩu"
-          hint={`Ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`}
-          error={errors.password}
-        >
+        <Field id="email" label="Email" error={errors.email}>
+          {(control) => (
+            <Input
+              {...control}
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              className={PARENT_CONTROL}
+              value={values.email}
+              onChange={(e) => set('email', e.target.value)}
+            />
+          )}
+        </Field>
+        <Field id="phone" label="Số điện thoại" error={errors.phone}>
+          {(control) => (
+            <Input
+              {...control}
+              name="tel"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              className={PARENT_CONTROL}
+              value={values.phone}
+              onChange={(e) => set('phone', e.target.value)}
+            />
+          )}
+        </Field>
+        <Field id="password" label="Mật khẩu" error={errors.password}>
           {(control) => (
             <PasswordInput
               {...control}

@@ -52,7 +52,7 @@ export interface NotFoundCopy {
 
 const LINK_NOT_FOUND: NotFoundCopy = {
   title: 'Liên kết không hợp lệ',
-  text: 'Liên kết này không đúng hoặc đã hết hiệu lực. Vui lòng liên hệ nhân viên Giabaco.',
+  text: 'Liên kết này không đúng hoặc đã hết hiệu lực.',
 }
 
 function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFoundCopy; onRetry: () => void }) {
@@ -102,14 +102,14 @@ function StudentTag({ s }: { s: PublicStudent }) {
 function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onNo: () => void }) {
   return (
     <>
-      <ParentHeading title="Đây có phải con của bạn?">Xác nhận đúng học sinh để xem số đo và chọn cỡ áo cho con.</ParentHeading>
+      <ParentHeading title="Xác nhận học sinh" />
       <StudentTag s={s} />
       <div className="mt-auto flex flex-col gap-3">
         <Button size="lg" className={PARENT_BTN} onClick={onYes}>
           Đúng, tiếp tục
         </Button>
         <Button variant="outline" size="lg" className={PARENT_BTN} onClick={onNo}>
-          Không phải con tôi
+          Không đúng
         </Button>
       </div>
     </>
@@ -119,8 +119,7 @@ function Identity({ s, onYes, onNo }: { s: PublicStudent; onYes: () => void; onN
 function Help({ onBack }: { onBack: () => void }) {
   return (
     <>
-      <h1 className="text-xl font-semibold text-navy">Vui lòng liên hệ nhân viên Giabaco để được hỗ trợ</h1>
-      <p className="text-muted-foreground">Chúng tôi sẽ kiểm tra và gửi lại đúng liên kết cho bạn.</p>
+      <h1 className="text-xl font-semibold text-navy">Liên hệ Giabaco để được hỗ trợ</h1>
       <div className="mt-auto flex flex-col gap-3">
         <ContactActions />
         <Button variant="ghost" size="lg" className={PARENT_BTN} onClick={onBack}>
@@ -143,7 +142,7 @@ function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => v
   return (
     <>
       <StepDots n={1} />
-      <h1 className="text-xl font-semibold text-navy">Số đo của con</h1>
+      <h1 className="text-xl font-semibold text-navy">Số đo</h1>
       <dl className="rounded-lg border border-hairline bg-white px-5 py-2">
         <Row label="Chiều cao">{formatCm(s.height_cm)}</Row>
         <Row label="Cân nặng">{formatKg(s.weight_kg)}</Row>
@@ -152,8 +151,8 @@ function Measurements({ s, onNext, onEdit }: { s: PublicStudent; onNext: () => v
       {byProduct.length === 0 ? (
         s.data_source === 'PARENT_DECLARED' ? (
           <div className="rounded-lg border border-hairline bg-white px-5 py-4">
-            <p className="font-semibold text-navy">Phụ huynh tự khai</p>
-            <p className="text-muted-foreground">Số đo do bạn khai, chưa có kết quả thử áo.</p>
+            <p className="font-semibold text-navy">Tự khai báo</p>
+            <p className="text-muted-foreground">Chưa có kết quả thử áo.</p>
           </div>
         ) : (
           <p className="text-muted-foreground">Chưa có lần thử áo nào được ghi nhận.</p>
@@ -437,7 +436,6 @@ function Review({
     <>
       <StepDots n={3} />
       <h1 className="text-xl font-semibold text-navy">Xác nhận lựa chọn</h1>
-      <p className="text-muted-foreground">Vui lòng kiểm tra lại trước khi đăng ký.</p>
       <SelectionCard s={s} picks={picked} />
       {error ? (
         <p role="alert" className="font-medium text-destructive">
@@ -460,9 +458,7 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
   const count = s.products.filter((p) => s.choices[p.code]).length
   return (
     <>
-      <ParentHeading title={count ? 'Cỡ áo đã đăng ký' : 'Chưa đăng ký cỡ áo'}>
-        {count ? 'Giabaco đã nhận lựa chọn cỡ của con bạn.' : 'Bạn chưa chọn cỡ cho sản phẩm nào của con.'}
-      </ParentHeading>
+      <ParentHeading title={count ? 'Cỡ áo đã đăng ký' : 'Chưa đăng ký cỡ áo'} />
       <StudentTag s={s} />
       <section aria-labelledby="chosen-title" className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-3">
@@ -500,7 +496,7 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
       </section>
       <section aria-labelledby="measure-title" className="flex flex-col gap-2">
         <h2 id="measure-title" className="font-semibold text-navy">
-          Số đo của con
+          Số đo
         </h2>
         <dl className="grid grid-cols-3 divide-x divide-hairline rounded-lg border border-hairline bg-white">
           {[
@@ -533,14 +529,11 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
 function SuccessDialog({ success, onClose }: { success: Success | null; onClose: () => void }) {
   return (
     <Dialog open={success !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent showCloseButton={false} className="max-w-[400px] gap-4 p-6 text-center">
+      <DialogContent showCloseButton={false} aria-describedby={undefined} className="max-w-[400px] gap-4 p-6 text-center">
         <CheckCircle2 className="mx-auto size-14 text-navy" strokeWidth={1.5} aria-hidden="true" />
         <DialogTitle className="text-center text-2xl text-navy">
           {success?.first ? 'Đăng ký thành công' : 'Đã cập nhật lựa chọn'}
         </DialogTitle>
-        <DialogDescription className="text-balance text-center text-base">
-          Giabaco đã nhận lựa chọn cỡ của con bạn.
-        </DialogDescription>
         {success?.savedAt ? (
           <p className="-mt-2 text-sm tabular-nums text-muted-foreground">
             Ghi nhận lúc {formatDateTime(success.savedAt)}
