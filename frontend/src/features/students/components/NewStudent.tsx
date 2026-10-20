@@ -41,6 +41,11 @@ export function NewStudent() {
             Lớp {saved.class.name} · {saved.school.name}
           </p>
         </div>
+        {saved.linked_parents.length > 0 ? (
+          <p role="status" className="rounded-md border border-hairline bg-muted px-4 py-3 text-sm">
+            Đã ghép với hồ sơ phụ huynh tự khai
+          </p>
+        ) : null}
         <QrCard portalUrl={saved.portal_url} fileName={`qr-${saved.full_name}`} size={280} />
         <div className="flex w-full max-w-[420px] flex-col gap-2">
           <Button

@@ -1,24 +1,29 @@
-"""Admin auth, rate limiting, client IP and security headers."""
+"""Admin and parent auth, rate limiting, client IP and security headers."""
 
 import getpass
+import ipaddress
 import secrets
 import sys
 import time
+import uuid
 from collections import defaultdict, deque
 from collections.abc import Callable, MutableMapping
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Request
+from sqlalchemy import text
 from starlette.datastructures import Headers
-from starlette.responses import RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
+from app.core.db import SessionLocal
 from app.core.errors import ApiError
 
 ADMIN_ACTOR = "admin"
 SESSION_KEY = "username"
+PARENT_SESSION_KEY = "parent_id"
 _hasher = PasswordHasher()
 
 
@@ -38,19 +43,69 @@ def verify_credentials(username: str, password: str) -> bool:
     return password_ok and user_ok
 
 
-def require_admin(request: Request) -> str:
-    """Dependency: return actor or raise 401."""
-    if request.session.get(SESSION_KEY) != get_settings().admin_username:
-        raise ApiError(401, "unauthorized", "Cần đăng nhập")
-    return ADMIN_ACTOR
+_DUMMY_HASH = _hasher.hash(secrets.token_hex(16))
+
+
+def verify_password(password_hash: str | None, password: str) -> bool:
+    """Verify a stored hash; hash a dummy when there is no account so timing does not leak it."""
+    try:
+        ok: bool = _hasher.verify(password_hash or _DUMMY_HASH, password)
+    except (VerificationError, InvalidHashError):
+        return False
+    return ok and password_hash is not None
+
+
+def staff_actor(username: str) -> str:
+    """Audit actor for a staff account."""
+    return f"staff:{username}"
+
+
+async def require_admin(request: Request) -> str:
+    """Dependency: return actor or raise 401. Staff rows are checked on every request."""
+    username = request.session.get(SESSION_KEY)
+    if isinstance(username, str):
+        if username == get_settings().admin_username:
+            return ADMIN_ACTOR
+        async with SessionLocal() as session:
+            active = await session.scalar(
+                text("SELECT 1 FROM staff_accounts WHERE username = :u AND disabled_at IS NULL"),
+                {"u": username},
+            )
+        if active:
+            return staff_actor(username)
+    raise ApiError(401, "unauthorized", "Cần đăng nhập")
+
+
+def require_parent(request: Request) -> uuid.UUID:
+    """Dependency: return the signed-in parent id or raise 401. Ignores the admin key."""
+    raw = request.session.get(PARENT_SESSION_KEY)
+    try:
+        return uuid.UUID(raw)
+    except (TypeError, ValueError):
+        raise ApiError(401, "unauthorized", "Cần đăng nhập") from None
+
+
+def parent_actor(parent_id: uuid.UUID) -> str:
+    """Audit actor for a parent account."""
+    return f"parent:{parent_id}"
+
+
+def _ip_key(raw: str) -> str | None:
+    try:
+        ip = ipaddress.ip_address(raw.strip())
+    except ValueError:
+        return None
+    if isinstance(ip, ipaddress.IPv4Address):
+        return str(ip)
+    if ip.ipv4_mapped:
+        return str(ip.ipv4_mapped)
+    return f"{ipaddress.IPv6Address(int(ip) >> 64 << 64)}/64"
 
 
 def client_ip(request: Request) -> str:
-    """Prefer CF-Connecting-IP, fall back to the peer address."""
-    forwarded = request.headers.get("cf-connecting-ip")
-    if forwarded:
-        return forwarded.strip()
-    return request.client.host if request.client else "unknown"
+    """Rate-limit key: CF-Connecting-IP else the peer, with IPv6 grouped by /64."""
+    peer = request.client.host if request.client else "unknown"
+    return _ip_key(request.headers.get("cf-connecting-ip", "")) or _ip_key(peer) or peer
 
 
 class RateLimiter:
@@ -63,10 +118,12 @@ class RateLimiter:
         self.window_s = window_s
         self._clock = clock
         self._hits: MutableMapping[str, deque[float]] = defaultdict(deque)
+        self._next_sweep = clock() + window_s
 
     def allow(self, key: str) -> bool:
         """Record a hit; return False when over the limit."""
         now = self._clock()
+        self._sweep(now)
         hits = self._hits[key]
         while hits and now - hits[0] >= self.window_s:
             hits.popleft()
@@ -75,6 +132,15 @@ class RateLimiter:
         hits.append(now)
         return True
 
+    def _sweep(self, now: float) -> None:
+        """Once per window drop keys with no hit left in it, so idle clients do not pile up."""
+        if now < self._next_sweep:
+            return
+        self._next_sweep = now + self.window_s
+        stale = [k for k, hits in self._hits.items() if not hits or now - hits[-1] >= self.window_s]
+        for key in stale:
+            del self._hits[key]
+
     def reset(self) -> None:
         """Forget all hits."""
         self._hits.clear()
@@ -82,6 +148,8 @@ class RateLimiter:
 
 login_limiter = RateLimiter(5)
 public_limiter = RateLimiter(60)
+parent_auth_limiter = RateLimiter(10)
+parent_match_limiter = RateLimiter(10)
 
 
 def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
@@ -94,6 +162,8 @@ def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
 
 limit_login = _limit(login_limiter)
 limit_public = _limit(public_limiter)
+limit_parent_auth = _limit(parent_auth_limiter)
+limit_parent_match = _limit(parent_match_limiter)
 
 _BASE_HEADERS = [
     (b"x-content-type-options", b"nosniff"),
@@ -126,7 +196,7 @@ class SecurityHeadersMiddleware:
 
 
 class HttpsRedirectMiddleware:
-    """Redirect proxied plain-HTTP requests to HTTPS: Secure session cookies are dropped over HTTP."""
+    """Redirect proxied plain-HTTP requests to HTTPS: HTTP drops Secure session cookies."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -141,6 +211,59 @@ class HttpsRedirectMiddleware:
                 await RedirectResponse(url, status_code=308)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
+
+
+def _under(path: str, prefix: str) -> bool:
+    return path == prefix or path.startswith(prefix + "/")
+
+
+ADMIN_PAGES = ("/", "/login", "/students", "/dashboard")
+PARENT_PAGES = ("/parent", "/p")
+PARENT_APIS = ("/api/parent", "/api/public")
+
+
+class HostSplitMiddleware:
+    """Serve admin and parent surfaces on separate hosts; each side hides the other's."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        admin_host: str,
+        public_base_url: str,
+        is_admin_api: Callable[[str], bool],
+    ) -> None:
+        self.app = app
+        self.admin_host = admin_host.lower()
+        self.public_base_url = public_base_url.rstrip("/")
+        self.is_admin_api = is_admin_api
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path: str = scope["path"]
+        host = Headers(scope=scope).get("host", "").rsplit(":", 1)[0].lower()
+        on_admin = host == self.admin_host
+        response: Response | None = None
+        if on_admin:
+            if any(_under(path, p) for p in PARENT_APIS):
+                response = _not_found()
+            elif any(_under(path, p) for p in PARENT_PAGES):
+                query = scope["query_string"].decode()
+                url = f"{self.public_base_url}{path}{'?' + query if query else ''}"
+                response = RedirectResponse(url, status_code=302)
+        elif self.is_admin_api(path):
+            response = _not_found()
+        elif path == "/" or any(_under(path, p) for p in ADMIN_PAGES[1:]):
+            response = RedirectResponse("/parent", status_code=302)
+        if response is None:
+            await self.app(scope, receive, send)
+        else:
+            await response(scope, receive, send)
+
+
+def _not_found() -> Response:
+    return JSONResponse({"error": {"code": "not_found", "message": "Not found"}}, status_code=404)
 
 
 def main(argv: list[str]) -> int:

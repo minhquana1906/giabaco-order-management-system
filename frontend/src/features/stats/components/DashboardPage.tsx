@@ -9,6 +9,7 @@ import { AccuracyCard } from './AccuracyCard'
 import { ClassMatrixCard } from './ClassMatrixCard'
 import { DistributionCard } from './DistributionCard'
 import { KpiRow } from './KpiRow'
+import { OrdersCard } from './OrdersCard'
 
 interface DashboardPageProps {
   product?: string
@@ -96,6 +97,7 @@ export function DashboardPage({ product, schoolId, onSchoolChange }: DashboardPa
         <DistributionCard product={activeProduct.code} productName={activeProduct.name} schoolId={school?.id} />
         {overview.data ? <AccuracyCard productName={activeProduct.name} accuracy={accuracy} /> : null}
       </div>
+      <OrdersCard schoolId={school?.id} />
       <ClassMatrixCard product={activeProduct.code} productName={activeProduct.name} schoolId={school?.id} />
     </div>
   )

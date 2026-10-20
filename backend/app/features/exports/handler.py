@@ -10,8 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.models import Product, School, SchoolClass
+from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
-from app.features.students.models import Fit, FittingTrial, Student
+from app.features.students.models import DataSource, Fit, FittingTrial, Student
 
 Row = list[Any]
 Dataset = tuple[list[str], list[Row]]
@@ -32,6 +33,7 @@ STUDENT_HEADERS = [
     "Họ tên phụ huynh",
     "SĐT phụ huynh",
     "Email phụ huynh",
+    "data_source",
 ]
 TRIAL_HEADERS = [
     "Giới tính",
@@ -60,6 +62,12 @@ def _plain(value: Any) -> Any:
     return getattr(value, "value", value)
 
 
+def _choice_cells(choice: ParentSizeChoice | None) -> tuple[Any, Any, Any]:
+    if choice is None:
+        return (None, None, None)
+    return (choice.size_label, choice.colour, _plain(choice.chosen_at))
+
+
 async def _load(
     session: AsyncSession,
 ) -> tuple[list[Student], dict[Any, Product], dict[Any, School], dict[Any, SchoolClass]]:
@@ -81,14 +89,16 @@ async def _load(
     )
 
 
-async def _live_trials(session: AsyncSession) -> list[FittingTrial]:
-    result = await session.scalars(
+async def _live_trials(session: AsyncSession, *, measured_only: bool = False) -> list[FittingTrial]:
+    query = (
         select(FittingTrial)
         .join(Student, Student.id == FittingTrial.student_id)
         .where(FittingTrial.deleted_at.is_(None), Student.deleted_at.is_(None))
         .order_by(FittingTrial.tried_at, FittingTrial.created_at)
     )
-    return list(result)
+    if measured_only:
+        query = query.where(Student.data_source == DataSource.ADMIN_MEASURED)
+    return list(await session.scalars(query))
 
 
 async def students_dataset(session: AsyncSession) -> Dataset:
@@ -102,9 +112,21 @@ async def students_dataset(session: AsyncSession) -> Dataset:
         counts[trial.student_id] += 1
         if trial.fit == Fit.FITS:
             fits[(trial.student_id, trial.product_id)].append(trial.size_label)
+    choices = {
+        (c.student_id, c.product_id): c for c in await session.scalars(select(ParentSizeChoice))
+    }
     headers = [
         *STUDENT_HEADERS,
         *(f"Cỡ vừa suy ra - {p.name}" for p in active),
+        *(
+            header
+            for p in active
+            for header in (
+                f"{p.name} - cỡ phụ huynh chọn",
+                f"{p.name} - màu phụ huynh chọn",
+                f"{p.name} - thời điểm chọn",
+            )
+        ),
         "Số lần thử",
     ]
     rows: list[Row] = []
@@ -124,7 +146,9 @@ async def students_dataset(session: AsyncSession) -> Dataset:
                 s.parent_name,
                 s.parent_phone,
                 s.parent_email,
+                _plain(s.data_source),
                 *(derived_size(fits.get((s.id, p.id), []), p.sizes) for p in active),
+                *(cell for p in active for cell in _choice_cells(choices.get((s.id, p.id)))),
                 counts[s.id],
             ]
         )
@@ -132,11 +156,11 @@ async def students_dataset(session: AsyncSession) -> Dataset:
 
 
 async def trials_dataset(session: AsyncSession) -> Dataset:
-    """One row per live trial with student features; no derived-size label."""
+    """One row per live trial of an admin-measured student; no derived-size label."""
     students, products, _, classes = await _load(session)
     by_id = {s.id: s for s in students}
     rows: list[Row] = []
-    for t in await _live_trials(session):
+    for t in await _live_trials(session, measured_only=True):
         s = by_id[t.student_id]
         rows.append(
             [
@@ -155,12 +179,23 @@ async def trials_dataset(session: AsyncSession) -> Dataset:
     return TRIAL_HEADERS, rows
 
 
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe(row: Sequence[Any]) -> Row:
+    """Prefix text a spreadsheet would run as a formula; user-typed names and notes reach cells."""
+    return [
+        f"'{cell}" if isinstance(cell, str) and cell.startswith(_FORMULA_TRIGGERS) else cell
+        for cell in row
+    ]
+
+
 def to_csv(headers: Sequence[str], rows: Sequence[Row]) -> bytes:
     """Encode as UTF-8 CSV with BOM so Excel keeps Vietnamese diacritics."""
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(headers)
-    writer.writerows(rows)
+    writer.writerow(_safe(headers))
+    writer.writerows(_safe(row) for row in rows)
     return buffer.getvalue().encode("utf-8-sig")
 
 
@@ -170,9 +205,9 @@ def to_xlsx(sheets: dict[str, Dataset]) -> bytes:
     workbook.remove(workbook.active)
     for title, (headers, rows) in sheets.items():
         sheet = workbook.create_sheet(title)
-        sheet.append(list(headers))
+        sheet.append(_safe(headers))
         for row in rows:
-            sheet.append(row)
+            sheet.append(_safe(row))
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()

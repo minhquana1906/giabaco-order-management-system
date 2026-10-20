@@ -70,3 +70,11 @@ export function useDeleteStudent(id: string) {
     },
   })
 }
+
+export function useUnlinkParent(studentId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (parentId: string) => studentsApi.unlinkParent(studentId, parentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studentKeys.all }),
+  })
+}

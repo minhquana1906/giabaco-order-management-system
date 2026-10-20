@@ -15,7 +15,7 @@ import {
 import { ApiError } from '@/lib/http'
 import { gradeFromName, GRADES, withGrade } from './className'
 import { Field } from './Field'
-import { NativeSelect } from './NativeSelect'
+import { NativeSelect } from '@/components/NativeSelect'
 
 interface ContextStripProps {
   schoolId: string

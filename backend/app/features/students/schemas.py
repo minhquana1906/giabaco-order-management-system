@@ -9,22 +9,12 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, Fit, Gender
+from app.core.phone import normalize_phone
+from app.features.parent_accounts.models import LinkOrigin
+from app.features.parent_portal.models import Colour
+from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Fit, Gender
 
-_PHONE_RE = re.compile(r"^0\d{9}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-def normalize_phone(raw: str) -> str:
-    """Normalize +84/84 prefixes to 0xxxxxxxxx; raise ValueError when malformed."""
-    cleaned = re.sub(r"[\s.\-()]", "", raw)
-    if cleaned.startswith("+84"):
-        cleaned = "0" + cleaned[3:]
-    elif cleaned.startswith("84") and len(cleaned) == 11:
-        cleaned = "0" + cleaned[2:]
-    if not _PHONE_RE.match(cleaned):
-        raise ValueError("Số điện thoại không hợp lệ")
-    return cleaned
 
 
 def clean_text(value: str) -> str:
@@ -123,7 +113,17 @@ class ParentChoiceOut(BaseModel):
     product_code: str
     product_name: str
     size_label: str
+    colour: Colour | None
     chosen_at: datetime
+
+
+class LinkedParentOut(BaseModel):
+    parent_id: uuid.UUID
+    full_name: str
+    email: str | None
+    phone: str | None
+    origin: LinkOrigin
+    linked_at: datetime
 
 
 class StudentDetail(BaseModel):
@@ -140,12 +140,14 @@ class StudentDetail(BaseModel):
     class_: ClassRef = Field(serialization_alias="class")
     portal_token: str
     portal_url: str
+    data_source: DataSource
     measured_at: datetime
     created_at: datetime
     updated_at: datetime
     trials: list[TrialOut]
     derived_sizes: dict[str, str | None]
     parent_choices: list[ParentChoiceOut]
+    linked_parents: list[LinkedParentOut]
 
 
 class StudentListItem(BaseModel):
@@ -157,6 +159,7 @@ class StudentListItem(BaseModel):
     height_cm: float
     weight_kg: float
     parent_phone: str | None
+    data_source: DataSource
     derived_sizes: dict[str, str | None]
     trial_count: int
     has_note: bool

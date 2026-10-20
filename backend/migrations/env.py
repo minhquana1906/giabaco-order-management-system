@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.audit import AuditLog  # noqa: F401
 from app.core.config import get_settings
 from app.core.db import Base
+from app.features.auth import models as _auth  # noqa: F401
 from app.features.catalog import models as _catalog  # noqa: F401
 from app.features.parent_portal import models as _portal  # noqa: F401
 from app.features.students import models as _students  # noqa: F401

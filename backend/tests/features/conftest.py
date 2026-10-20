@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.models import School, SchoolClass
-from app.features.students.models import Fit, FittingTrial, Gender, Student
+from app.features.students.models import DataSource, Fit, FittingTrial, Gender, Student
 
 TrialSpec = tuple[str, str, str, str | None]
 MakeStudent = Callable[..., Awaitable[Student]]
@@ -50,6 +50,7 @@ def make_student(
         note: str | None = None,
         deleted: bool = False,
         deleted_trials: list[TrialSpec] | None = None,
+        data_source: DataSource = DataSource.ADMIN_MEASURED,
     ) -> Student:
         student = Student(
             school_id=school_id or uuid.UUID(str(school_class["school_id"])),
@@ -65,6 +66,7 @@ def make_student(
             portal_token=secrets.token_urlsafe(16),
             measured_at=measured_at,
             deleted_at=datetime.now(UTC) if deleted else None,
+            data_source=data_source,
         )
         session.add(student)
         await session.flush()

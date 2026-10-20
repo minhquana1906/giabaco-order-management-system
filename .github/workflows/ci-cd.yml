@@ -1,0 +1,141 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit on main to deploy. Rolling back only works to a commit with the same migration head; otherwise restore the predeploy dump first
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REF: ${{ inputs.ref || github.sha }}
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db-test:
+        image: postgres:16
+        env:
+          POSTGRES_USER: guniform
+          POSTGRES_PASSWORD: guniform_test
+          POSTGRES_DB: guniform_test
+        ports: ["55433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U guniform -d guniform_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy app
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  smoke:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: make smoke
+
+  deploy:
+    needs: [smoke]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          fetch-depth: 0
+      - name: Only deploy commits already on main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Open IAP tunnel to the VM
+        run: |
+          gcloud compute start-iap-tunnel "${{ vars.GCE_VM }}" 22 --local-host-port=localhost:2222 \
+            --zone "${{ vars.GCE_ZONE }}" --project "${{ vars.GCP_PROJECT }}" > /tmp/iap.log 2>&1 &
+          for _ in $(seq 30); do nc -z localhost 2222 && exit 0; sleep 1; done
+          cat /tmp/iap.log; exit 1
+      - name: Ship release and deploy
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          git archive --format=tar.gz HEAD Dockerfile Makefile docker-compose.yml .dockerignore .env.example backend frontend scripts \
+            | ssh -p 2222 -i ~/.ssh/deploy -o StrictHostKeyChecking=yes -o BatchMode=yes \
+              "${{ vars.GCE_SSH_USER }}@localhost"
+      - name: Verify public hosts
+        run: |
+          want() { for _ in $(seq 20); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$1")" = "$2" ] && return 0; sleep 3; done; echo "FAIL $1 != $2"; return 1; }
+          want "https://${{ vars.PUBLIC_HOST }}/api/healthz" 200
+          want "https://${{ vars.ADMIN_HOST }}/api/healthz" 200
+          want "https://${{ vars.ADMIN_HOST }}/api/auth/me" 401
+          want "https://${{ vars.PUBLIC_HOST }}/api/students" 404
+          want "https://${{ vars.PUBLIC_HOST }}/api/parent/auth/me" 401

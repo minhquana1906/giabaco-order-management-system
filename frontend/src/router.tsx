@@ -1,22 +1,20 @@
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { NotFound } from '@/components/NotFound'
-import { authKeys } from '@/features/auth/hooks'
 import { RouteError } from '@/components/RouteError'
 import { ApiError } from '@/lib/http'
+import { handleQueryError } from '@/lib/sessionExpiry'
 import { routeTree } from './routeTree.gen'
+
+function redirectToLogin(area: 'parent' | 'admin') {
+  const here = router.state.location
+  const to = area === 'parent' ? '/parent/login' : '/login'
+  if (here.pathname !== to) void router.navigate({ to, search: { redirect: here.href } })
+}
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        const here = router.state.location
-        queryClient.removeQueries({ queryKey: authKeys.me() })
-        if (here.pathname !== '/login') {
-          void router.navigate({ to: '/login', search: { redirect: here.href } })
-        }
-      }
-    },
+    onError: (error, query) => handleQueryError(error, query, { queryClient, redirectToLogin }),
   }),
   defaultOptions: {
     queries: {

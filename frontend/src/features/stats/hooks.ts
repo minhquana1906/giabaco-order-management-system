@@ -6,6 +6,7 @@ export const statsKeys = {
   overview: (schoolId?: string) => [...statsKeys.all, 'overview', schoolId ?? null] as const,
   distribution: (product: string, schoolId?: string) =>
     [...statsKeys.all, 'size-distribution', product, schoolId ?? null] as const,
+  orders: (schoolId?: string) => [...statsKeys.all, 'orders', schoolId ?? null] as const,
   matrix: (product: string, schoolId: string) =>
     [...statsKeys.all, 'class-matrix', product, schoolId] as const,
 }
@@ -36,6 +37,15 @@ export function useClassMatrix(product: string | undefined, schoolId: string | u
     queryKey: statsKeys.matrix(product ?? '', schoolId ?? ''),
     queryFn: ({ signal }) => statsApi.classMatrix(product!, schoolId!, signal),
     enabled: Boolean(product && schoolId),
+    refetchInterval: POLL_MS,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useOrders(schoolId: string | undefined) {
+  return useQuery({
+    queryKey: statsKeys.orders(schoolId),
+    queryFn: ({ signal }) => statsApi.orders(schoolId, signal),
     refetchInterval: POLL_MS,
     placeholderData: keepPreviousData,
   })

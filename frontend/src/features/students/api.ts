@@ -1,5 +1,6 @@
 import type { Fit } from '@/lib/fit'
 import { http } from '@/lib/http'
+import type { ProductColour } from '@/lib/productColour'
 
 export type Gender = 'MALE' | 'FEMALE'
 
@@ -41,7 +42,19 @@ export interface ParentChoice {
   product_code: string
   product_name: string
   size_label: string
+  colour: ProductColour | null
   chosen_at: string
+}
+
+export type DataSource = 'ADMIN_MEASURED' | 'PARENT_DECLARED'
+
+export interface LinkedParent {
+  parent_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  origin: string
+  linked_at: string
 }
 
 export interface StudentDetail {
@@ -58,12 +71,14 @@ export interface StudentDetail {
   class: { id: string; name: string; grade: number }
   portal_token: string
   portal_url: string
+  data_source: DataSource
   measured_at: string
   created_at: string
   updated_at: string
   trials: StudentTrial[]
   derived_sizes: Record<string, string | null>
   parent_choices: ParentChoice[]
+  linked_parents: LinkedParent[]
 }
 
 export interface StudentListItem {
@@ -75,6 +90,7 @@ export interface StudentListItem {
   height_cm: number
   weight_kg: number
   parent_phone: string | null
+  data_source: DataSource
   derived_sizes: Record<string, string | null>
   trial_count: number
   has_note: boolean
@@ -108,4 +124,5 @@ export const studentsApi = {
   create: (body: StudentIn) => http.post<StudentDetail>('/students', body),
   update: (id: string, body: StudentIn) => http.put<StudentDetail>(`/students/${id}`, body),
   remove: (id: string) => http.delete(`/students/${id}`),
+  unlinkParent: (id: string, parentId: string) => http.delete(`/students/${id}/parents/${parentId}`),
 }

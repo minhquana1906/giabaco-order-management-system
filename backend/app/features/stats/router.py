@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.security import require_admin
 from app.features.stats import handler
-from app.features.stats.schemas import ClassMatrix, Overview, SizeDistribution
+from app.features.stats.schemas import ClassMatrix, Orders, Overview, SizeDistribution
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
@@ -35,3 +35,8 @@ async def get_class_matrix(
     session: Session,
 ) -> ClassMatrix:
     return await handler.class_matrix(session, product, school_id)
+
+
+@router.get("/orders")
+async def get_orders(session: Session, school_id: uuid.UUID | None = None) -> Orders:
+    return await handler.orders(session, school_id)

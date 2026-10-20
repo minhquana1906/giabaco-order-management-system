@@ -90,6 +90,9 @@ async def test_https_redirect_for_proxied_http() -> None:
     transport = ASGITransport(app=HttpsRedirectMiddleware(ok))
     async with AsyncClient(transport=transport, base_url="http://giabaco.test") as c:
         r = await c.get("/students/new?a=1", headers={"x-forwarded-proto": "http"})
-        assert r.status_code == 308 and r.headers["location"] == "https://giabaco.test/students/new?a=1"
+        assert (
+            r.status_code == 308
+            and r.headers["location"] == "https://giabaco.test/students/new?a=1"
+        )
         assert (await c.get("/x", headers={"x-forwarded-proto": "https"})).status_code == 200
         assert (await c.get("/x")).status_code == 200

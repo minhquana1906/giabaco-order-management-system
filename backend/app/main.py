@@ -1,9 +1,12 @@
 """FastAPI application factory and SPA hosting."""
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.dependencies.models import Dependant
 from fastapi.responses import FileResponse, Response
+from fastapi.routing import APIRoute
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -11,15 +14,35 @@ from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.errors import ApiError, install_error_handlers
 from app.core.logging import RequestLogMiddleware, setup_logging
-from app.core.security import HttpsRedirectMiddleware, SecurityHeadersMiddleware
+from app.core.security import (
+    HostSplitMiddleware,
+    HttpsRedirectMiddleware,
+    SecurityHeadersMiddleware,
+    require_admin,
+)
 from app.features.auth.router import router as auth_router
 from app.features.catalog.router import router as catalog_router
 from app.features.exports.router import router as exports_router
+from app.features.parent_accounts.router import admin_router as parent_links_router
+from app.features.parent_accounts.router import router as parent_accounts_router
+from app.features.parent_portal.router import account_router as parent_children_router
 from app.features.parent_portal.router import router as parent_portal_router
 from app.features.realtime.router import router as realtime_router
 from app.features.stats.router import router as stats_router
 from app.features.students.router import router as students_router
 
+ROUTERS = (
+    auth_router,
+    catalog_router,
+    students_router,
+    parent_accounts_router,
+    parent_links_router,
+    parent_portal_router,
+    parent_children_router,
+    stats_router,
+    exports_router,
+    realtime_router,
+)
 SESSION_MAX_AGE_S = 12 * 60 * 60
 
 
@@ -35,6 +58,30 @@ def _mount_spa(app: FastAPI, spa_dir: Path) -> None:
         if path and candidate.is_file() and candidate.is_relative_to(root):
             return FileResponse(candidate)
         return FileResponse(index)
+
+
+def _guarded(route: APIRoute) -> bool:
+    return any(d.dependency is require_admin for d in route.dependencies) or _uses_require_admin(
+        route.dependant
+    )
+
+
+def _uses_require_admin(dependant: Dependant) -> bool:
+    return any(d.call is require_admin or _uses_require_admin(d) for d in dependant.dependencies)
+
+
+def _admin_api_matcher(routers: Sequence[APIRouter]) -> Callable[[str], bool]:
+    patterns = [
+        r.path_regex
+        for router in routers
+        for r in router.routes
+        if isinstance(r, APIRoute) and _guarded(r)
+    ]
+
+    def matches(path: str) -> bool:
+        return path.startswith("/api/auth/") or any(p.match(path) for p in patterns)
+
+    return matches
 
 
 def create_app() -> FastAPI:
@@ -65,16 +112,16 @@ def create_app() -> FastAPI:
             raise ApiError(503, "unavailable", "Database không khả dụng") from None
         return {"status": "ok"}
 
-    for router in (
-        auth_router,
-        catalog_router,
-        students_router,
-        parent_portal_router,
-        stats_router,
-        exports_router,
-        realtime_router,
-    ):
+    for router in ROUTERS:
         app.include_router(router)
+
+    if settings.admin_host:
+        app.add_middleware(
+            HostSplitMiddleware,
+            admin_host=settings.admin_host,
+            public_base_url=settings.public_base_url,
+            is_admin_api=_admin_api_matcher(ROUTERS),
+        )
 
     if settings.spa_dir and (Path(settings.spa_dir) / "index.html").is_file():
         _mount_spa(app, Path(settings.spa_dir))

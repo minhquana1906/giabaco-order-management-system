@@ -3,7 +3,7 @@ SMOKE := docker compose -p gsmoke --env-file .env.smoke -f docker-compose.yml
 SMOKE_PASSWORD := smoke-pass-123
 
 .DEFAULT_GOAL := help
-.PHONY: help setup seed-demo dev dev-reset dev-api dev-web test lint smoke hash up logs
+.PHONY: help setup seed-demo dev dev-reset dev-api dev-web test lint smoke hash up logs staff
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_./-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-22s %s\n", $$1, $$2}'
@@ -53,7 +53,7 @@ lint: ## ruff, mypy, eslint, tsc
 smoke: ## Build the production image and smoke it (isolated project, then cleaned up)
 	@cd backend && HASH=$$(uv run python -c "from app.core.security import hash_password as h; print(h('$(SMOKE_PASSWORD)'))") && \
 	printf '%s\n' 'POSTGRES_PASSWORD=smokepw' "SESSION_SECRET=$$(openssl rand -hex 32)" 'ADMIN_USERNAME=admin' \
-	  "ADMIN_PASSWORD_HASH='$$HASH'" 'TUNNEL_TOKEN=unused' 'PUBLIC_BASE_URL=http://127.0.0.1:8000' 'COOKIE_SECURE=false' > ../.env.smoke
+	  "ADMIN_PASSWORD_HASH='$$HASH'" 'TUNNEL_TOKEN=unused' 'PUBLIC_BASE_URL=http://parent.smoke' 'ADMIN_HOST=admin.smoke' 'COOKIE_SECURE=false' > ../.env.smoke
 	@$(SMOKE) up -d --build db app; rc=$$?; \
 	[ $$rc -eq 0 ] && $(SMOKE) exec -T app python - $(SMOKE_PASSWORD) < scripts/smoke.py; rc=$$?; \
 	$(SMOKE) down -v >/dev/null 2>&1; rm -f .env.smoke; exit $$rc
@@ -66,3 +66,6 @@ up: ## Server: build and start prod stack (ignores the dev override)
 
 logs: ## Server: follow app logs
 	$(COMPOSE_PROD) logs -f app
+
+staff: ## Server: manage staff accounts, e.g. make staff ARGS="add lan" (also passwd|disable|enable <user>, list)
+	$(COMPOSE_PROD) exec app python -m app.features.auth.staff $(ARGS)

@@ -1,6 +1,6 @@
 # G-UNIFORM (Giabaco OMS)
 
-Công cụ thu thập số đo và thử áo của học sinh cho dự án G Blazer: form nhập liệu, dashboard thời gian thực, trang phụ huynh qua QR, export CSV/XLSX.
+Công cụ thu thập số đo và thử áo của học sinh cho dự án G Blazer: form nhập liệu, dashboard thời gian thực, trang phụ huynh qua QR hoặc tài khoản, export CSV/XLSX.
 
 | Tài liệu | Nội dung |
 |---|---|
@@ -22,6 +22,12 @@ make dev          # backend :8000 + frontend :5173
 
 Mở `http://127.0.0.1:5173`, đăng nhập `admin` cùng mật khẩu vừa đặt.
 
+Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tại `/parent/register` rồi đăng nhập `/parent/login`. Phụ huynh nhận hồ sơ con bằng trường + họ tên + ngày sinh, hoặc tự tạo hồ sơ con (bắt buộc số đo, SĐT phụ huynh; tối đa 10 con mỗi tài khoản; nhãn "Phụ huynh tự khai", không tính vào dashboard đo và `export/trials`). Admin và phụ huynh dùng hai phiên độc lập trong cùng cookie.
+
+Trang chọn cỡ có ảnh sản phẩm theo giới tính (WebP trong `frontend/public/products/`: `*_900.webp` làm ảnh thu nhỏ, bản 1600px mở trong lightbox; nguồn gốc ở `assets/`).
+
+Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP; không có quên mật khẩu (phụ huynh liên hệ Giabaco); đặt may lại năm sau ghi đè lựa chọn cũ.
+
 `make seed-demo` nạp 2 trường, 9 lớp, 59 học sinh (148 lần thử, 12 học sinh có lựa chọn của phụ huynh, 1 xóa mềm) và các ca biên (ngoài bảng size, chưa thử áo, nhiều cỡ vừa...). Script bỏ qua nếu DB đã có học sinh và từ chối chạy trên DB không phải `127.0.0.1`/`localhost`. Muốn nạp lại từ đầu (xóa toàn bộ dữ liệu dev):
 
 ```bash
@@ -42,12 +48,19 @@ Thử QR trên điện thoại trong LAN: chạy `pnpm dev --host` trong `fronte
 | `make smoke` | Build image production, smoke trong container, tự dọn |
 | `make hash` | Hash mật khẩu admin cho `.env` production |
 | `make up` / `make logs` | Trên server: chạy và theo dõi stack production |
+| `make staff ARGS="add lan"` | Trên server: tạo tài khoản nhân viên (hỏi mật khẩu). Cũng có `passwd`, `disable`, `enable <user>`, `list` |
+
+## CI/CD
+
+`.github/workflows/ci-cd.yml`: PR vào `main` chạy backend (ruff, mypy, pytest), frontend (eslint, tsc, vitest, build) và `make smoke`. Push hoặc merge vào `main` chạy thêm job `deploy`: mở IAP tunnel tới VM, gửi bản release qua SSH tới `scripts/deploy.sh` (khóa CI chỉ chạy được script này). Script `pg_dump` DB vào `~/backups` (giữ 10 bản), thay code, `docker compose up -d --build app`, chờ `healthz`; workflow kiểm tra lại cả hai host. Rollback: chạy workflow thủ công (`Run workflow`) với `ref` là commit cũ trên `main`, chỉ khi hai commit cùng migration head; nếu bản mới đã thêm migration thì khôi phục `~/backups/predeploy-*.sql.gz` (hoặc snapshot) trước, vì image cũ không biết revision mới và sẽ không khởi động.
+
+Thiết lập một lần (gcloud và gh đã đăng nhập): `bash scripts/setup-cd.sh`. Script tạo service account + Workload Identity Federation (chỉ repo này, nhánh `main`), cài khóa deploy và `ADMIN_HOST` trên VM, đặt secrets/variables cho repo.
 
 ## Cấu trúc
 
 ```
 backend/app/core/            config, db, security, audit, events, logging
-backend/app/features/<slice> auth, catalog, students, parent_portal, stats, exports, realtime
+backend/app/features/<slice> auth, parent_accounts, catalog, students, parent_portal, stats, exports, realtime
 backend/config/              catalog.seed.yaml (sản phẩm, bộ cỡ, bảng size tạm)
 backend/scripts/seed_demo.py dữ liệu mẫu cho dev
 frontend/src/features/<slice> api.ts, hooks.ts, components/
@@ -55,4 +68,4 @@ frontend/src/routes/         TanStack Router file-based
 scripts/smoke.py             smoke chạy trong container
 ```
 
-Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `parent_size_choices` ghi `audit_logs`; không hard delete; không ghi PII vào log.
+Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `parent_size_choices`, `parent_student_links` ghi `audit_logs`; không hard delete; không ghi PII vào log.

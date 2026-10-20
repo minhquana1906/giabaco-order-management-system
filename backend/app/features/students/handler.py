@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +17,21 @@ from app.core import audit
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.events import bus
+from app.core.names import lock_identity, name_key
 from app.features.catalog.models import Product, School, SchoolClass
+from app.features.parent_accounts.models import ParentAccount, ParentStudentLink
 from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
-from app.features.students.models import Fit, FittingTrial, Student
+from app.features.students.models import (
+    DataSource,
+    Fit,
+    FittingTrial,
+    Student,
+    student_snapshot,
+)
 from app.features.students.schemas import (
     ClassRef,
+    LinkedParentOut,
     NamedRef,
     ParentChoiceOut,
     StudentDetail,
@@ -53,22 +62,6 @@ def _trial_snapshot(trial: FittingTrial, code: str) -> dict[str, Any]:
         "fit": trial.fit.value,
         "note": trial.note,
         "deleted_at": trial.deleted_at.isoformat() if trial.deleted_at else None,
-    }
-
-
-def _student_snapshot(student: Student) -> dict[str, Any]:
-    return {
-        "school_id": str(student.school_id),
-        "class_id": str(student.class_id),
-        "full_name": student.full_name,
-        "dob": student.dob.isoformat(),
-        "gender": student.gender.value,
-        "height_cm": float(student.height_cm),
-        "weight_kg": float(student.weight_kg),
-        "parent_name": student.parent_name,
-        "parent_phone": student.parent_phone,
-        "parent_email": student.parent_email,
-        "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
     }
 
 
@@ -108,19 +101,33 @@ async def _check_class(session: AsyncSession, payload: StudentIn) -> None:
 
 
 async def _check_duplicate(
-    session: AsyncSession, payload: StudentIn, exclude_id: uuid.UUID | None
+    session: AsyncSession,
+    payload: StudentIn,
+    exclude_id: uuid.UUID | None,
+    *,
+    include_declared: bool = False,
 ) -> None:
-    query = select(Student.id).where(
+    """409 when another live record has this identity; a declared one counts in any class."""
+    same_class_measured = and_(
+        Student.class_id == payload.class_id, Student.data_source == DataSource.ADMIN_MEASURED
+    )
+    clash = (
+        or_(same_class_measured, Student.data_source == DataSource.PARENT_DECLARED)
+        if include_declared
+        else same_class_measured
+    )
+    query = select(Student.class_id).where(
         Student.school_id == payload.school_id,
-        Student.class_id == payload.class_id,
-        func.lower(func.trim(Student.full_name)) == payload.full_name.lower(),
+        name_key(Student.full_name) == name_key(payload.full_name),
         Student.dob == payload.dob,
+        clash,
         Student.deleted_at.is_(None),
     )
     if exclude_id is not None:
         query = query.where(Student.id != exclude_id)
-    if await session.scalar(query.limit(1)) is not None:
-        school_class = await session.get(SchoolClass, payload.class_id)
+    clash_class_id = await session.scalar(query.limit(1))
+    if clash_class_id is not None:
+        school_class = await session.get(SchoolClass, clash_class_id)
         class_name = school_class.name if school_class else ""
         raise ApiError(
             409,
@@ -157,7 +164,7 @@ def _validate_trials(
     return resolved
 
 
-def _apply_fields(student: Student, payload: StudentIn) -> None:
+def _apply_fields(student: Student, payload: StudentIn, *, keep_contact: bool = False) -> None:
     student.school_id = payload.school_id
     student.class_id = payload.class_id
     student.full_name = payload.full_name
@@ -165,9 +172,10 @@ def _apply_fields(student: Student, payload: StudentIn) -> None:
     student.gender = payload.gender
     student.height_cm = payload.height_cm
     student.weight_kg = payload.weight_kg
-    student.parent_name = payload.parent_name
-    student.parent_phone = payload.parent_phone
-    student.parent_email = payload.parent_email
+    for field in ("parent_name", "parent_phone", "parent_email"):
+        value = getattr(payload, field)
+        if value is not None or not keep_contact:
+            setattr(student, field, value)
 
 
 def _suggestion(student: Student, product: Product) -> str | None:
@@ -186,16 +194,46 @@ async def _commit(session: AsyncSession) -> None:
         raise
 
 
+async def _declared_match(session: AsyncSession, payload: StudentIn) -> Student | None:
+    """The one parent-declared record for this child (class ignored), locked for update."""
+    result = await session.scalars(
+        select(Student)
+        .where(
+            Student.school_id == payload.school_id,
+            name_key(Student.full_name) == name_key(payload.full_name),
+            Student.dob == payload.dob,
+            Student.data_source == DataSource.PARENT_DECLARED,
+            Student.deleted_at.is_(None),
+        )
+        .limit(2)
+        .with_for_update()
+    )
+    matches = result.all()
+    return matches[0] if len(matches) == 1 else None
+
+
 async def create_student(session: AsyncSession, payload: StudentIn, actor: str) -> uuid.UUID:
-    """Create a student with trials in a single transaction."""
+    """Create a student with trials in a single transaction.
+
+    Unless forced, a single matching parent-declared record is adopted instead: it becomes
+    admin-measured and keeps its id, portal token, parent links and size choices.
+    """
     await _check_class(session, payload)
     products = await _products_by_code(session)
     resolved = _validate_trials(payload.trials, products)
+    adopted: Student | None = None
     if not payload.force:
+        await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
         await _check_duplicate(session, payload, None)
-    student = Student(portal_token=new_portal_token())
-    _apply_fields(student, payload)
-    session.add(student)
+        adopted = await _declared_match(session, payload)
+    before = student_snapshot(adopted) if adopted else None
+    student = adopted or Student(portal_token=new_portal_token())
+    _apply_fields(student, payload, keep_contact=adopted is not None)
+    if adopted:
+        student.data_source = DataSource.ADMIN_MEASURED
+        student.measured_at = datetime.now(UTC)
+    else:
+        session.add(student)
     await session.flush()
     trials: list[tuple[FittingTrial, str]] = []
     for trial_in, product in resolved:
@@ -211,8 +249,9 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
         trials.append((trial, product.code))
     await session.flush()
     await audit.record(
-        session, actor, "student.create", "student", student.id, None, _student_snapshot(student)
-    )
+        session, actor, "student.adopt" if adopted else "student.create", "student", student.id,
+        before, student_snapshot(student),
+    )  # fmt: skip
     for trial, code in trials:
         await audit.record(
             session, actor, "trial.create", "fitting_trial", trial.id, None,
@@ -227,13 +266,18 @@ async def update_student(
     session: AsyncSession, student_id: uuid.UUID, payload: StudentIn, actor: str
 ) -> None:
     """Update student; trials with id update, without id insert, missing are soft-deleted."""
-    student = await _load_student(session, student_id)
+    await lock_identity(session, payload.school_id, payload.full_name, payload.dob)
+    student = await session.scalar(
+        select(Student).where(Student.id == student_id).with_for_update()
+    )
+    if student is None or student.deleted_at is not None:
+        raise _not_found()
     await _check_class(session, payload)
     products = await _products_by_code(session)
     code_by_id = {p.id: p.code for p in products.values()}
     resolved = _validate_trials(payload.trials, products)
     if not payload.force:
-        await _check_duplicate(session, payload, student.id)
+        await _check_duplicate(session, payload, student.id, include_declared=True)
 
     existing = {t.id: t for t in await _active_trials(session, student.id)}
     for i, (trial_in, _) in enumerate(resolved):
@@ -244,7 +288,7 @@ async def update_student(
                 "Lần thử không thuộc học sinh",
                 {f"trials.{i}.id": "Lần thử không tồn tại"},
             )
-    before = _student_snapshot(student)
+    before = student_snapshot(student)
     now = datetime.now(UTC)
     kept_ids = {t.id for t, _ in resolved if t.id is not None}
     trial_audits: list[tuple[str, FittingTrial, dict[str, Any] | None]] = []
@@ -257,6 +301,9 @@ async def update_student(
     await session.flush()
 
     _apply_fields(student, payload)
+    if student.data_source is DataSource.PARENT_DECLARED:
+        student.data_source = DataSource.ADMIN_MEASURED
+        student.measured_at = now
     for trial_in, product in resolved:
         if trial_in.id is None:
             trial = FittingTrial(student_id=student.id, product_id=product.id, fit=trial_in.fit)
@@ -284,7 +331,7 @@ async def update_student(
             None if action == "trial.delete" else new,
         )  # fmt: skip
     await audit.record(
-        session, actor, "student.update", "student", student.id, before, _student_snapshot(student)
+        session, actor, "student.update", "student", student.id, before, student_snapshot(student)
     )
     await _commit(session)
     bus.publish("students")
@@ -293,10 +340,10 @@ async def update_student(
 async def delete_student(session: AsyncSession, student_id: uuid.UUID, actor: str) -> None:
     """Soft delete a student."""
     student = await _load_student(session, student_id)
-    before = _student_snapshot(student)
+    before = student_snapshot(student)
     student.deleted_at = datetime.now(UTC)
     await audit.record(
-        session, actor, "student.delete", "student", student.id, before, _student_snapshot(student)
+        session, actor, "student.delete", "student", student.id, before, student_snapshot(student)
     )
     await _commit(session)
     bus.publish("students")
@@ -337,6 +384,12 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
             .order_by(ParentSizeChoice.chosen_at)
         )
     ).all()
+    links = await session.execute(
+        select(ParentStudentLink, ParentAccount)
+        .join(ParentAccount, ParentAccount.id == ParentStudentLink.parent_id)
+        .where(ParentStudentLink.student_id == student.id)
+        .order_by(ParentStudentLink.created_at, ParentStudentLink.id)
+    )
     base = get_settings().public_base_url.rstrip("/")
     return StudentDetail(
         id=student.id,
@@ -352,6 +405,7 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
         class_=ClassRef(id=school_class.id, name=school_class.name, grade=school_class.grade),
         portal_token=student.portal_token,
         portal_url=f"{base}/p/{student.portal_token}",
+        data_source=student.data_source,
         measured_at=student.measured_at,
         created_at=student.created_at,
         updated_at=student.updated_at,
@@ -374,9 +428,21 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
                 product_code=products[c.product_id].code,
                 product_name=products[c.product_id].name,
                 size_label=c.size_label,
+                colour=c.colour,
                 chosen_at=c.chosen_at,
             )
             for c in choices
+        ],
+        linked_parents=[
+            LinkedParentOut(
+                parent_id=parent.id,
+                full_name=parent.full_name,
+                email=parent.email,
+                phone=parent.phone,
+                origin=link.origin,
+                linked_at=link.created_at,
+            )
+            for link, parent in links
         ],
     )
 
@@ -469,6 +535,7 @@ async def list_students(session: AsyncSession, f: ListFilters) -> StudentPage:
             height_cm=float(s.height_cm),
             weight_kg=float(s.weight_kg),
             parent_phone=s.parent_phone,
+            data_source=s.data_source,
             derived_sizes=derived[s.id],
             trial_count=len(trials_by_student[s.id]),
             has_note=any(t.note for t in trials_by_student[s.id]),

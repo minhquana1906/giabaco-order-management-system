@@ -1,3 +1,4 @@
+import { dobToIso } from '@/lib/dob'
 import type { Fit } from '@/lib/fit'
 import type { Product } from '@/features/catalog/api'
 import type { Gender, StudentDetail, StudentIn } from '../api'
@@ -87,17 +88,6 @@ export function parseMeasure(text: string, range: { min: number; max: number }):
   return n >= range.min && n <= range.max ? n : null
 }
 
-function dobIso(v: FormValues): string | null {
-  const d = Number(v.day)
-  const m = Number(v.month)
-  const y = Number(v.year)
-  if (!d || !m || !y) return null
-  const date = new Date(y, m - 1, d)
-  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null
-  if (date.getTime() > Date.now()) return null
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
 export const trialErrorKey = (rowKey: string) => `trial:${rowKey}`
 
 export function validate(v: FormValues, ctx: { schoolId: string; classId: string }): Record<string, string> {
@@ -105,7 +95,7 @@ export function validate(v: FormValues, ctx: { schoolId: string; classId: string
   if (!ctx.schoolId) e.school_id = 'Chọn trường'
   if (!ctx.classId) e.class_id = 'Chọn lớp'
   if (!v.fullName.trim()) e.full_name = 'Nhập họ tên học sinh'
-  if (!dobIso(v)) e.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
+  if (!dobToIso(v)) e.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
   if (!v.gender) e.gender = 'Chọn giới tính'
   if (parseMeasure(v.height, HEIGHT_RANGE) === null)
     e.height_cm = `Chiều cao từ ${HEIGHT_RANGE.min} đến ${HEIGHT_RANGE.max} cm`
@@ -147,7 +137,7 @@ export function toPayload(
       school_id: ctx.schoolId,
       class_id: ctx.classId,
       full_name: v.fullName.trim(),
-      dob: dobIso(v)!,
+      dob: dobToIso(v)!,
       gender: v.gender as Gender,
       height_cm: round1(parseMeasure(v.height, HEIGHT_RANGE)!),
       weight_kg: round1(parseMeasure(v.weight, WEIGHT_RANGE)!),

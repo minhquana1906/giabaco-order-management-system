@@ -1,11 +1,14 @@
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
+import { DobSelects } from '@/components/DobSelects'
+import { FormSection } from '@/components/FormSection'
+import { GenderToggle } from '@/components/GenderToggle'
+import { UnitInput } from '@/components/UnitInput'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useProducts, useSizeSuggestions } from '@/features/catalog/hooks'
 import { ApiError } from '@/lib/http'
-import { cn } from '@/lib/utils'
 import type { StudentDetail } from '../api'
 import { useCreateStudent, useUpdateStudent } from '../hooks'
 import { ContextStrip } from './ContextStrip'
@@ -25,7 +28,6 @@ import {
   type Suggestions,
   type TrialRow,
 } from './formLogic'
-import { NativeSelect } from './NativeSelect'
 import { ProductTrialCard } from './ProductTrialCard'
 import { useDebounced } from './useDebounced'
 
@@ -35,36 +37,6 @@ interface StudentFormProps {
   onContextChange?: (schoolId: string, classId: string) => void
   onSaved: (student: StudentDetail) => void
   onCancel?: () => void
-}
-
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
-const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
-const THIS_YEAR = new Date().getFullYear()
-const YEARS = Array.from({ length: 31 }, (_, i) => THIS_YEAR - i)
-
-const GENDERS = [
-  { value: 'MALE', label: 'Nam' },
-  { value: 'FEMALE', label: 'Nữ' },
-] as const
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3 rounded-md border border-hairline bg-card p-3 sm:p-4">
-      <h2 className="text-base font-semibold">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function Suffix({ unit, children }: { unit: string; children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      {children}
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
-        {unit}
-      </span>
-    </div>
-  )
 }
 
 export function StudentForm({ initial, initialContext, onContextChange, onSaved, onCancel }: StudentFormProps) {
@@ -160,7 +132,7 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
       <div className="flex flex-col gap-4">
         <ContextStrip schoolId={ctx.schoolId} classId={ctx.classId} onChange={changeContext} errors={shown} />
 
-        <Section title="Học sinh">
+        <FormSection title="Học sinh">
           <Field label="Họ tên" htmlFor="full_name" error={shown.full_name}>
             <Input
               id="full_name"
@@ -173,88 +145,39 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
             />
           </Field>
 
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-sm font-medium">Ngày sinh</legend>
-            <div className="grid grid-cols-3 gap-2">
-              <NativeSelect aria-label="Ngày" aria-invalid={Boolean(shown.dob)} value={values.day} onChange={(e) => edit({ day: e.target.value }, 'dob')}>
-                <option value="">Ngày</option>
-                {DAYS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </NativeSelect>
-              <NativeSelect aria-label="Tháng" aria-invalid={Boolean(shown.dob)} value={values.month} onChange={(e) => edit({ month: e.target.value }, 'dob')}>
-                <option value="">Tháng</option>
-                {MONTHS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </NativeSelect>
-              <NativeSelect aria-label="Năm" aria-invalid={Boolean(shown.dob)} value={values.year} onChange={(e) => edit({ year: e.target.value }, 'dob')}>
-                <option value="">Năm</option>
-                {YEARS.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </NativeSelect>
-            </div>
-            {shown.dob ? <p role="alert" className="text-sm text-destructive">{shown.dob}</p> : null}
-          </fieldset>
+          <DobSelects
+            value={{ day: values.day, month: values.month, year: values.year }}
+            error={shown.dob}
+            onChange={(dob) => edit(dob, 'dob')}
+          />
 
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-sm font-medium">Giới tính</legend>
-            <div role="radiogroup" aria-label="Giới tính" className="grid grid-cols-2 rounded-md border border-input p-0.5">
-              {GENDERS.map((g) => (
-                <label
-                  key={g.value}
-                  className={cn(
-                    'flex min-h-10 cursor-pointer items-center justify-center rounded-[5px] px-3 text-[15px] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                    values.gender === g.value ? 'bg-navy font-semibold text-white' : 'text-foreground hover:bg-accent',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={g.value}
-                    checked={values.gender === g.value}
-                    onChange={() => edit({ gender: g.value }, 'gender')}
-                    className="sr-only"
-                  />
-                  {g.label}
-                </label>
-              ))}
-            </div>
-            {shown.gender ? <p role="alert" className="text-sm text-destructive">{shown.gender}</p> : null}
-          </fieldset>
+          <GenderToggle value={values.gender} error={shown.gender} onChange={(gender) => edit({ gender }, 'gender')} />
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Chiều cao (cm)" htmlFor="height_cm" error={shown.height_cm}>
-              <Suffix unit="cm">
-                <Input
-                  id="height_cm"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="h-11 pr-10 md:h-10"
-                  value={values.height}
-                  aria-invalid={Boolean(shown.height_cm)}
-                  onChange={(e) => edit({ height: e.target.value }, 'height_cm')}
-                  onBlur={() => touch('height_cm')}
-                />
-              </Suffix>
+              <UnitInput
+                id="height_cm"
+                unit="cm"
+                className="h-11 md:h-10"
+                value={values.height}
+                aria-invalid={Boolean(shown.height_cm)}
+                onChange={(e) => edit({ height: e.target.value }, 'height_cm')}
+                onBlur={() => touch('height_cm')}
+              />
             </Field>
             <Field label="Cân nặng (kg)" htmlFor="weight_kg" error={shown.weight_kg}>
-              <Suffix unit="kg">
-                <Input
-                  id="weight_kg"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="h-11 pr-10 md:h-10"
-                  value={values.weight}
-                  aria-invalid={Boolean(shown.weight_kg)}
-                  onChange={(e) => edit({ weight: e.target.value }, 'weight_kg')}
-                  onBlur={() => touch('weight_kg')}
-                />
-              </Suffix>
+              <UnitInput
+                id="weight_kg"
+                unit="kg"
+                className="h-11 md:h-10"
+                value={values.weight}
+                aria-invalid={Boolean(shown.weight_kg)}
+                onChange={(e) => edit({ weight: e.target.value }, 'weight_kg')}
+                onBlur={() => touch('weight_kg')}
+              />
             </Field>
           </div>
-        </Section>
+        </FormSection>
 
         <section className="rounded-md border border-hairline bg-card">
           <button

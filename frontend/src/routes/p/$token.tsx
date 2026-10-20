@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { tokenSource } from '@/features/parent_portal/api'
 import { PortalPage } from '@/features/parent_portal/components/PortalPage'
 
 export const Route = createFileRoute('/p/$token')({
@@ -7,5 +9,6 @@ export const Route = createFileRoute('/p/$token')({
 
 function Page() {
   const { token } = Route.useParams()
-  return <PortalPage token={token} />
+  const source = useMemo(() => tokenSource(token), [token])
+  return <PortalPage source={source} />
 }

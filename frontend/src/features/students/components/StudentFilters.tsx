@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { useClasses, useProducts, useSchools } from '@/features/catalog/hooks'
 import { UNKNOWN_SIZE_LABEL } from '@/lib/sizes'
 import type { StudentListParams } from '../api'
-import { NativeSelect } from './NativeSelect'
+import { NativeSelect } from '@/components/NativeSelect'
 
 export type SearchPatch = Partial<StudentListParams>
 

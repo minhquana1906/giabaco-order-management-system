@@ -1,7 +1,10 @@
 import json
 import logging
 
-from app.core.logging import JsonFormatter, mask_text, mask_value
+import pytest
+from httpx import AsyncClient
+
+from app.core.logging import JsonFormatter, mask_path, mask_text, mask_value
 
 
 def test_mask_text_hides_email_and_phone() -> None:
@@ -33,3 +36,37 @@ def test_json_formatter_masks_message_and_ctx() -> None:
     assert "0912345678" not in out["message"]
     assert out["parent_email"] == "***"
     assert out["status"] == 200
+
+
+def test_mask_value_masks_parent_credentials() -> None:
+    assert mask_value({"identifier": "a@b.vn", "password": "secret-123"}) == {
+        "identifier": "***",
+        "password": "***",
+    }
+
+
+@pytest.mark.parametrize(
+    ("path", "masked"),
+    [
+        ("/p/abc-DEF_123", "/p/<token>"),
+        ("/api/public/students/abc", "/api/public/students/<token>"),
+        (
+            "/api/public/students/abc/size-choices/blazer",
+            "/api/public/students/<token>/size-choices/blazer",
+        ),
+        ("/api/students/1", "/api/students/1"),
+    ],
+)
+def test_mask_path_hides_portal_tokens(path: str, masked: str) -> None:
+    assert mask_path(path) == masked
+
+
+async def test_request_log_masks_the_spa_portal_token(
+    anon_client: AsyncClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.INFO, logger="app.request")
+
+    await anon_client.get("/p/secret-token-123")
+
+    paths = [rec.ctx["path"] for rec in caplog.records if rec.name == "app.request"]  # type: ignore[attr-defined]
+    assert paths == ["/p/<token>"]

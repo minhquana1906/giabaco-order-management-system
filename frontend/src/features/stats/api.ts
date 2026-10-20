@@ -54,6 +54,17 @@ export interface ClassMatrix {
   totals: { counts: Record<string, number>; unknown: number; total: number }
 }
 
+export interface OrderProduct {
+  product_code: string
+  product_name: string
+  sizes: { size_label: string; count: number }[]
+  total: number
+}
+
+export interface Orders {
+  products: OrderProduct[]
+}
+
 export const statsApi = {
   overview: (schoolId: string | undefined, signal?: AbortSignal) =>
     http.get<Overview>('/stats/overview', { school_id: schoolId }, signal),
@@ -61,4 +72,6 @@ export const statsApi = {
     http.get<SizeDistribution>('/stats/size-distribution', { product, school_id: schoolId }, signal),
   classMatrix: (product: string, schoolId: string, signal?: AbortSignal) =>
     http.get<ClassMatrix>('/stats/class-matrix', { product, school_id: schoolId }, signal),
+  orders: (schoolId: string | undefined, signal?: AbortSignal) =>
+    http.get<Orders>('/stats/orders', { school_id: schoolId }, signal),
 }

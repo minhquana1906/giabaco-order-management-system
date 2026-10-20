@@ -4,6 +4,7 @@ import enum
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -37,6 +38,11 @@ class Fit(enum.StrEnum):
     TOO_LOOSE = "TOO_LOOSE"
 
 
+class DataSource(enum.StrEnum):
+    ADMIN_MEASURED = "ADMIN_MEASURED"
+    PARENT_DECLARED = "PARENT_DECLARED"
+
+
 class Student(Base):
     __tablename__ = "students"
     __table_args__ = (
@@ -66,6 +72,11 @@ class Student(Base):
     parent_phone: Mapped[str | None] = mapped_column(Text)
     parent_email: Mapped[str | None] = mapped_column(Text)
     portal_token: Mapped[str] = mapped_column(Text, unique=True)
+    data_source: Mapped[DataSource] = mapped_column(
+        Enum(DataSource, name="data_source", native_enum=False, length=20),
+        default=DataSource.ADMIN_MEASURED,
+        server_default=DataSource.ADMIN_MEASURED.value,
+    )
     measured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -73,6 +84,24 @@ class Student(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+def student_snapshot(student: Student) -> dict[str, Any]:
+    """Audit payload of a student row, written by both the admin and the parent slice."""
+    return {
+        "school_id": str(student.school_id),
+        "class_id": str(student.class_id),
+        "full_name": student.full_name,
+        "dob": student.dob.isoformat(),
+        "gender": student.gender.value,
+        "height_cm": float(student.height_cm),
+        "weight_kg": float(student.weight_kg),
+        "parent_name": student.parent_name,
+        "parent_phone": student.parent_phone,
+        "parent_email": student.parent_email,
+        "data_source": student.data_source.value,
+        "deleted_at": student.deleted_at.isoformat() if student.deleted_at else None,
+    }
 
 
 class FittingTrial(Base):
