@@ -161,7 +161,7 @@ function SearchStep({
       </Panel>
       <ActionBar>
         <Button type="submit" size="lg" className={PARENT_ACTION_PRIMARY} disabled={pending}>
-          {pending ? 'Đang tìm…' : 'Tìm hồ sơ'}
+          {pending ? 'Đang kiểm tra…' : 'Kiểm tra hồ sơ'}
         </Button>
       </ActionBar>
     </form>

@@ -36,7 +36,7 @@ async function searchUntilConfirm(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByLabelText('Ngày'), '14')
   await user.selectOptions(screen.getByLabelText('Tháng'), '3')
   await user.selectOptions(screen.getByLabelText('Năm'), '2018')
-  await user.click(screen.getByRole('button', { name: 'Tìm hồ sơ' }))
+  await user.click(screen.getByRole('button', { name: 'Kiểm tra hồ sơ' }))
   await screen.findByRole('heading', { name: 'Xác nhận học sinh' })
 }
 
@@ -58,7 +58,7 @@ describe('AddChild', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Chưa nhận được hồ sơ')
 
     await user.click(screen.getByRole('button', { name: 'Không đúng' }))
-    await user.click(await screen.findByRole('button', { name: 'Tìm hồ sơ' }))
+    await user.click(await screen.findByRole('button', { name: 'Kiểm tra hồ sơ' }))
     await screen.findByRole('heading', { name: 'Xác nhận học sinh' })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
