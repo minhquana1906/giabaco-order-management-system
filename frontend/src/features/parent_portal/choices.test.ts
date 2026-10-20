@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { derivedSize, initialStep } from './choices'
+import { derivedSize, initialPicks, initialStep, pickChanges } from './choices'
 
 const product = { code: 'blazer', name: 'Áo Blazer', sizes: ['1', '2', '3', '4'] }
 const trial = (size_label: string, fit: 'FITS' | 'TOO_TIGHT' | 'TOO_LOOSE', product_code = 'blazer') => ({
@@ -28,5 +28,50 @@ describe('initialStep', () => {
   it('shows the overview once choices exist', () => {
     expect(initialStep(true, false)).toBe('overview')
     expect(initialStep(true, true)).toBe('overview')
+  })
+})
+
+const blazer = product
+const gile = { code: 'gile', name: 'Áo Gile', sizes: ['1', '2', '3', '4'] }
+const products = [blazer, gile]
+
+describe('initialPicks', () => {
+  it('leaves every product unanswered when nothing is saved', () => {
+    expect(initialPicks(products, {})).toEqual({ blazer: undefined, gile: undefined })
+  })
+  it('prefills saved choices, defaults a legacy null colour to navy and marks the rest as skipped', () => {
+    expect(initialPicks(products, { blazer: { size_label: '3', colour: null } })).toEqual({
+      blazer: { size_label: '3', colour: 'navy' },
+      gile: null,
+    })
+    expect(initialPicks(products, { blazer: { size_label: '3', colour: 'ghi' } }).blazer).toEqual({
+      size_label: '3',
+      colour: 'ghi',
+    })
+  })
+})
+
+describe('pickChanges', () => {
+  const saved = { blazer: { size_label: '3', colour: 'navy' as const } }
+  it('is empty when size and colour match what is saved', () => {
+    expect(pickChanges(products, { blazer: { size_label: '3', colour: 'navy' }, gile: null }, saved)).toEqual({})
+  })
+  it('detects a colour-only change', () => {
+    expect(pickChanges(products, { blazer: { size_label: '3', colour: 'ghi' }, gile: null }, saved)).toEqual({
+      blazer: { size_label: '3', colour: 'ghi' },
+    })
+  })
+  it('requires re-confirming a legacy choice that has no colour', () => {
+    expect(
+      pickChanges(products, { blazer: { size_label: '3', colour: 'navy' }, gile: null }, { blazer: { size_label: '3', colour: null } }),
+    ).toEqual({ blazer: { size_label: '3', colour: 'navy' } })
+  })
+  it('removes a saved product that is now skipped and ignores skipped unsaved ones', () => {
+    expect(pickChanges(products, { blazer: null, gile: null }, saved)).toStrictEqual({ blazer: undefined })
+  })
+  it('adds a newly picked product', () => {
+    expect(
+      pickChanges(products, { blazer: { size_label: '3', colour: 'navy' }, gile: { size_label: '2', colour: 'ghi' } }, saved),
+    ).toEqual({ gile: { size_label: '2', colour: 'ghi' } })
   })
 })

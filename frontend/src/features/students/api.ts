@@ -1,5 +1,6 @@
 import type { Fit } from '@/lib/fit'
 import { http } from '@/lib/http'
+import type { ProductColour } from '@/lib/productColour'
 
 export type Gender = 'MALE' | 'FEMALE'
 
@@ -41,6 +42,7 @@ export interface ParentChoice {
   product_code: string
   product_name: string
   size_label: string
+  colour: ProductColour | null
   chosen_at: string
 }
 

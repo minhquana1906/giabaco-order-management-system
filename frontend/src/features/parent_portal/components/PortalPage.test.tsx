@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/http'
 import type { PortalSource, PublicStudent } from '../api'
@@ -86,5 +87,37 @@ describe('PortalPage', () => {
     })
     renderPage(source)
     expect(await screen.findByRole('heading', { name: 'Liên kết không hợp lệ' })).toBeInTheDocument()
+  })
+
+  it('prefills a legacy choice with navy, requires re-confirming it, and saves the picked colour', async () => {
+    const choose = vi.fn(async () => ({ chosen_at: '2026-10-02T00:00:00Z' }))
+    const source = {
+      ...stubSource(async () => student({ choices: { blazer: { size_label: '2', colour: null } } })),
+      choose,
+    }
+    const user = userEvent.setup()
+    renderPage(source, { skipIdentity: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Đổi lựa chọn' }))
+    expect(screen.getByRole('radio', { name: 'Navy' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Cỡ 2' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Tiếp tục' })).toBeEnabled()
+
+    await user.click(screen.getByRole('radio', { name: 'Ghi' }))
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    expect(screen.getByText('Ghi')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Xác nhận đăng ký' }))
+    expect(choose).toHaveBeenCalledWith('blazer', { size_label: '2', colour: 'ghi' })
+  })
+
+  it('keeps continue disabled while the saved choice is unchanged', async () => {
+    const source = stubSource(async () => student({ choices: { blazer: { size_label: '2', colour: 'ghi' } } }))
+    const user = userEvent.setup()
+    renderPage(source, { skipIdentity: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Đổi lựa chọn' }))
+    expect(screen.getByRole('radio', { name: 'Ghi' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Tiếp tục' })).toBeDisabled()
   })
 })

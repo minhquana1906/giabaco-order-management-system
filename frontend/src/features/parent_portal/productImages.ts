@@ -1,9 +1,4 @@
-export type ProductColour = 'navy' | 'ghi'
-
-export const PRODUCT_COLOURS: { value: ProductColour; label: string }[] = [
-  { value: 'navy', label: 'Navy' },
-  { value: 'ghi', label: 'Ghi' },
-]
+import type { ProductColour } from '@/lib/productColour'
 
 const IMAGE_PRODUCTS = new Set(['blazer', 'gile'])
 

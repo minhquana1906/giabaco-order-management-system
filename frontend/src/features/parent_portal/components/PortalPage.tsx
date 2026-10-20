@@ -10,13 +10,13 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DEFAULT_COLOUR, colourLabel, type ProductColour } from '@/lib/productColour'
 import type { PortalSource, PublicProduct, PublicStudent } from '../api'
-import { derivedSize, initialStep } from '../choices'
-import { usePortalStudent, useSaveChoices, type ChoiceChanges } from '../hooks'
+import { derivedSize, initialPicks, initialStep, pickChanges, type Picks } from '../choices'
+import { usePortalStudent, useSaveChoices } from '../hooks'
 import { SIZE_CHARTS } from '../sizeCharts'
+import { ColourSelect } from './ColourSelect'
 import { ProductImageButton } from './ProductImageButton'
-
-const NONE = '__none__'
 
 type Step = 'identity' | 'help' | 'measure' | 'choose' | 'review' | 'overview'
 
@@ -250,26 +250,33 @@ function Choose({
   onNext,
 }: {
   s: PublicStudent
-  initial: Record<string, string>
+  initial: Picks
   onBack: () => void
-  onNext: (picked: Record<string, string>) => void
+  onNext: (picks: Picks) => void
 }) {
-  const [picked, setPicked] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      s.products.map((p) => [p.code, initial[p.code] ?? (Object.keys(initial).length ? NONE : '')]),
-    ),
+  const [picks, setPicks] = useState<Picks>(initial)
+  const [colours, setColours] = useState<Record<string, ProductColour>>(() =>
+    Object.fromEntries(s.products.map((p) => [p.code, initial[p.code]?.colour ?? DEFAULT_COLOUR])),
   )
-  const answered = s.products.every((p) => picked[p.code])
-  const sizes = s.products.map((p) => (picked[p.code] === NONE ? undefined : picked[p.code]))
+  const setSize = (code: string, size: string) =>
+    setPicks((v) => ({ ...v, [code]: { size_label: size, colour: colours[code] ?? DEFAULT_COLOUR } }))
+  const setColour = (code: string, colour: ProductColour) => {
+    setColours((v) => ({ ...v, [code]: colour }))
+    setPicks((v) => {
+      const current = v[code]
+      return current ? { ...v, [code]: { ...current, colour } } : v
+    })
+  }
+  const answered = s.products.every((p) => picks[p.code] !== undefined)
   const hasSaved = Object.keys(s.choices).length > 0
-  const unchanged = s.products.every((p, i) => sizes[i] === s.choices[p.code])
-  const anySize = sizes.some(Boolean)
+  const unchanged = Object.keys(pickChanges(s.products, picks, s.choices)).length === 0
+  const anySize = s.products.some((p) => picks[p.code])
   const hint = !answered
     ? null
     : hasSaved && unchanged
-      ? 'Lựa chọn chưa thay đổi so với lần đăng ký trước.'
+      ? 'Lựa chọn chưa thay đổi.'
       : !hasSaved && !anySize
-        ? 'Hãy chọn cỡ cho ít nhất một sản phẩm.'
+        ? 'Chưa chọn cỡ cho sản phẩm nào.'
         : null
   const ready = answered && !hint
   return (
@@ -280,6 +287,10 @@ function Choose({
         const suggested = derivedSize(p, s.trials)
         const guide = s.data_source === 'PARENT_DECLARED' ? (s.suggested_sizes[p.code] ?? null) : null
         const labelId = `prod-${p.code}`
+        const colourId = `colour-label-${p.code}`
+        const sizeId = `size-label-${p.code}`
+        const pick = picks[p.code]
+        const colour = colours[p.code] ?? DEFAULT_COLOUR
         return (
           <section key={p.code} className="flex flex-col gap-3 rounded-lg border border-hairline bg-white p-4">
             <h2 id={labelId} className="font-semibold text-navy">
@@ -291,12 +302,19 @@ function Choose({
               </p>
             ) : null}
             <div className="grid grid-cols-2 gap-2">
-              <SizeChartButton product={p} selected={picked[p.code]} className="w-full px-2 text-sm" />
-              <ProductImageButton product={p} gender={s.gender} className="w-full px-2 text-sm" />
+              <SizeChartButton product={p} selected={pick?.size_label} className="w-full px-2 text-sm" />
+              <ProductImageButton product={p} gender={s.gender} colour={colour} className="w-full px-2 text-sm" />
             </div>
-            <div role="radiogroup" aria-labelledby={labelId} className="grid grid-cols-3 gap-2">
+            <p id={colourId} className="text-sm font-medium text-muted-foreground">
+              Màu sắc
+            </p>
+            <ColourSelect productCode={p.code} labelledBy={`${labelId} ${colourId}`} value={colour} onChange={(c) => setColour(p.code, c)} />
+            <p id={sizeId} className="text-sm font-medium text-muted-foreground">
+              Cỡ
+            </p>
+            <div role="radiogroup" aria-labelledby={`${labelId} ${sizeId}`} className="grid grid-cols-3 gap-2">
               {p.sizes.map((size) => {
-                const on = picked[p.code] === size
+                const on = pick?.size_label === size
                 const hintText =
                   suggested === size ? 'Nhân viên đo thấy vừa' : guide === size ? 'Gợi ý theo bảng cỡ' : null
                 return (
@@ -313,7 +331,7 @@ function Choose({
                       name={p.code}
                       value={size}
                       checked={on}
-                      onChange={() => setPicked((v) => ({ ...v, [p.code]: size }))}
+                      onChange={() => setSize(p.code, size)}
                     />
                     <span>Cỡ {size}</span>
                     {hintText ? (
@@ -331,16 +349,16 @@ function Choose({
             <label
               className={cn(
                 'flex min-h-[52px] cursor-pointer items-center gap-3 rounded-md border px-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                picked[p.code] === NONE ? 'border-2 border-navy font-semibold' : 'border-input',
+                pick === null ? 'border-2 border-navy font-semibold' : 'border-input',
               )}
             >
               <input
                 type="radio"
                 className="size-5 accent-[var(--navy)]"
                 name={p.code}
-                value={NONE}
-                checked={picked[p.code] === NONE}
-                onChange={() => setPicked((v) => ({ ...v, [p.code]: NONE }))}
+                value=""
+                checked={pick === null}
+                onChange={() => setPicks((v) => ({ ...v, [p.code]: null }))}
               />
               Không đăng ký sản phẩm này
             </label>
@@ -355,7 +373,7 @@ function Choose({
           <Button variant="outline" size="lg" className="h-[52px] text-[17px]" onClick={onBack}>
             Quay lại
           </Button>
-          <Button size="lg" className="h-[52px] text-[17px]" disabled={!ready} onClick={() => onNext(picked)}>
+          <Button size="lg" className="h-[52px] text-[17px]" disabled={!ready} onClick={() => onNext(picks)}>
             Tiếp tục
           </Button>
         </div>
@@ -364,14 +382,24 @@ function Choose({
   )
 }
 
-function SelectionCard({ s, choices }: { s: PublicStudent; choices: Record<string, string | undefined> }) {
+function ChoiceValue({ size, colour }: { size: string; colour: ProductColour | null }) {
+  const label = colourLabel(colour)
+  return (
+    <span className="flex shrink-0 items-center gap-2">
+      <SizeLabel label={size} scale="lg" />
+      {label ? <span className="text-[15px] font-medium text-navy">{label}</span> : null}
+    </span>
+  )
+}
+
+function SelectionCard({ s, picks }: { s: PublicStudent; picks: Picks }) {
   return (
     <div className="rounded-lg border border-hairline bg-white px-5 py-4">
       <p className="text-[22px] font-semibold leading-tight text-navy">{s.full_name}</p>
       <p className="text-muted-foreground">Lớp {s.class_name}</p>
       <ul className="mt-2">
         {s.products.map((p) => {
-          const size = choices[p.code]
+          const pick = picks[p.code]
           return (
             <li
               key={p.code}
@@ -379,9 +407,9 @@ function SelectionCard({ s, choices }: { s: PublicStudent; choices: Record<strin
             >
               <span className="flex flex-col items-start gap-1">
                 {p.name}
-                <ProductImageButton product={p} gender={s.gender} className="h-11 px-3 text-sm" />
+                <ProductImageButton product={p} gender={s.gender} colour={pick?.colour ?? DEFAULT_COLOUR} className="h-11 px-3 text-sm" />
               </span>
-              {size ? <SizeLabel label={size} scale="lg" /> : <span className="text-muted-foreground">Không đăng ký</span>}
+              {pick ? <ChoiceValue size={pick.size_label} colour={pick.colour} /> : <span className="text-muted-foreground">Không đăng ký</span>}
             </li>
           )
         })}
@@ -399,19 +427,18 @@ function Review({
   onConfirm,
 }: {
   s: PublicStudent
-  picked: Record<string, string>
+  picked: Picks
   pending: boolean
   error: unknown
   onBack: () => void
   onConfirm: () => void
 }) {
-  const choices = Object.fromEntries(s.products.map((p) => [p.code, picked[p.code] === NONE ? undefined : picked[p.code]]))
   return (
     <>
       <StepDots n={3} />
       <h1 className="text-xl font-semibold text-navy">Xác nhận lựa chọn</h1>
       <p className="text-muted-foreground">Vui lòng kiểm tra lại trước khi đăng ký.</p>
-      <SelectionCard s={s} choices={choices} />
+      <SelectionCard s={s} picks={picked} />
       {error ? (
         <p role="alert" className="font-medium text-destructive">
           {requestErrorMessage(error, 'Chưa lưu được lựa chọn. Vui lòng thử lại.')}
@@ -448,7 +475,7 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
         </div>
         <ul className="rounded-lg border border-hairline bg-white px-5">
           {s.products.map((p) => {
-            const size = s.choices[p.code]
+            const choice = s.choices[p.code]
             const measured = derivedSize(p, s.trials)
             return (
               <li
@@ -461,8 +488,8 @@ function Overview({ s, onChange, onEdit }: { s: PublicStudent; onChange: () => v
                     <span className="text-sm text-muted-foreground">Nhân viên đo thấy vừa Cỡ {measured}</span>
                   ) : null}
                 </div>
-                {size ? (
-                  <SizeLabel label={size} scale="lg" />
+                {choice ? (
+                  <ChoiceValue size={choice.size_label} colour={choice.colour} />
                 ) : (
                   <span className="shrink-0 text-muted-foreground">Không đăng ký</span>
                 )}
@@ -541,7 +568,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
   const query = usePortalStudent(source)
   const save = useSaveChoices(source)
   const [stepState, setStep] = useState<Step | null>(null)
-  const [picked, setPicked] = useState<Record<string, string> | null>(null)
+  const [picked, setPicked] = useState<Picks | null>(null)
   const [success, setSuccess] = useState<Success | null>(null)
 
   useEffect(() => {
@@ -559,12 +586,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
 
   const submit = () => {
     if (!s || !picked) return
-    const changes: ChoiceChanges = {}
-    for (const p of s.products) {
-      const next = picked[p.code] === NONE ? undefined : picked[p.code]
-      if (next === s.choices[p.code]) continue
-      changes[p.code] = next
-    }
+    const changes = pickChanges(s.products, picked, s.choices)
     const first = Object.keys(s.choices).length === 0
     save.mutate(changes, {
       onSuccess: (savedAt) => {
@@ -600,7 +622,7 @@ export function PortalPage({ source, skipIdentity = false, notFound = LINK_NOT_F
     body = (
       <Choose
         s={s}
-        initial={picked ?? s.choices}
+        initial={picked ?? initialPicks(s.products, s.choices)}
         onBack={() => setStep(Object.keys(s.choices).length > 0 ? 'overview' : 'measure')}
         onNext={(p) => {
           save.reset()

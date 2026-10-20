@@ -4,6 +4,7 @@ import { Hotline, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { colourLabel } from '@/lib/productColour'
 import { requestErrorMessage } from '@/lib/requestError'
 import type { ChildSummary } from '../api'
 import { useChildren, useParentLogout, useParentMe } from '../hooks'
@@ -42,6 +43,7 @@ function ChildCard({ child }: { child: ChildSummary }) {
                 <li key={choice.product_code} className="flex items-center gap-2 text-[15px]">
                   <span className="text-muted-foreground">{choice.product_name}</span>
                   <SizeLabel label={choice.size_label} scale="md" />
+                  {colourLabel(choice.colour) ? <span className="font-medium text-navy">{colourLabel(choice.colour)}</span> : null}
                 </li>
               ))}
             </ul>

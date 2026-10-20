@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useProducts } from '@/features/catalog/hooks'
 import { formatCm, formatDate, formatDateTime, formatKg } from '@/lib/format'
+import { colourLabel } from '@/lib/productColour'
 import { ApiError } from '@/lib/http'
 import type { LinkedParent, StudentDetail } from '../api'
 import { useDeleteStudent, useStudent, useUnlinkParent } from '../hooks'
@@ -182,7 +183,8 @@ function Profile({ student }: { student: StudentDetail }) {
               <p className="border-t border-hairline pt-3 text-sm">
                 {choice ? (
                   <span className="flex flex-wrap items-center gap-2">
-                    Phụ huynh đã chọn <SizeLabel label={choice.size_label} /> · {formatDateTime(choice.chosen_at)}
+                    Phụ huynh đã chọn <SizeLabel label={choice.size_label} /> ·{' '}
+                    {[colourLabel(choice.colour), formatDateTime(choice.chosen_at)].filter(Boolean).join(' · ')}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">Phụ huynh chưa chọn</span>
