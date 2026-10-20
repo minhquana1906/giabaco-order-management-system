@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lensTravel, productImage } from './productImages'
+import { lensAt, productImage } from './productImages'
 
 describe('productImage', () => {
   it('maps product, gender and colour to the full and 900px webp sheets', () => {
@@ -15,14 +15,21 @@ describe('productImage', () => {
   })
 })
 
-describe('lensTravel', () => {
+describe('lensAt', () => {
   const rect = { left: 100, top: 50, width: 300, height: 200 }
-  it('maps the pointer to the lens travel range, centred in the middle', () => {
-    expect(lensTravel(250, 150, rect)).toEqual({ x: 0.5, y: 0.5 })
+  it('sizes the lens so the zoom fills a pane as tall as the image', () => {
+    const lens = lensAt(250, 150, rect, 600)
+    expect(lens.height).toBeCloseTo(0.3)
+    expect(lens.paneWidth).toBe(600)
+  })
+  it('centres the lens on the pointer in the middle', () => {
+    const { x, y } = lensAt(250, 150, rect, 600)
+    expect(x).toBeCloseTo(0.5)
+    expect(y).toBeCloseTo(0.5)
   })
   it('clamps the lens inside the image near the edges', () => {
-    expect(lensTravel(100, 50, rect)).toEqual({ x: 0, y: 0 })
-    expect(lensTravel(400, 250, rect)).toEqual({ x: 1, y: 1 })
-    expect(lensTravel(0, 0, rect)).toEqual({ x: 0, y: 0 })
+    expect(lensAt(100, 50, rect, 600)).toMatchObject({ x: 0, y: 0 })
+    expect(lensAt(400, 250, rect, 600)).toMatchObject({ x: 1, y: 1 })
+    expect(lensAt(0, 0, rect, 600)).toMatchObject({ x: 0, y: 0 })
   })
 })

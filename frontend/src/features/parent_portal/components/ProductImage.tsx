@@ -6,14 +6,11 @@ import { colourLabel, type ProductColour } from '@/lib/productColour'
 import { cn } from '@/lib/utils'
 import type { PublicProduct, PublicStudent } from '../api'
 import {
-  LENS_HEIGHT,
   LENS_WIDTH,
-  lensTravel,
-  PANE_WIDTH_RATIO,
+  lensAt,
   PRODUCT_IMAGE_ASPECT,
   productImage,
-  ZOOM_FACTOR,
-  type LensTravel,
+  type Lens,
   type ProductImageSources,
 } from '../productImages'
 
@@ -27,6 +24,7 @@ interface ProductImageProps {
 }
 
 const HOVER_DEVICE = 'hidden [@media(hover:hover)_and_(pointer:fine)]:md:block'
+const PANE_GAP = 16
 
 function describe(product: PublicProduct, gender: PublicStudent['gender'], colour: ProductColour) {
   return `${product.name} ${gender === 'MALE' ? 'nam' : 'nữ'}, màu ${colourLabel(colour)}`
@@ -74,7 +72,7 @@ function Lightbox({ image, label, title }: { image: ProductImageSources; label: 
 export function ProductImage({ product, gender, colour, sizes, magnifier = false, className }: ProductImageProps) {
   const image = productImage(product.code, gender, colour)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const [lens, setLens] = useState<LensTravel | null>(null)
+  const [lens, setLens] = useState<Lens | null>(null)
   if (!image) return null
 
   const label = describe(product, gender, colour)
@@ -88,7 +86,13 @@ export function ProductImage({ product, gender, colour, sizes, magnifier = false
 
   const track = (event: PointerEvent<HTMLButtonElement>) => {
     if (!magnifier || event.pointerType !== 'mouse') return
-    setLens(lensTravel(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect()))
+    const rect = event.currentTarget.getBoundingClientRect()
+    const section = event.currentTarget.closest('section')
+    const columnEnd = section
+      ? section.getBoundingClientRect().right - parseFloat(getComputedStyle(section).paddingRight)
+      : 0
+    const paneWidth = Math.max(columnEnd - rect.right - PANE_GAP, rect.width * 1.25)
+    setLens(lensAt(event.clientX, event.clientY, rect, paneWidth))
   }
 
   return (
@@ -121,9 +125,9 @@ export function ProductImage({ product, gender, colour, sizes, magnifier = false
                 className={cn('pointer-events-none absolute border border-navy/50 bg-navy/10', HOVER_DEVICE)}
                 style={{
                   left: `${lens.x * (1 - LENS_WIDTH) * 100}%`,
-                  top: `${lens.y * (1 - LENS_HEIGHT) * 100}%`,
+                  top: `${lens.y * (1 - lens.height) * 100}%`,
                   width: `${LENS_WIDTH * 100}%`,
-                  height: `${LENS_HEIGHT * 100}%`,
+                  height: `${lens.height * 100}%`,
                 }}
               />
             ) : null}
@@ -144,9 +148,9 @@ export function ProductImage({ product, gender, colour, sizes, magnifier = false
               HOVER_DEVICE,
             )}
             style={{
-              width: `${PANE_WIDTH_RATIO * 100}%`,
+              width: lens.paneWidth,
               backgroundImage: `url(${image.src})`,
-              backgroundSize: `${(ZOOM_FACTOR / PANE_WIDTH_RATIO) * 100}% auto`,
+              backgroundSize: `${100 / LENS_WIDTH}% auto`,
               backgroundPosition: `${lens.x * 100}% ${lens.y * 100}%`,
             }}
           />

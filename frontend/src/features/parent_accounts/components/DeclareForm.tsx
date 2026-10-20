@@ -96,8 +96,8 @@ export function DeclareForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:gap-8">
-      <div className="lg:max-w-[560px]">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:max-w-[560px] lg:gap-8">
+      <div>
         <Panel title="Học sinh">
           {summary}
           <Field id="class_id" label="Lớp" error={errors.class_id}>
