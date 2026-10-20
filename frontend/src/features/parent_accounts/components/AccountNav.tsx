@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronDown, LogOut, Plus } from 'lucide-react'
+import { ChevronDown, LogOut, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -34,7 +34,7 @@ export function AccountNav({ current }: { current: AccountSection }) {
       <div className="ml-auto flex items-center gap-2 lg:gap-3">
         <Button asChild variant="secondary" className="hidden h-10 px-4 text-[15px] md:inline-flex">
           <Link to="/parent/children/new" aria-current={current === 'add' ? 'page' : undefined}>
-            <Plus /> Thêm hồ sơ mới
+            <Search /> Kiểm tra hồ sơ
           </Link>
         </Button>
         <DropdownMenu>
@@ -68,7 +68,7 @@ export function AccountNav({ current }: { current: AccountSection }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild className={`${MENU_ITEM} md:hidden`}>
               <Link to="/parent/children/new" aria-current={current === 'add' ? 'page' : undefined}>
-                <Plus /> Thêm hồ sơ mới
+                <Search /> Kiểm tra hồ sơ
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="md:hidden" />

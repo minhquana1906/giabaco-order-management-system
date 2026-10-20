@@ -161,7 +161,7 @@ function SearchStep({
       </Panel>
       <ActionBar>
         <Button type="submit" size="lg" className={PARENT_ACTION_PRIMARY} disabled={pending}>
-          {pending ? 'Đang kiểm tra…' : 'Kiểm tra hồ sơ'}
+          {pending ? 'Đang kiểm tra…' : 'Kiểm tra'}
         </Button>
       </ActionBar>
     </form>
@@ -318,7 +318,7 @@ export function AddChild() {
   } else {
     body = (
       <>
-        <PageHead title="Thêm hồ sơ mới" />
+        <PageHead title="Kiểm tra hồ sơ học sinh" />
         <SearchStep value={key} notice={notice} pending={lookup.isPending} error={lookup.error} onChange={setKey} onSubmit={search} />
       </>
     )

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, Plus, UserPlus } from 'lucide-react'
+import { ChevronRight, Search, UserPlus } from 'lucide-react'
 import { ActionBar, PageHead, Panel } from '@/components/ParentPage'
 import { LoadError, PARENT_ACTION_PRIMARY, PARENT_BTN, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
@@ -15,7 +15,7 @@ function AddChildLink({ className }: { className: string }) {
   return (
     <Button asChild size="lg" className={className}>
       <Link to="/parent/children/new">
-        <Plus /> Thêm hồ sơ mới
+        <Search /> Kiểm tra hồ sơ
       </Link>
     </Button>
   )
