@@ -29,21 +29,6 @@ export function ContactActions() {
   )
 }
 
-export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
-  return (
-    <p className="text-muted-foreground">
-      <span className="block">{lead}</span>
-      <span className="block">
-        Vui lòng liên hệ Giabaco (
-        <a className="inline-flex min-h-11 items-center font-semibold text-navy underline" href={`tel:${HOTLINE}`}>
-          {HOTLINE}
-        </a>
-        ).
-      </span>
-    </p>
-  )
-}
-
 export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-col gap-4">
