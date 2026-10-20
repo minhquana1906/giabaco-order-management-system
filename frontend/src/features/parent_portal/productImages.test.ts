@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { productImageSrc } from './productImages'
+import { productImage } from './productImages'
 
-describe('productImageSrc', () => {
-  it('maps product, gender and colour to the sheet file', () => {
-    expect(productImageSrc('blazer', 'MALE', 'navy')).toBe('/products/blazer_nam_navy.jpg')
-    expect(productImageSrc('gile', 'FEMALE', 'ghi')).toBe('/products/gile_nu_ghi.jpg')
+describe('productImage', () => {
+  it('maps product, gender and colour to the full and 900px webp sheets', () => {
+    expect(productImage('blazer', 'MALE', 'navy')).toEqual({
+      src: '/products/blazer_nam_navy.webp',
+      thumb: '/products/blazer_nam_navy_900.webp',
+      srcSet: '/products/blazer_nam_navy_900.webp 900w, /products/blazer_nam_navy.webp 1600w',
+    })
+    expect(productImage('gile', 'FEMALE', 'ghi')?.src).toBe('/products/gile_nu_ghi.webp')
   })
   it('returns null for products without a sheet', () => {
-    expect(productImageSrc('cravat', 'MALE', 'navy')).toBeNull()
+    expect(productImage('cravat', 'MALE', 'navy')).toBeNull()
   })
 })
