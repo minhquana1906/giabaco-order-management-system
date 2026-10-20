@@ -122,7 +122,7 @@ export function ProductImage({ product, gender, colour, sizes, magnifier = false
               <span
                 aria-hidden="true"
                 data-slot="product-lens"
-                className={cn('pointer-events-none absolute border border-navy/50 bg-navy/10', HOVER_DEVICE)}
+                className={cn('pointer-events-none absolute border border-navy/60 bg-white/40', HOVER_DEVICE)}
                 style={{
                   left: `${lens.x * (1 - LENS_WIDTH) * 100}%`,
                   top: `${lens.y * (1 - lens.height) * 100}%`,
