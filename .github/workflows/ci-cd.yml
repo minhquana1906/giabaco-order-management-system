@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Commit, tag or branch to deploy (use an older commit to roll back)
+        description: Commit on main to deploy. Rolling back only works to a commit with the same migration head; otherwise restore the predeploy dump first
         required: false
         default: main
 
@@ -106,6 +106,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.REF }}
+          fetch-depth: 0
+      - name: Only deploy commits already on main
+        run: git merge-base --is-ancestor HEAD origin/main
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
