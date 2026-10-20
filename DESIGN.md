@@ -248,13 +248,18 @@ Bảng dày đặc: `text-[13px]`, `min-w-[640px]`, cuộn ngang trong card có 
 
 Breakpoints theo mặc định Tailwind: `sm` 640, `md` 768, `lg` 1024 (điểm đổi shell), `xl` 1280.
 
-### Trang phụ huynh (`ParentShell`)
+### Trang phụ huynh (`ParentShell`, `ParentPage`)
 
-Dưới `lg` là một cột `max-w-[480px]`, một tay, nút cao 52px. Từ `lg` (1024px) trang chuyển sang bố cục desktop trong cùng một shell:
-- Header trắng viền piping 3px, container `max-w-[1040px]`: wordmark bên trái, `AccountNav` (Thông tin học sinh, Thêm hồ sơ mới) cạnh đó, tên tài khoản và Đăng xuất bên phải.
-- Chiều rộng nội dung theo bước: `sm` 520px (đăng nhập, xác nhận học sinh, tìm hồ sơ; bọc trong panel trắng viền hairline, canh giữa dọc), `md` 760px (đăng ký, số đo, xác nhận lựa chọn, form khai báo), `lg` 1040px (danh sách học sinh, chọn cỡ, tổng quan).
-- Danh sách học sinh: `grid-cols-3`. Tổng quan: hai cột 2fr / 3fr (thẻ học sinh và số đo bên trái, cỡ đã chọn bên phải). Form khai báo và đăng ký: hai cột; hàng nút hành động căn phải, nút chính ở ngoài cùng bên phải.
-- Bước chọn cỡ: mỗi sản phẩm là hai cột, ảnh sản phẩm (đổi theo màu và giới tính) bên trái, bảng thông số, `ColourSelect` Navy/Ghi, lưới cỡ bên phải; dưới `lg` ảnh nằm trong dialog. Thanh nút dính đáy chỉ có trên mobile.
+Một shell, một mẫu trang. Dưới `md` (768) là một cột, nút cao 52px, thanh hành động dính đáy; từ `md` panel và lưới hai cột; từ `lg` (1024) header đầy đủ và bố cục desktop. Container tối đa `1120px`, padding ngang 16 / 24 / 32px.
+
+- **Header:** thân navy (`on-navy`), viền piping 3px ở đáy, cao 56px (`lg` 64px), cùng ngôn ngữ với sidebar admin. Trái: wordmark `G-UNIFORM` / `by GIABACO · EDUCHIC` (link về danh sách khi đã đăng nhập). Phải: nút phụ trắng `Thêm hồ sơ mới` (từ `md`) và menu tài khoản (avatar viết tắt tên + tên + chevron) mở dropdown phẳng có `Đăng xuất`; dưới `md` menu này chứa luôn `Thông tin học sinh` và `Thêm hồ sơ mới`. Từ `md` có mục nav `Thông tin học sinh`, trạng thái đang mở là nền `white/8` cộng thanh brass 3px ở đáy. Đường piping là đường may của chính header navy, không còn là một vạch đỏ lẻ trên nền trắng. Trang đăng nhập, đăng ký và `/p/:token` chỉ có wordmark.
+- **Footer:** nền trắng, viền hairline trên; logo Giabaco, hotline và email là liên kết `tel:` / `mailto:`. Đây là chỗ duy nhất cho hỗ trợ; không còn câu "Cần hỗ trợ?" lơ lửng cuối trang.
+- **Mẫu trang con (`PageHead` → nội dung → `ActionBar`):** `PageHead` đặt tên học sinh 26 / 32px weight 600 navy, dòng `Lớp · Trường` lining, bên phải `Stepper` 3 bước (hoặc `StatusPill` ở màn tổng quan), viền hairline dưới. Nội dung là `Panel` (card hairline, tiêu đề 18px, hành động của panel đặt trong chân panel). `ActionBar` là hàng hành động duy nhất của trang: dính đáy dưới `lg`, tĩnh và canh phải từ `lg`, nút chính ngoài cùng bên phải, `Quay lại` bên trái nó.
+- **Chiều rộng:** `narrow` 480 / 520 (xác nhận học sinh QR, hỗ trợ, đăng nhập), `form` 760 (đăng ký, tìm hồ sơ, xác nhận hồ sơ), `wide` 1120 (danh sách, số đo, chọn cỡ, xác nhận lựa chọn, tổng quan, form khai báo / sửa).
+- **Tổng quan:** hai cột 3fr / 2fr từ `lg`: `Cỡ đã chọn` (mỗi dòng tên sản phẩm, chấm màu + tên màu, nhãn dệt cỡ; nút `Đổi lựa chọn` ở chân panel) và `Số đo` (nút `Sửa thông tin` ở chân panel). Trạng thái `Đã đăng ký` là pill navy đặc.
+- **Số đo:** `Số đo` 340px bên trái, kết quả thử áo theo sản phẩm tự chia cột bên phải; dòng `Vừa` đậm navy, `Chật` / `Rộng` lining.
+- **Chọn cỡ:** mỗi sản phẩm một panel: ảnh thu nhỏ bên trái (88px mobile, 220px `md`, 300px `lg`), tên sản phẩm và `Xem bảng thông số` ở trên, `ColourSelect` rồi lưới cỡ `auto-fit minmax(68px, 1fr)`. Ảnh là nút mở lightbox: hover / focus hiện kính lúp tròn navy và nền `navy/10`, `cursor-zoom-in`, trên thiết bị không hover kính lúp luôn hiện. Lightbox là dialog gần toàn màn hình, ảnh `webp` 1600px vừa khung, nút `Phóng to` đổi sang kích thước thật và cuộn để xem chi tiết; `Esc` đóng.
+- **Gợi ý cỡ:** khi chưa có lựa chọn đã lưu, cỡ gợi ý được chọn sẵn và mang chip `Gợi ý` (bảng cỡ, tên truy cập có thêm "theo bảng cỡ") hoặc `Thử vừa` (nhân viên đo thấy vừa) đè lên mép trên ô. Màu không bao giờ được chọn sẵn; lựa chọn cũ có `colour = null` giữ ô màu trống, và bấm `Tiếp tục` khi thiếu màu thì viền piping + `Chọn màu` hiện dưới nhóm màu.
 - Không thêm câu hướng dẫn, trấn an hay mô tả phụ vào trang phụ huynh; chỉ giữ nhãn, lỗi thật và thông tin trạng thái.
 
 ## Elevation & Depth
