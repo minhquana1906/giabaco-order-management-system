@@ -30,7 +30,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
   }
 
   return (
-    <ParentShell>
+    <ParentShell panel>
       <ParentHeading title="Đăng nhập" />
       <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
         <Field id="identifier" label="Email hoặc số điện thoại" error={errors.identifier}>

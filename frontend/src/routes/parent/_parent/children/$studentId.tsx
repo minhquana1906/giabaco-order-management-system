@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { AccountNav } from '@/features/parent_accounts/components/AccountNav'
 import { EditChild } from '@/features/parent_accounts/components/EditChild'
 import { childPortalSource } from '@/features/parent_accounts/hooks'
 import { PortalPage } from '@/features/parent_portal/components/PortalPage'
@@ -42,6 +43,7 @@ function ChildPage({ studentId }: { studentId: string }) {
   return (
     <PortalPage
       source={source}
+      actions={<AccountNav />}
       skipIdentity
       notFound={CHILD_NOT_FOUND}
       onBack={() => void navigate({ to: '/parent' })}

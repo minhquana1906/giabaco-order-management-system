@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 interface ControlProps {
   id: string
@@ -11,13 +12,14 @@ interface FieldProps {
   id: string
   label: string
   error?: string
+  className?: string
   children: (control: ControlProps) => ReactNode
 }
 
-export function Field({ id, label, error, children }: FieldProps) {
+export function Field({ id, label, error, className, children }: FieldProps) {
   const describedBy = error ? `${id}-error` : undefined
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn('flex flex-col gap-2', className)}>
       <Label htmlFor={id} className="text-base">
         {label}
       </Label>

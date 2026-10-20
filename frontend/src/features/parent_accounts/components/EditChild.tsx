@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/http'
 import type { PublicStudent } from '@/features/parent_portal/api'
 import { useChildren, useUpdateChild } from '../hooks'
+import { AccountNav } from './AccountNav'
 import { DeclareForm } from './DeclareForm'
 
 interface EditChildProps {
@@ -79,7 +80,7 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
   }
 
   return (
-    <ParentShell onBack={onClose} backLabel="Hồ sơ học sinh">
+    <ParentShell actions={<AccountNav />} onBack={onClose} backLabel="Hồ sơ học sinh" width="md">
       {body}
     </ParentShell>
   )

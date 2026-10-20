@@ -248,6 +248,15 @@ Bảng dày đặc: `text-[13px]`, `min-w-[640px]`, cuộn ngang trong card có 
 
 Breakpoints theo mặc định Tailwind: `sm` 640, `md` 768, `lg` 1024 (điểm đổi shell), `xl` 1280.
 
+### Trang phụ huynh (`ParentShell`)
+
+Dưới `lg` là một cột `max-w-[480px]`, một tay, nút cao 52px. Từ `lg` (1024px) trang chuyển sang bố cục desktop trong cùng một shell:
+- Header trắng viền piping 3px, container `max-w-[1040px]`: wordmark bên trái, `AccountNav` (Thông tin học sinh, Thêm hồ sơ mới) cạnh đó, tên tài khoản và Đăng xuất bên phải.
+- Chiều rộng nội dung theo bước: `sm` 520px (đăng nhập, xác nhận học sinh, tìm hồ sơ; bọc trong panel trắng viền hairline, canh giữa dọc), `md` 760px (đăng ký, số đo, xác nhận lựa chọn, form khai báo), `lg` 1040px (danh sách học sinh, chọn cỡ, tổng quan).
+- Danh sách học sinh: `grid-cols-3`. Tổng quan: hai cột 2fr / 3fr (thẻ học sinh và số đo bên trái, cỡ đã chọn bên phải). Form khai báo và đăng ký: hai cột; hàng nút hành động căn phải, nút chính ở ngoài cùng bên phải.
+- Bước chọn cỡ: mỗi sản phẩm là hai cột, ảnh sản phẩm (đổi theo màu và giới tính) bên trái, bảng thông số, `ColourSelect` Navy/Ghi, lưới cỡ bên phải; dưới `lg` ảnh nằm trong dialog. Thanh nút dính đáy chỉ có trên mobile.
+- Không thêm câu hướng dẫn, trấn an hay mô tả phụ vào trang phụ huynh; chỉ giữ nhãn, lỗi thật và thông tin trạng thái.
+
 ## Elevation & Depth
 
 Hệ thống **phẳng**. Không có một `box-shadow` khuếch tán nào trong code ứng dụng. Độ sâu đến từ ba cơ chế: hairline `#E3E6EC` quanh mọi bề mặt, ba bậc tint navy rất nhạt (`#E9EDF6` / `#EEF1F7` / `#F1F3F7`) cho nền phụ và hover, và độ đậm của chính dữ liệu trong ô heat.

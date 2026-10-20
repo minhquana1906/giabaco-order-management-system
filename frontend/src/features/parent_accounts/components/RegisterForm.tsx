@@ -54,10 +54,15 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
       : null
 
   return (
-    <ParentShell>
+    <ParentShell width="md" panel>
       <ParentHeading title="Tạo tài khoản" />
-      <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
-        <Field id="full_name" label="Họ và tên" error={errors.full_name}>
+      <form
+        ref={formRef}
+        onSubmit={submit}
+        noValidate
+        className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-5"
+      >
+        <Field id="full_name" label="Họ và tên" error={errors.full_name} className="lg:col-start-1 lg:row-start-1">
           {(control) => (
             <Input
               {...control}
@@ -69,7 +74,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
             />
           )}
         </Field>
-        <Field id="email" label="Email" error={errors.email}>
+        <Field id="email" label="Email" error={errors.email} className="lg:col-start-1 lg:row-start-2">
           {(control) => (
             <Input
               {...control}
@@ -85,7 +90,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
             />
           )}
         </Field>
-        <Field id="phone" label="Số điện thoại" error={errors.phone}>
+        <Field id="phone" label="Số điện thoại" error={errors.phone} className="lg:col-start-2 lg:row-start-1">
           {(control) => (
             <Input
               {...control}
@@ -99,7 +104,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
             />
           )}
         </Field>
-        <Field id="password" label="Mật khẩu" error={errors.password}>
+        <Field id="password" label="Mật khẩu" error={errors.password} className="lg:col-start-2 lg:row-start-2">
           {(control) => (
             <PasswordInput
               {...control}
@@ -112,11 +117,11 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
           )}
         </Field>
         {formError ? (
-          <p role="alert" className="font-medium text-destructive">
+          <p role="alert" className="font-medium text-destructive lg:col-span-2">
             {formError}
           </p>
         ) : null}
-        <Button type="submit" size="lg" className={PARENT_BTN} disabled={register.isPending}>
+        <Button type="submit" size="lg" className={`${PARENT_BTN} lg:col-span-2`} disabled={register.isPending}>
           {register.isPending ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}
         </Button>
       </form>

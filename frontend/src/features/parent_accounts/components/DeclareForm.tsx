@@ -4,7 +4,7 @@ import { FormSection } from '@/components/FormSection'
 import { GenderToggle } from '@/components/GenderToggle'
 import { NativeSelect } from '@/components/NativeSelect'
 import { UnitInput } from '@/components/UnitInput'
-import { LoadError, PARENT_BTN, PARENT_CONTROL } from '@/components/ParentShell'
+import { LoadError, PARENT_BTN_INLINE, PARENT_CONTROL } from '@/components/ParentShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -101,10 +101,15 @@ export function DeclareForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5">
-      <Field id="class_id" label="Lớp" error={errors.class_id}>
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-6">
+      <Field id="class_id" label="Lớp" error={errors.class_id} className="lg:col-start-1">
         {(control) => (
-          <NativeSelect {...control} className={PARENT_CONTROL} value={values.class_id} onChange={(e) => set('class_id', e.target.value)}>
+          <NativeSelect
+            {...control}
+            className={PARENT_CONTROL}
+            value={values.class_id}
+            onChange={(e) => set('class_id', e.target.value)}
+          >
             <option value="">Chọn lớp</option>
             {classes.data.map((c) => (
               <option key={c.id} value={c.id}>
@@ -114,7 +119,7 @@ export function DeclareForm({
           </NativeSelect>
         )}
       </Field>
-      <FormSection title="Học sinh">
+      <FormSection title="Học sinh" className="lg:col-start-1">
         <GenderToggle
           value={values.gender}
           error={errors.gender}
@@ -151,7 +156,7 @@ export function DeclareForm({
           </Field>
         </div>
       </FormSection>
-      <FormSection title="Người liên hệ">
+      <FormSection title="Người liên hệ" className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <Field id="parent_phone" label="Số điện thoại" error={errors.parent_phone}>
           {(control) => (
             <Input
@@ -196,16 +201,23 @@ export function DeclareForm({
         </Field>
       </FormSection>
       {formError ? (
-        <p role="alert" className="font-medium text-destructive">
+        <p role="alert" className="font-medium text-destructive lg:col-span-2">
           {formError}
         </p>
       ) : null}
-      <div className="mt-auto flex flex-col gap-3">
-        <Button type="submit" size="lg" className={PARENT_BTN} disabled={pending}>
+      <div className="mt-auto flex flex-col gap-3 lg:col-span-2 lg:mt-0 lg:flex-row-reverse lg:justify-start">
+        <Button type="submit" size="lg" className={PARENT_BTN_INLINE} disabled={pending}>
           {pending ? pendingLabel : submitLabel}
         </Button>
         {secondary ? (
-          <Button type="button" variant="outline" size="lg" className={PARENT_BTN} disabled={pending} onClick={secondary.onClick}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className={PARENT_BTN_INLINE}
+            disabled={pending}
+            onClick={secondary.onClick}
+          >
             {secondary.label}
           </Button>
         ) : null}

@@ -1,17 +1,24 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, LogOut, Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { Hotline, PARENT_BTN, ParentHeading, ParentShell } from '@/components/ParentShell'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { colourLabel } from '@/lib/productColour'
 import { requestErrorMessage } from '@/lib/requestError'
+import { cn } from '@/lib/utils'
 import type { ChildSummary } from '../api'
-import { useChildren, useParentLogout } from '../hooks'
+import { useChildren } from '../hooks'
+import { AccountNav } from './AccountNav'
 
-function AddChildButton({ primary }: { primary: boolean }) {
+function AddChildButton({ primary, className }: { primary: boolean; className?: string }) {
   return (
-    <Button asChild size="lg" variant={primary ? 'default' : 'outline'} className={PARENT_BTN}>
+    <Button
+      asChild
+      size="lg"
+      variant={primary ? 'default' : 'outline'}
+      className={cn(PARENT_BTN, 'lg:w-auto lg:min-w-[220px] lg:self-start', className)}
+    >
       <Link to="/parent/children/new">
         <Plus /> Thêm hồ sơ mới
       </Link>
@@ -21,11 +28,11 @@ function AddChildButton({ primary }: { primary: boolean }) {
 
 function ChildCard({ child }: { child: ChildSummary }) {
   return (
-    <li>
+    <li className="lg:h-full">
       <Link
         to="/parent/children/$studentId"
         params={{ studentId: child.student_id }}
-        className="flex min-h-11 items-center gap-3 rounded-lg border border-hairline bg-white px-5 py-4 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex min-h-11 items-center gap-3 lg:h-full rounded-lg border border-hairline bg-white px-5 py-4 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div>
@@ -43,7 +50,9 @@ function ChildCard({ child }: { child: ChildSummary }) {
                 <li key={choice.product_code} className="flex items-center gap-2 text-[15px]">
                   <span className="text-muted-foreground">{choice.product_name}</span>
                   <SizeLabel label={choice.size_label} scale="md" />
-                  {colourLabel(choice.colour) ? <span className="font-medium text-navy">{colourLabel(choice.colour)}</span> : null}
+                  {colourLabel(choice.colour) ? (
+                    <span className="font-medium text-navy">{colourLabel(choice.colour)}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -59,18 +68,11 @@ function ChildCard({ child }: { child: ChildSummary }) {
 
 export function ChildrenList() {
   const children = useChildren()
-  const logout = useParentLogout()
-
-  const logoutButton = (
-    <Button type="button" variant="ghost" className="h-11 min-w-11 px-3 text-base" disabled={logout.isPending} onClick={() => logout.mutate()}>
-      <LogOut aria-hidden="true" /> <span className="sr-only sm:not-sr-only">Đăng xuất</span>
-    </Button>
-  )
 
   let body
   if (children.isPending) {
     body = (
-      <div role="status" aria-label="Đang tải" className="flex flex-col gap-3">
+      <div role="status" aria-label="Đang tải" className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
         <Skeleton className="h-28 w-full" />
         <Skeleton className="h-28 w-full" />
       </div>
@@ -92,7 +94,7 @@ export function ChildrenList() {
         <div className="rounded-lg border border-dashed border-input bg-white px-5 py-6">
           <p className="text-lg font-semibold text-navy">Chưa có hồ sơ</p>
         </div>
-        <div className="mt-auto">
+        <div className="mt-auto lg:mt-0">
           <AddChildButton primary />
         </div>
       </div>
@@ -100,13 +102,13 @@ export function ChildrenList() {
   } else {
     body = (
       <>
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
           {children.data.map((child) => (
             <ChildCard key={child.student_id} child={child} />
           ))}
         </ul>
-        <div className="mt-auto flex flex-col gap-3">
-          <AddChildButton primary={false} />
+        <div className="mt-auto flex flex-col gap-3 lg:mt-0">
+          <AddChildButton primary={false} className="lg:hidden" />
           <Hotline />
         </div>
       </>
@@ -114,7 +116,7 @@ export function ChildrenList() {
   }
 
   return (
-    <ParentShell actions={logoutButton}>
+    <ParentShell actions={<AccountNav logoutOnMobile />} width="lg">
       <ParentHeading title="Thông tin học sinh" />
       {body}
     </ParentShell>

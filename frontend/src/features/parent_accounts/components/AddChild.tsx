@@ -25,6 +25,7 @@ import {
 } from '../addChildLogic'
 import type { ChildKey, DeclaredBody } from '../api'
 import { useClaimChild, useCreateChild, useLookupChild, useParentSchools } from '../hooks'
+import { AccountNav } from './AccountNav'
 import { DeclareForm } from './DeclareForm'
 
 const EMPTY_KEY: ChildKey = { school_id: '', full_name: '', dob: '' }
@@ -310,7 +311,13 @@ export function AddChild() {
   }
 
   return (
-    <ParentShell onBack={() => void navigate({ to: '/parent' })} focusKey={step}>
+    <ParentShell
+      actions={<AccountNav />}
+      onBack={() => void navigate({ to: '/parent' })}
+      focusKey={step}
+      width={step === 'declare' ? 'md' : 'sm'}
+      panel={step !== 'declare'}
+    >
       {body}
     </ParentShell>
   )

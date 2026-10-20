@@ -1,11 +1,14 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronLeft, Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const HOTLINE = '0835352004'
 const SUPPORT_EMAIL = 'Guniform2026@gmail.com'
 
 export const PARENT_BTN = 'h-[52px] w-full text-[17px]'
+export const PARENT_BTN_INLINE = `${PARENT_BTN} lg:w-auto lg:min-w-[220px]`
+export const PARENT_ACTIONS = 'mt-auto flex flex-col gap-3 lg:mt-0 lg:flex-row-reverse lg:justify-start'
 export const PARENT_CONTROL = 'h-12 text-[17px]'
 
 export function ContactActions() {
@@ -43,7 +46,7 @@ export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
 export function ParentHeading({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <h1 className="text-2xl font-semibold text-navy">{title}</h1>
+      <h1 className="text-2xl font-semibold text-navy lg:text-3xl">{title}</h1>
       {children ? <p className="text-balance text-muted-foreground">{children}</p> : null}
     </div>
   )
@@ -61,15 +64,33 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
   )
 }
 
+type ParentWidth = 'sm' | 'md' | 'lg'
+
+const MAIN_WIDTH: Record<ParentWidth, string> = {
+  sm: 'lg:max-w-[520px]',
+  md: 'lg:max-w-[760px]',
+  lg: 'lg:max-w-[1040px]',
+}
+
 interface ParentShellProps {
   children: ReactNode
   actions?: ReactNode
   onBack?: () => void
   backLabel?: string
   focusKey?: string
+  width?: ParentWidth
+  panel?: boolean
 }
 
-export function ParentShell({ children, actions, onBack, backLabel = 'Thông tin học sinh', focusKey }: ParentShellProps) {
+export function ParentShell({
+  children,
+  actions,
+  onBack,
+  backLabel = 'Thông tin học sinh',
+  focusKey,
+  width = 'sm',
+  panel = false,
+}: ParentShellProps) {
   const mainRef = useRef<HTMLElement>(null)
   const firstKey = useRef(focusKey)
 
@@ -82,20 +103,35 @@ export function ParentShell({ children, actions, onBack, backLabel = 'Thông tin
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-[17px] leading-relaxed">
-      <header className="border-b border-hairline bg-white">
-        <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3">
+      <header className="border-b border-hairline bg-white lg:border-b-[3px] lg:border-piping">
+        <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3 lg:max-w-[1040px] lg:px-8 lg:py-3.5">
           <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto shrink-0" />
-          <span className="whitespace-nowrap text-sm font-semibold tracking-[0.18em] sm:text-base text-navy">G-UNIFORM</span>
-          {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
+          <span className="whitespace-nowrap text-sm font-semibold tracking-[0.18em] sm:text-base text-navy">
+            G-UNIFORM
+          </span>
+          {actions}
         </div>
       </header>
-      <main ref={mainRef} className="mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-6 px-4 py-6 [&_h1:focus]:outline-none">
+      <main
+        ref={mainRef}
+        className={cn(
+          'mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-6 px-4 py-6 lg:gap-8 lg:px-8 lg:py-10 [&_h1:focus]:outline-none',
+          MAIN_WIDTH[width],
+        )}
+      >
         {onBack ? (
           <Button type="button" variant="ghost" className="-ml-3 -mb-2 h-11 self-start px-3 text-base" onClick={onBack}>
             <ChevronLeft /> {backLabel}
           </Button>
         ) : null}
-        {children}
+        <div
+          className={cn(
+            'flex flex-1 flex-col gap-6',
+            panel && 'lg:my-auto lg:flex-none lg:rounded-lg lg:border lg:border-hairline lg:bg-white lg:p-8',
+          )}
+        >
+          {children}
+        </div>
       </main>
     </div>
   )
