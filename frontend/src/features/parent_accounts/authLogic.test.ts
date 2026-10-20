@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { safeParentRedirect, toRegisterBody, validateLogin, validateRegister } from './authLogic'
+import { initialsOf, safeParentRedirect, toRegisterBody, validateLogin, validateRegister } from './authLogic'
 
 const valid = { full_name: 'Nguyễn Thị Lan', email: 'lan@example.com', phone: '', password: 'matkhau123' }
 
@@ -52,5 +52,16 @@ describe('validateLogin', () => {
   it('requires both fields', () => {
     expect(Object.keys(validateLogin({ identifier: ' ', password: '' })).sort()).toEqual(['identifier', 'password'])
     expect(validateLogin({ identifier: 'lan@example.com', password: 'x' })).toEqual({})
+  })
+})
+
+describe('initialsOf', () => {
+  it('uses the first and last word, upper-cased with Vietnamese diacritics kept', () => {
+    expect(initialsOf('Nguyễn Văn An')).toBe('NA')
+    expect(initialsOf('  đỗ  lan ')).toBe('ĐL')
+  })
+  it('falls back to one letter for a single word and empty for blank', () => {
+    expect(initialsOf('Lan')).toBe('L')
+    expect(initialsOf('  ')).toBe('')
   })
 })

@@ -60,3 +60,9 @@ export function safeParentRedirect(value: unknown): string | undefined {
   const isParentPath = value === '/parent' || /^\/parent[/?#]/.test(value)
   return isParentPath && !value.startsWith('//') ? value : undefined
 }
+
+export function initialsOf(fullName: string): string {
+  const words = fullName.trim().split(/\s+/).filter(Boolean)
+  const letters = words.length > 1 ? [words[0], words[words.length - 1]] : words
+  return letters.map((w) => w!.charAt(0).toLocaleUpperCase('vi')).join('')
+}

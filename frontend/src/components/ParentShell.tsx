@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { ChevronLeft, Mail, Phone } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Mail, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -7,9 +8,9 @@ const HOTLINE = '0835352004'
 const SUPPORT_EMAIL = 'Guniform2026@gmail.com'
 
 export const PARENT_BTN = 'h-[52px] w-full text-[17px]'
-export const PARENT_BTN_INLINE = `${PARENT_BTN} lg:w-auto lg:min-w-[220px]`
-export const PARENT_ACTIONS = 'mt-auto flex flex-col gap-3 lg:mt-0 lg:flex-row-reverse lg:justify-start'
-export const PARENT_CONTROL = 'h-12 text-[17px]'
+export const PARENT_ACTION = 'h-[52px] min-w-0 flex-1 px-5 text-[17px] lg:min-w-[180px] lg:flex-none'
+export const PARENT_ACTION_PRIMARY = `${PARENT_ACTION} max-lg:flex-[2] lg:min-w-[220px]`
+export const PARENT_CONTROL = 'h-12 text-[17px] md:h-12 md:text-[17px]'
 
 export function ContactActions() {
   return (
@@ -43,15 +44,6 @@ export function Hotline({ lead = 'Cần hỗ trợ?' }: { lead?: string }) {
   )
 }
 
-export function ParentHeading({ title, children }: { title: ReactNode; children?: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <h1 className="text-2xl font-semibold text-navy lg:text-3xl">{title}</h1>
-      {children ? <p className="text-balance text-muted-foreground">{children}</p> : null}
-    </div>
-  )
-}
-
 export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-col gap-4">
@@ -59,80 +51,103 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
       <Button size="lg" className={PARENT_BTN} onClick={onRetry}>
         Thử lại
       </Button>
-      <Hotline />
     </div>
   )
 }
 
-type ParentWidth = 'sm' | 'md' | 'lg'
+type ParentWidth = 'narrow' | 'form' | 'wide'
 
 const MAIN_WIDTH: Record<ParentWidth, string> = {
-  sm: 'lg:max-w-[520px]',
-  md: 'lg:max-w-[760px]',
-  lg: 'lg:max-w-[1040px]',
+  narrow: 'max-w-[480px] md:max-w-[520px]',
+  form: 'max-w-[760px]',
+  wide: 'max-w-[1120px]',
+}
+
+const CONTAINER = 'mx-auto w-full max-w-[1120px] px-4 md:px-6 lg:px-8'
+
+function Brand() {
+  return (
+    <div className="shrink-0 leading-none">
+      <p className="text-lg font-bold tracking-[0.5px] text-white lg:text-xl">
+        G<span className="text-brass">-</span>UNIFORM
+      </p>
+      <p className="mt-1 text-[11px] font-medium tracking-[1px] text-[#c9d0de] lg:tracking-[1.2px]">
+        by GIABACO · EDUCHIC
+      </p>
+    </div>
+  )
+}
+
+function ParentFooter() {
+  const link =
+    'inline-flex min-h-11 items-center gap-2 rounded-md font-medium text-navy outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring'
+  return (
+    <footer className="border-t border-hairline bg-white">
+      <div
+        className={cn(CONTAINER, 'flex flex-col gap-1 py-3 text-[15px] sm:flex-row sm:items-center sm:justify-between')}
+      >
+        <img src="/brand/logo-giabaco.png" alt="Giabaco" width={360} height={129} className="h-9 w-auto self-start" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6">
+          <a href={`tel:${HOTLINE}`} className={link}>
+            <Phone className="size-4 text-muted-foreground" aria-hidden="true" /> Hotline {HOTLINE}
+          </a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className={link}>
+            <Mail className="size-4 text-muted-foreground" aria-hidden="true" /> {SUPPORT_EMAIL}
+          </a>
+        </div>
+      </div>
+    </footer>
+  )
 }
 
 interface ParentShellProps {
   children: ReactNode
   actions?: ReactNode
-  onBack?: () => void
-  backLabel?: string
   focusKey?: string
   width?: ParentWidth
-  panel?: boolean
+  center?: boolean
 }
 
-export function ParentShell({
-  children,
-  actions,
-  onBack,
-  backLabel = 'Thông tin học sinh',
-  focusKey,
-  width = 'sm',
-  panel = false,
-}: ParentShellProps) {
+export function ParentShell({ children, actions, focusKey, width = 'narrow', center = false }: ParentShellProps) {
   const mainRef = useRef<HTMLElement>(null)
   const firstKey = useRef(focusKey)
 
   useEffect(() => {
     if (focusKey === firstKey.current) return
-    const heading = mainRef.current?.querySelector('h1')
-    heading?.setAttribute('tabindex', '-1')
-    heading?.focus()
+    const target =
+      mainRef.current?.querySelector<HTMLElement>('[data-focus-target]') ??
+      mainRef.current?.querySelector<HTMLElement>('h1')
+    target?.setAttribute('tabindex', '-1')
+    target?.focus()
   }, [focusKey])
+
+  const brand = actions ? (
+    <Link to="/parent" aria-label="G-UNIFORM" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Brand />
+    </Link>
+  ) : (
+    <Brand />
+  )
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-[17px] leading-relaxed">
-      <header className="border-b border-hairline bg-white lg:border-b-[3px] lg:border-piping">
-        <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3 lg:max-w-[1040px] lg:px-8 lg:py-3.5">
-          <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-9 w-auto shrink-0" />
-          <span className="whitespace-nowrap text-sm font-semibold tracking-[0.18em] sm:text-base text-navy">
-            G-UNIFORM
-          </span>
+      <header className="on-navy border-b-[3px] border-piping bg-navy">
+        <div className={cn(CONTAINER, 'flex h-14 items-center gap-3 lg:h-16')}>
+          {brand}
           {actions}
         </div>
       </header>
       <main
         ref={mainRef}
         className={cn(
-          'mx-auto flex w-full max-w-[480px] flex-1 flex-col gap-6 px-4 py-6 lg:gap-8 lg:px-8 lg:py-10 [&_h1:focus]:outline-none',
+          'mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-6 md:px-6 lg:gap-8 lg:px-8 lg:py-10 [&_[tabindex="-1"]:focus]:outline-none',
           MAIN_WIDTH[width],
+          center && 'lg:justify-center',
         )}
       >
-        {onBack ? (
-          <Button type="button" variant="ghost" className="-ml-3 -mb-2 h-11 self-start px-3 text-base" onClick={onBack}>
-            <ChevronLeft /> {backLabel}
-          </Button>
-        ) : null}
-        <div
-          className={cn(
-            'flex flex-1 flex-col gap-6',
-            panel && 'lg:my-auto lg:flex-none lg:rounded-lg lg:border lg:border-hairline lg:bg-white lg:p-8',
-          )}
-        >
-          {children}
-        </div>
+        {children}
       </main>
+      <ParentFooter />
     </div>
   )
 }
