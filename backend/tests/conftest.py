@@ -116,7 +116,6 @@ def child_body(school_class: dict[str, Any], **overrides: Any) -> dict[str, Any]
         "gender": "FEMALE",
         "height_cm": 128.5,
         "weight_kg": 25.0,
-        "parent_phone": "0912345678",
         **overrides,
     }
 
@@ -158,6 +157,7 @@ def register_body(**overrides: Any) -> dict[str, Any]:
     return {
         "full_name": "Trần Thị Hoa",
         "email": "Hoa.Tran@Example.com",
+        "phone": "0912345678",
         "password": "mat-khau-123",
         **overrides,
     }
@@ -180,8 +180,8 @@ async def make_parent() -> AsyncIterator[MakeParent]:
     ) -> ParentClient:
         parent = ParentClient(transport=ASGITransport(app=app), base_url="http://test")
         clients.append(parent)
-        if email is None and phone is None:
-            email = f"{uuid.uuid4().hex[:10]}@example.com"
+        if phone is None:
+            phone = f"0{uuid.uuid4().int % 10**9:09d}"
         r = await parent.post(
             "/api/parent/auth/register",
             json={"full_name": full_name, "email": email, "phone": phone, "password": password},

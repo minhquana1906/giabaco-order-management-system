@@ -22,11 +22,27 @@ async def test_register_with_email_signs_in(anon_client: AsyncClient) -> None:
 
     assert r.status_code == 201
     body = r.json()
-    assert body["email"] == "hoa.tran@example.com" and body["phone"] is None
+    assert body["email"] == "hoa.tran@example.com" and body["phone"] == "0912345678"
     assert body["full_name"] == "Trần Thị Hoa"
     assert set(body) == {"id", "full_name", "email", "phone"}
     me = await anon_client.get("/api/parent/auth/me")
     assert me.status_code == 200 and me.json() == body
+
+
+async def test_register_with_phone_only_has_no_email(anon_client: AsyncClient) -> None:
+    r = await anon_client.post(REGISTER, json=register_body(email=None))
+
+    assert r.status_code == 201
+    assert r.json()["email"] is None and r.json()["phone"] == "0912345678"
+
+
+async def test_register_without_phone_key_is_422(anon_client: AsyncClient) -> None:
+    body = register_body()
+    del body["phone"]
+
+    r = await anon_client.post(REGISTER, json=body)
+
+    assert r.status_code == 422 and "phone" in r.json()["error"]["fields"]
 
 
 async def test_register_with_phone_normalizes_and_logs_in_again(anon_client: AsyncClient) -> None:
@@ -56,11 +72,12 @@ async def test_login_by_email_ignores_case(anon_client: AsyncClient) -> None:
 @pytest.mark.parametrize(
     ("overrides", "field"),
     [
-        ({"email": None}, "email"),
-        ({"email": "  ", "phone": ""}, "email"),
+        ({"phone": None}, "phone"),
+        ({"phone": ""}, "phone"),
+        ({"email": None, "phone": "  "}, "phone"),
         ({"password": "short"}, "password"),
         ({"email": "not-an-email"}, "email"),
-        ({"email": None, "phone": "12345"}, "phone"),
+        ({"phone": "12345"}, "phone"),
         ({"full_name": "   "}, "full_name"),
     ],
 )
@@ -77,7 +94,7 @@ async def test_register_validation(
 @pytest.mark.parametrize(
     "second",
     [
-        {"email": "HOA.TRAN@example.com"},
+        {"email": "HOA.TRAN@example.com", "phone": "0987654321"},
         {"email": "other@example.com", "phone": "+84912345678"},
     ],
 )

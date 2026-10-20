@@ -27,12 +27,6 @@ def _non_blank_name(value: str) -> str:
 FullName = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_non_blank_name)]
 
 
-def _optional_name(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return unicodedata.normalize("NFC", reject_control_chars(value.strip())) or None
-
-
 def _optional_email(value: str | None) -> str | None:
     if value is None or not value.strip():
         return None
@@ -42,7 +36,6 @@ def _optional_email(value: str | None) -> str | None:
     return value
 
 
-OptionalName = Annotated[str | None, Field(max_length=200), AfterValidator(_optional_name)]
 OptionalEmail = Annotated[str | None, Field(max_length=200), AfterValidator(_optional_email)]
 Phone = Annotated[str, AfterValidator(normalize_phone)]
 Password = Annotated[str, Field(max_length=128), AfterValidator(reject_control_chars)]
@@ -59,14 +52,9 @@ Weight = Annotated[
 
 class RegisterIn(BaseModel):
     full_name: FullName
+    phone: Phone
     email: OptionalEmail = None
-    phone: str | None = None
     password: Annotated[Password, Field(min_length=8)]
-
-    @field_validator("phone")
-    @classmethod
-    def _phone(cls, v: str | None) -> str | None:
-        return normalize_phone(v) if v and v.strip() else None
 
 
 class LoginIn(BaseModel):
@@ -126,9 +114,6 @@ class ChildUpdateIn(BaseModel):
     gender: Gender
     height_cm: Height
     weight_kg: Weight
-    parent_phone: Phone
-    parent_name: OptionalName = None
-    parent_email: OptionalEmail = None
 
 
 class ChildIn(ChildKeyIn, ChildUpdateIn):

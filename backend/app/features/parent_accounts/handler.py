@@ -54,13 +54,6 @@ async def load_parent(session: AsyncSession, parent_id: uuid.UUID) -> ParentAcco
 
 async def register(session: AsyncSession, request: Request, payload: RegisterIn) -> ParentAccount:
     """Create the account and sign it in."""
-    if payload.email is None and payload.phone is None:
-        raise ApiError(
-            422,
-            "validation_error",
-            "Cần email hoặc số điện thoại",
-            {"email": "Nhập email hoặc số điện thoại"},
-        )
     parent = ParentAccount(
         full_name=payload.full_name,
         email=payload.email,
@@ -300,9 +293,9 @@ async def create_child(
         gender=payload.gender,
         height_cm=payload.height_cm,
         weight_kg=payload.weight_kg,
-        parent_name=payload.parent_name,
-        parent_phone=payload.parent_phone,
-        parent_email=payload.parent_email,
+        parent_name=parent.full_name,
+        parent_phone=parent.phone,
+        parent_email=parent.email,
         portal_token=secrets.token_urlsafe(16),
         data_source=DataSource.PARENT_DECLARED,
     )
@@ -348,9 +341,9 @@ async def update_child(
     student.gender = payload.gender
     student.height_cm = payload.height_cm
     student.weight_kg = payload.weight_kg
-    student.parent_name = payload.parent_name
-    student.parent_phone = payload.parent_phone
-    student.parent_email = payload.parent_email
+    student.parent_name = parent.full_name
+    student.parent_phone = parent.phone
+    student.parent_email = parent.email
     student.measured_at = datetime.now(UTC)
     await session.flush()
     await audit.record(

@@ -98,14 +98,13 @@ async def test_failed_commit_on_edit_publishes_nothing_and_changes_nothing(
                 "gender": "FEMALE",
                 "height_cm": 150,
                 "weight_kg": 40,
-                "parent_phone": "0987654321",
             },
         )
 
         assert_server_error(r)
         assert queue.empty()
-    row = (await session.execute(select(Student.height_cm, Student.parent_phone))).one()
-    assert (row.height_cm, row.parent_phone) == (126.5, "0912345678")
+    row = (await session.execute(select(Student.height_cm))).one()
+    assert row.height_cm == 126.5
     assert await audits(session, "student.update") == 0
 
 

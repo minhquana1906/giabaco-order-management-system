@@ -30,7 +30,7 @@ async def test_create_child_is_declared_and_linked(
     school_class: dict[str, Any],
     session: AsyncSession,
 ) -> None:
-    parent = await make_parent()
+    parent = await make_parent(full_name="Mẹ An", phone="0912345678")
 
     r = await parent.post(CHILDREN, json=child_body(school_class))
 
@@ -45,7 +45,7 @@ async def test_create_child_is_declared_and_linked(
         "class_name": "2A1",
         "gender": "FEMALE",
         "data_source": "PARENT_DECLARED",
-        "parent_name": None,
+        "parent_name": "Mẹ An",
         "parent_phone": "0912345678",
         "parent_email": None,
         "choices": [],
@@ -56,7 +56,7 @@ async def test_create_child_is_declared_and_linked(
     assert (student.parent_phone, student.parent_email, student.parent_name) == (
         "0912345678",
         None,
-        None,
+        "Mẹ An",
     )
     assert await count_rows(session, FittingTrial) == 0
     link = await session.scalar(select(ParentStudentLink))
@@ -332,7 +332,6 @@ def edit_body(class_id: str, **overrides: Any) -> dict[str, Any]:
         "gender": "MALE",
         "height_cm": 131.0,
         "weight_kg": 27.5,
-        "parent_phone": "0912345678",
     }
     body.update(overrides)
     return body
@@ -477,18 +476,20 @@ async def test_edit_rejects_admin_sessions(
     assert r.status_code == 401
 
 
-async def test_create_child_stores_normalised_parent_contact(
+async def test_create_child_copies_account_contact_and_ignores_client_contact(
     make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
 ) -> None:
-    parent = await make_parent()
+    parent = await make_parent(
+        full_name="Trần Thị Hoa", phone="+84 912 345 678", email="Hoa@Example.COM"
+    )
 
     r = await parent.post(
         CHILDREN,
         json=child_body(
             school_class,
-            parent_phone="+84 912 345 678",
-            parent_name="  Trần Thị Hoa ",
-            parent_email=" Hoa@Example.COM ",
+            parent_phone="0900000001",
+            parent_name="Someone Else",
+            parent_email="other@example.com",
         ),
     )
 
@@ -505,75 +506,15 @@ async def test_create_child_stores_normalised_parent_contact(
     assert (after["parent_name"], after["parent_phone"], after["parent_email"]) == contact
 
 
-async def test_create_child_requires_parent_phone(
+async def test_parent_edit_refreshes_contact_from_account_and_ignores_client_contact(
     make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
 ) -> None:
-    parent = await make_parent()
-    body = child_body(school_class)
-    del body["parent_phone"]
-
-    r = await parent.post(CHILDREN, json=body)
-
-    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
-    assert await count_rows(session, Student) == 0
-
-
-@pytest.mark.parametrize("phone", [None, "", "   ", "12345", "0912-abc-678", "09123456789"])
-async def test_create_child_rejects_blank_or_invalid_parent_phone(
-    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession, phone: str | None
-) -> None:
-    parent = await make_parent()
-
-    r = await parent.post(CHILDREN, json=child_body(school_class, parent_phone=phone))
-
-    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
-    assert await count_rows(session, Student) == 0
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("parent_email", "not-an-email"),
-        ("parent_email", "a\x00@b.vn"),
-        ("parent_email", "a@b.vn" + "x" * 200),
-        ("parent_name", "Mẹ\x00An"),
-        ("parent_name", "Mẹ\nAn"),
-        ("parent_name", "x" * 201),
-    ],
-)
-async def test_create_child_rejects_bad_optional_contact(
-    make_parent: MakeParent,
-    school_class: dict[str, Any],
-    session: AsyncSession,
-    field: str,
-    value: str,
-) -> None:
-    parent = await make_parent()
-
-    r = await parent.post(CHILDREN, json=child_body(school_class, **{field: value}))
-
-    assert r.status_code == 422 and field in r.json()["error"]["fields"]
-    assert await count_rows(session, Student) == 0
-
-
-async def test_blank_optional_contact_is_stored_as_null(
-    make_parent: MakeParent, school_class: dict[str, Any]
-) -> None:
-    parent = await make_parent()
-
-    r = await parent.post(
-        CHILDREN, json=child_body(school_class, parent_name="  ", parent_email="")
-    )
-
-    assert r.status_code == 201
-    assert (r.json()["parent_name"], r.json()["parent_email"]) == (None, None)
-
-
-async def test_parent_edit_updates_contact_and_audits_the_change(
-    make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
-) -> None:
-    parent = await make_parent()
+    parent = await make_parent(full_name="Mẹ An", phone="0912345678", email="me@example.com")
     created = (await parent.post(CHILDREN, json=child_body(school_class))).json()
+    student = await session.get(Student, uuid.UUID(created["student_id"]))
+    assert student is not None
+    student.parent_name, student.parent_phone, student.parent_email = "Stale", "0900000009", None
+    await session.commit()
 
     r = await parent.put(
         f"{CHILDREN}/{created['student_id']}",
@@ -587,34 +528,14 @@ async def test_parent_edit_updates_contact_and_audits_the_change(
 
     assert r.status_code == 200
     assert (r.json()["parent_name"], r.json()["parent_phone"], r.json()["parent_email"]) == (
-        "Ba của An",
-        "0987654321",
-        "ba@example.com",
+        "Mẹ An",
+        "0912345678",
+        "me@example.com",
     )
     log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
     assert log is not None and log.before is not None and log.after is not None
-    assert (log.before["parent_phone"], log.after["parent_phone"]) == ("0912345678", "0987654321")
-    assert (log.before["parent_email"], log.after["parent_email"]) == (None, "ba@example.com")
-
-
-@pytest.mark.parametrize("phone", [None, "", "abc"])
-async def test_edit_requires_a_valid_parent_phone(
-    make_parent: MakeParent,
-    school_class: dict[str, Any],
-    session: AsyncSession,
-    phone: str | None,
-) -> None:
-    parent = await make_parent()
-    created = (await parent.post(CHILDREN, json=child_body(school_class))).json()
-
-    r = await parent.put(
-        f"{CHILDREN}/{created['student_id']}",
-        json=edit_body(school_class["class_id"], parent_phone=phone),
-    )
-
-    assert r.status_code == 422 and "parent_phone" in r.json()["error"]["fields"]
-    student = await session.get(Student, uuid.UUID(created["student_id"]))
-    assert student is not None and student.parent_phone == "0912345678"
+    assert (log.before["parent_phone"], log.after["parent_phone"]) == ("0900000009", "0912345678")
+    assert (log.before["parent_email"], log.after["parent_email"]) == (None, "me@example.com")
 
 
 async def test_claimant_sees_declared_contact_but_never_admin_entered_contact(
@@ -623,11 +544,9 @@ async def test_claimant_sees_declared_contact_but_never_admin_entered_contact(
     student_payload: Payload,
     school_class: dict[str, Any],
 ) -> None:
-    owner, claimer = await make_parent(), await make_parent()
-    await owner.post(
-        CHILDREN,
-        json=child_body(school_class, parent_name="Mẹ An", parent_email="me@example.com"),
-    )
+    owner = await make_parent(full_name="Mẹ An", phone="0912345678", email="me@example.com")
+    claimer = await make_parent()
+    await owner.post(CHILDREN, json=child_body(school_class))
     await client.post(
         "/api/students",
         json=student_payload(

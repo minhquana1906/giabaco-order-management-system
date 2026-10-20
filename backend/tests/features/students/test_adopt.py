@@ -118,7 +118,6 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
             "gender": "MALE",
             "height_cm": 100,
             "weight_kg": 15,
-            "parent_phone": "0912345678",
         },
     )
     assert edit.status_code == 409 and edit.json()["error"]["code"] == "measured_locked"
@@ -311,10 +310,8 @@ async def test_adoption_keeps_parent_contact_when_admin_supplies_none(
     student_payload: Payload,
     school_class: dict[str, Any],
 ) -> None:
-    mother = await make_parent()
-    declared_id = await declare(
-        mother, school_class, parent_name="Mẹ An", parent_email="me@example.com"
-    )
+    mother = await make_parent(full_name="Mẹ An", phone="0912345678", email="me@example.com")
+    declared_id = await declare(mother, school_class)
 
     r = await client.post(
         "/api/students",
@@ -347,7 +344,8 @@ async def test_adoption_overwrites_only_the_contact_fields_admin_supplies(
     school_class: dict[str, Any],
 ) -> None:
     declared_id = await declare(
-        await make_parent(), school_class, parent_name="Mẹ An", parent_email="me@example.com"
+        await make_parent(full_name="Mẹ An", phone="0912345678", email="me@example.com"),
+        school_class,
     )
 
     r = await client.post(
@@ -441,7 +439,6 @@ async def test_admin_edit_of_a_declared_record_takes_ownership(
             "gender": "MALE",
             "height_cm": 100,
             "weight_kg": 15,
-            "parent_phone": "0912345678",
         },
     )
     assert edit.status_code == 409 and edit.json()["error"]["code"] == "measured_locked"
@@ -496,7 +493,6 @@ async def test_rename_racing_a_parent_create_of_the_same_identity_never_duplicat
                 "gender": "MALE",
                 "height_cm": 120,
                 "weight_kg": 20,
-                "parent_phone": "0912345678",
             },
         ),
     )

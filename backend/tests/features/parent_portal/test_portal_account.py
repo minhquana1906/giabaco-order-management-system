@@ -68,7 +68,6 @@ async def test_public_view_suggests_sizes_from_the_size_guide(
         "gender": "FEMALE",
         "height_cm": 140,
         "weight_kg": 32,
-        "parent_phone": "0912345678",
     }
     created = (await parent.post(CHILDREN, json=body)).json()
 

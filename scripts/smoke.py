@@ -67,7 +67,7 @@ check("create admin student", call(authed, "POST", "/api/students", {
 })[0], 201)
 
 email = f"smoke-{tag}@example.com"
-reg = {"full_name": "Phụ huynh Smoke", "email": email, "password": "smoke-pass-123"}
+reg = {"full_name": "Phụ huynh Smoke", "phone": f"09{int(tag, 16) % 10**8:08d}", "email": email, "password": "smoke-pass-123"}
 check("parent register", call(parent, "POST", "/api/parent/auth/register", reg)[0], 201)
 check("parent duplicate", call(anon, "POST", "/api/parent/auth/register", reg)[0], 409)
 check("parent me", call(parent, "GET", "/api/parent/auth/me")[0], 200)
