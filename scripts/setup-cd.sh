@@ -31,9 +31,10 @@ g iam workload-identity-pools providers describe "$PROVIDER" --location=global -
     --attribute-condition="assertion.repository=='$REPO' && assertion.ref=='refs/heads/main'"
 g iam service-accounts add-iam-policy-binding "$SA" --role=roles/iam.workloadIdentityUser \
   --member="principalSet://iam.googleapis.com/projects/$PNUM/locations/global/workloadIdentityPools/$POOL/attribute.repository/$REPO" >/dev/null
-for role in roles/iap.tunnelResourceAccessor roles/compute.viewer; do
-  g projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$SA" --role="$role" --condition=None >/dev/null
-done
+g projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$SA" --role=roles/compute.viewer --condition=None >/dev/null
+VM_IP=$(g compute instances describe "$VM" --zone "$ZONE" --format='value(networkInterfaces[0].networkIP)')
+g projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$SA" --role=roles/iap.tunnelResourceAccessor \
+  --condition="expression=destination.ip == \"$VM_IP\" && destination.port == 22,title=guniform-ssh-only" >/dev/null
 
 echo "== Deploy key (restricted to IAP source and the deploy script)"
 tmp=$(mktemp -d)
@@ -56,11 +57,12 @@ for _ in $(seq 30); do nc -z localhost 2222 && break; sleep 1; done
 ssh-keyscan -p 2222 -t ed25519 localhost 2>/dev/null > "$tmp/known_hosts"
 test -s "$tmp/known_hosts"
 
-echo "== GitHub secrets and variables ($REPO)"
-gh secret set DEPLOY_SSH_KEY -R "$REPO" < "$tmp/key"
-gh secret set DEPLOY_KNOWN_HOSTS -R "$REPO" < "$tmp/known_hosts"
-gh secret set GCP_DEPLOY_SA -R "$REPO" --body "$SA"
-gh secret set GCP_WIF_PROVIDER -R "$REPO" --body "projects/$PNUM/locations/global/workloadIdentityPools/$POOL/providers/$PROVIDER"
+echo "== GitHub secrets (environment production) and variables ($REPO)"
+gh api -X PUT "repos/$REPO/environments/production" >/dev/null
+gh secret set DEPLOY_SSH_KEY -R "$REPO" --env production < "$tmp/key"
+gh secret set DEPLOY_KNOWN_HOSTS -R "$REPO" --env production < "$tmp/known_hosts"
+gh secret set GCP_DEPLOY_SA -R "$REPO" --env production --body "$SA"
+gh secret set GCP_WIF_PROVIDER -R "$REPO" --env production --body "projects/$PNUM/locations/global/workloadIdentityPools/$POOL/providers/$PROVIDER"
 gh variable set GCP_PROJECT -R "$REPO" --body "$PROJECT"
 gh variable set GCE_ZONE -R "$REPO" --body "$ZONE"
 gh variable set GCE_VM -R "$REPO" --body "$VM"
