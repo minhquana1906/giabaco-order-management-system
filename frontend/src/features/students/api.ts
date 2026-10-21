@@ -1,6 +1,5 @@
 import type { Fit } from '@/lib/fit'
 import { http } from '@/lib/http'
-import type { ProductColour } from '@/lib/productColour'
 
 export type Gender = 'MALE' | 'FEMALE'
 
@@ -38,14 +37,6 @@ export interface StudentTrial {
   tried_at: string
 }
 
-export interface ParentChoice {
-  product_code: string
-  product_name: string
-  size_label: string
-  colour: ProductColour | null
-  chosen_at: string
-}
-
 export type DataSource = 'ADMIN_MEASURED' | 'PARENT_DECLARED'
 
 export interface LinkedParent {
@@ -77,7 +68,6 @@ export interface StudentDetail {
   updated_at: string
   trials: StudentTrial[]
   derived_sizes: Record<string, string | null>
-  parent_choices: ParentChoice[]
   linked_parents: LinkedParent[]
 }
 
@@ -91,8 +81,8 @@ export interface StudentListItem {
   weight_kg: number
   parent_phone: string | null
   data_source: DataSource
-  derived_sizes: Record<string, string | null>
   trial_count: number
+  has_order: boolean
   has_note: boolean
   created_at: string
 }
@@ -109,13 +99,12 @@ export interface StudentListParams {
   grade?: number
   class_id?: string
   gender?: Gender
-  product?: string
-  size?: string
   q?: string
   page?: number
 }
 
 export const STUDENTS_PAGE_SIZE = 50
+export const ALL_SCHOOLS = 'all'
 
 export const studentsApi = {
   list: (params: StudentListParams, signal?: AbortSignal) =>

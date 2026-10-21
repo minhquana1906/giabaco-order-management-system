@@ -15,10 +15,11 @@ export const studentKeys = {
 
 const REFETCH_MS = 30_000
 
-export const studentsListQueryOptions = (params: StudentListParams) =>
+export const studentsListQueryOptions = (params: StudentListParams, enabled = true) =>
   queryOptions({
     queryKey: studentKeys.list(params),
     queryFn: ({ signal }) => studentsApi.list(params, signal),
+    enabled,
     refetchInterval: REFETCH_MS,
     placeholderData: keepPreviousData,
   })
@@ -29,8 +30,8 @@ export const studentQueryOptions = (id: string) =>
     queryFn: ({ signal }) => studentsApi.get(id, signal),
   })
 
-export function useStudents(params: StudentListParams) {
-  return useQuery(studentsListQueryOptions(params))
+export function useStudents(params: StudentListParams, enabled = true) {
+  return useQuery(studentsListQueryOptions(params, enabled))
 }
 
 export function useStudent(id: string) {

@@ -30,15 +30,11 @@ async def list_students(
     grade: Annotated[int | None, Query(ge=1, le=12)] = None,
     class_id: uuid.UUID | None = None,
     gender: Annotated[str | None, Query(pattern="^(MALE|FEMALE)$")] = None,
-    product: str | None = None,
-    size: str | None = None,
     q: Annotated[str | None, Query(max_length=100)] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> StudentPage:
-    filters = handler.ListFilters(
-        school_id, grade, class_id, gender, product, size, q, page, page_size
-    )
+    filters = handler.ListFilters(school_id, grade, class_id, gender, q, page, page_size)
     return await handler.list_students(session, filters)
 
 

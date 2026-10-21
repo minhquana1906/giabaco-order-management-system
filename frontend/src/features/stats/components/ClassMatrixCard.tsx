@@ -29,8 +29,7 @@ function heat(value: number, max: number) {
   return { backgroundColor: bg, color: readableOn(bg) }
 }
 
-const cellLink =
-  'block min-h-11 rounded-[2px] px-2 py-2.5 text-center font-medium tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 hover:brightness-95 sm:min-h-0 sm:py-1.5'
+const cellBase = 'block min-h-11 rounded-[2px] px-2 py-2.5 text-center font-medium tabular-nums sm:min-h-0 sm:py-1.5'
 
 interface MatrixTooltipPayloadEntry {
   dataKey?: string | number
@@ -105,8 +104,7 @@ export function ClassMatrixCard({
   const [view, setView] = useState<View>('table')
   const query = useClassMatrix(product, schoolId)
 
-  const studentsSearch = (extra: { class_id?: string; size?: string }) =>
-    ({ school_id: schoolId, product, ...extra }) as never
+  const studentsSearch = (classId: string) => ({ school_id: schoolId, class_id: classId })
 
   const matrix = query.data
   const max = matrix
@@ -166,27 +164,16 @@ export function ClassMatrixCard({
                     <th scope="row" className="sticky left-0 bg-card py-0.5 pr-3 text-left font-semibold">
                       <Link
                         to="/students"
-                        search={studentsSearch({ class_id: r.class_id })}
+                        search={studentsSearch(r.class_id)}
                         className="inline-flex min-h-11 items-center rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0"
                       >
                         {r.class_name}
                       </Link>
                     </th>
                     {query.data.sizes.map((s) => (
-                      <Cell
-                        key={s}
-                        value={r.counts[s] ?? 0}
-                        max={max}
-                        search={studentsSearch({ class_id: r.class_id, size: s })}
-                        label={`${r.class_name}, cỡ ${s}`}
-                      />
+                      <Cell key={s} value={r.counts[s] ?? 0} max={max} />
                     ))}
-                    <Cell
-                      value={r.unknown}
-                      max={max}
-                      search={studentsSearch({ class_id: r.class_id, size: 'none' })}
-                      label={`${r.class_name}, chưa xác định`}
-                    />
+                    <Cell value={r.unknown} max={max} />
                     <td className="py-0.5 pl-3 text-right font-semibold tabular-nums">{formatNumber(r.total)}</td>
                   </tr>
                 ))}
@@ -243,18 +230,12 @@ export function ClassMatrixCard({
   )
 }
 
-function Cell({ value, max, search, label }: { value: number; max: number; search: never; label: string }) {
+function Cell({ value, max }: { value: number; max: number }) {
   return (
     <td className="p-0.5">
-      {value > 0 ? (
-        <Link to="/students" search={search} aria-label={`${label}: ${value} học sinh`} className={cellLink} style={heat(value, max)}>
-          {formatNumber(value)}
-        </Link>
-      ) : (
-        <span className={`${cellLink} text-muted-foreground`} style={heat(0, max)} aria-label={`${label}: 0 học sinh`}>
-          0
-        </span>
-      )}
+      <span className={`${cellBase} ${value > 0 ? '' : 'text-muted-foreground'}`} style={heat(value, max)}>
+        {formatNumber(value)}
+      </span>
     </td>
   )
 }

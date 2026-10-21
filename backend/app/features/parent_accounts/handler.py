@@ -2,7 +2,6 @@
 
 import secrets
 import uuid
-from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -19,20 +18,21 @@ from app.core.events import bus
 from app.core.names import lock_identity, name_key
 from app.core.phone import normalize_phone
 from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, verify_password
-from app.features.catalog.models import Product, School, SchoolClass
+from app.features.campaigns.models import OPEN, Campaign, campaign_for_student
+from app.features.catalog.models import School, SchoolClass
+from app.features.orders.models import Order
 from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
 from app.features.parent_accounts.schemas import (
-    ChildChoice,
     ChildIn,
     ChildKeyIn,
     ChildSummary,
     ChildUpdateIn,
     LoginIn,
     LookupOut,
+    OrderSummary,
     ParentAccountOut,
     RegisterIn,
 )
-from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, Student, student_snapshot
 
 MAX_CHILDREN = 10
@@ -102,7 +102,7 @@ async def login(session: AsyncSession, request: Request, payload: LoginIn) -> Pa
 async def children(
     session: AsyncSession, parent_id: uuid.UUID, student_id: uuid.UUID | None = None
 ) -> list[ChildSummary]:
-    """Linked, live students of one parent with their current size choices."""
+    """Linked, live students of one parent with their current order summary."""
     query = (
         select(Student, School.name, SchoolClass.name)
         .join(ParentStudentLink, ParentStudentLink.student_id == Student.id)
@@ -114,24 +114,35 @@ async def children(
     if student_id is not None:
         query = query.where(Student.id == student_id)
     rows = (await session.execute(query)).all()
-    choices: dict[uuid.UUID, list[ChildChoice]] = defaultdict(list)
-    if rows:
-        chosen = await session.execute(
-            select(
-                ParentSizeChoice.student_id,
-                Product.code,
-                Product.name,
-                ParentSizeChoice.size_label,
-                ParentSizeChoice.colour,
+    summaries: dict[uuid.UUID, OrderSummary] = {}
+    for student, _, _ in rows:
+        campaign = await campaign_for_student(session, student.school_id, student.id)
+        order = (
+            await session.scalar(
+                select(Order).where(
+                    Order.campaign_id == campaign.id,
+                    Order.student_id == student.id,
+                    Order.deleted_at.is_(None),
+                )
             )
-            .join(Product, Product.id == ParentSizeChoice.product_id)
-            .where(ParentSizeChoice.student_id.in_([s.id for s, _, _ in rows]), Product.active)
-            .order_by(Product.position, Product.code)
+            if campaign
+            else None
         )
-        for sid, code, name, label, colour in chosen:
-            choices[sid].append(
-                ChildChoice(product_code=code, product_name=name, size_label=label, colour=colour)
+        if order is not None:
+            items, amount, has_unpriced = order.totals
+            summaries[student.id] = OrderSummary(
+                items=items, amount=amount, has_unpriced=has_unpriced, status=order.status
             )
+    open_schools = set(
+        (
+            await session.scalars(
+                select(Campaign.school_id).where(
+                    Campaign.status == OPEN,
+                    Campaign.school_id.in_({s.school_id for s, _, _ in rows}),
+                )
+            )
+        ).all()
+    )
     declared = DataSource.PARENT_DECLARED
     return [
         ChildSummary(
@@ -146,7 +157,8 @@ async def children(
             parent_name=s.parent_name if s.data_source is declared else None,
             parent_phone=s.parent_phone if s.data_source is declared else None,
             parent_email=s.parent_email if s.data_source is declared else None,
-            choices=choices[s.id],
+            order_summary=summaries.get(s.id),
+            campaign_open=s.school_id in open_schools,
         )
         for s, school_name, class_name in rows
     ]
@@ -358,7 +370,7 @@ async def update_child(
 async def unlink(
     session: AsyncSession, student_id: uuid.UUID, parent_id: uuid.UUID, actor: str
 ) -> None:
-    """Admin removes a parent's link; size choices already made stay."""
+    """Admin removes a parent's link; orders already placed stay."""
     link = await session.scalar(
         select(ParentStudentLink).where(
             ParentStudentLink.student_id == student_id, ParentStudentLink.parent_id == parent_id

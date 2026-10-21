@@ -1,11 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ChartColumn, LogOut, Menu, Users } from 'lucide-react'
+import { CalendarRange, ChartColumn, LogOut, Menu, Package, ShoppingBag, Users } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useLogout, useMe } from '@/features/auth/hooks'
-import { useProducts } from '@/features/catalog/hooks'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEM =
@@ -52,29 +50,18 @@ function Wordmark({ inline = false }: { inline?: boolean }) {
   )
 }
 
-function searchParam(search: object, key: string): string | undefined {
-  const value: unknown = Reflect.get(search, key)
-  return typeof value === 'string' ? value : undefined
-}
-
 function useActive() {
-  return useRouterState({
-    select: (s) => ({
-      pathname: s.location.pathname,
-      product: searchParam(s.location.search, 'product'),
-      schoolId: searchParam(s.location.search, 'school_id'),
-    }),
-  })
+  return useRouterState({ select: (s) => ({ pathname: s.location.pathname }) })
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const { pathname, product, schoolId } = useActive()
-  const products = useProducts()
+  const { pathname } = useActive()
   const onStudents = pathname.startsWith('/students')
   const listActive = onStudents && pathname !== '/students/new'
   const isDashboard = pathname === '/dashboard'
-  const effectiveProduct = (products.data?.find((p) => p.code === product) ?? products.data?.[0])?.code
-  const hasProducts = Boolean(products.data?.length)
+  const isCatalog = pathname.startsWith('/catalog')
+  const isCampaigns = pathname.startsWith('/campaigns')
+  const isOrders = pathname.startsWith('/orders')
   return (
     <nav aria-label="Điều hướng chính">
       <ul className="flex flex-col">
@@ -107,48 +94,49 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           </li>
         </NavGroup>
-        <NavGroup
-          header={
-            hasProducts ? (
-              <p className={cn(NAV_GROUP_LABEL, isDashboard && 'text-white')}>
-                <ChartColumn className="size-4" aria-hidden="true" /> Thống kê
-              </p>
-            ) : (
-              <Link
-                to="/dashboard"
-                search={{}}
-                onClick={onNavigate}
-                aria-current={isDashboard ? 'page' : undefined}
-                className={cn(NAV_ITEM, 'font-semibold', isDashboard && NAV_ACTIVE)}
-              >
-                <ChartColumn className="size-4" aria-hidden="true" /> Thống kê
-              </Link>
-            )
-          }
-        >
-          {products.isPending ? (
-            <li className="flex flex-col gap-2 py-2 pl-[46px] pr-[22px]" aria-hidden="true">
-              <Skeleton className="h-5 w-3/4 bg-white/10" />
-              <Skeleton className="h-5 w-1/2 bg-white/10" />
-            </li>
-          ) : null}
-          {products.data?.map((p) => {
-            const active = isDashboard && effectiveProduct === p.code
-            return (
-              <li key={p.id}>
-                <Link
-                  to="/dashboard"
-                  search={schoolId ? { product: p.code, school_id: schoolId } : { product: p.code }}
-                  onClick={onNavigate}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(NAV_LEAF, active && NAV_ACTIVE)}
-                >
-                  {p.name}
-                </Link>
-              </li>
-            )
-          })}
-        </NavGroup>
+        <li className="mt-2">
+          <Link
+            to="/dashboard"
+            search={isDashboard ? true : {}}
+            onClick={onNavigate}
+            aria-current={isDashboard ? 'page' : undefined}
+            className={cn(NAV_ITEM, 'font-semibold', isDashboard && NAV_ACTIVE)}
+          >
+            <ChartColumn className="size-4" aria-hidden="true" /> Thống kê
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/catalog"
+            onClick={onNavigate}
+            aria-current={isCatalog ? 'page' : undefined}
+            className={cn(NAV_ITEM, 'font-semibold', isCatalog && NAV_ACTIVE)}
+          >
+            <Package className="size-4" aria-hidden="true" /> Sản phẩm
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/campaigns"
+            search={{}}
+            onClick={onNavigate}
+            aria-current={isCampaigns ? 'page' : undefined}
+            className={cn(NAV_ITEM, 'font-semibold', isCampaigns && NAV_ACTIVE)}
+          >
+            <CalendarRange className="size-4" aria-hidden="true" /> Đợt đăng ký
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/orders"
+            search={{}}
+            onClick={onNavigate}
+            aria-current={isOrders ? 'page' : undefined}
+            className={cn(NAV_ITEM, 'font-semibold', isOrders && NAV_ACTIVE)}
+          >
+            <ShoppingBag className="size-4" aria-hidden="true" /> Đơn hàng
+          </Link>
+        </li>
       </ul>
     </nav>
   )

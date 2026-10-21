@@ -2,15 +2,15 @@ import { Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useClasses, useProducts, useSchools } from '@/features/catalog/hooks'
-import { UNKNOWN_SIZE_LABEL } from '@/lib/sizes'
-import type { StudentListParams } from '../api'
+import { useClasses, useSchools } from '@/features/catalog/hooks'
+import { ALL_SCHOOLS, type StudentListParams } from '../api'
 import { NativeSelect } from '@/components/NativeSelect'
 
 export type SearchPatch = Partial<StudentListParams>
 
 interface StudentFiltersProps {
   search: StudentListParams
+  schoolId: string | undefined
   onChange: (patch: SearchPatch) => void
   onClear: () => void
 }
@@ -18,13 +18,12 @@ interface StudentFiltersProps {
 const GRADES = Array.from({ length: 12 }, (_, i) => i + 1)
 
 export function hasActiveFilters(s: StudentListParams) {
-  return Boolean(s.school_id || s.grade || s.class_id || s.gender || s.product || s.size || s.q)
+  return Boolean(s.grade || s.class_id || s.gender || s.q)
 }
 
-export function StudentFilters({ search, onChange, onClear }: StudentFiltersProps) {
+export function StudentFilters({ search, schoolId, onChange, onClear }: StudentFiltersProps) {
+  const classes = useClasses(schoolId)
   const schools = useSchools()
-  const classes = useClasses(search.school_id)
-  const products = useProducts()
   const [q, setQ] = useState(search.q ?? '')
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -35,19 +34,14 @@ export function StudentFilters({ search, onChange, onClear }: StudentFiltersProp
     timer.current = setTimeout(() => onChange({ q: value.trim() || undefined, page: undefined }), 300)
   }
 
-  const school = schools.data?.find((s) => s.id === search.school_id)
   const cls = classes.data?.find((c) => c.id === search.class_id)
-  const product = products.data?.find((p) => p.code === search.product)
   const visibleClasses = (classes.data ?? []).filter((c) => !search.grade || c.grade === search.grade)
 
   const chips: { label: string; clear: SearchPatch }[] = []
   if (search.q) chips.push({ label: `Tìm: ${search.q}`, clear: { q: undefined } })
-  if (search.school_id) chips.push({ label: school?.name ?? 'Trường', clear: { school_id: undefined, class_id: undefined } })
   if (search.grade) chips.push({ label: `Khối ${search.grade}`, clear: { grade: undefined, class_id: undefined } })
   if (search.class_id) chips.push({ label: `Lớp ${cls?.name ?? ''}`.trim(), clear: { class_id: undefined } })
   if (search.gender) chips.push({ label: search.gender === 'MALE' ? 'Nam' : 'Nữ', clear: { gender: undefined } })
-  if (search.product) chips.push({ label: product?.name ?? 'Sản phẩm', clear: { product: undefined, size: undefined } })
-  if (search.size) chips.push({ label: search.size === 'none' ? UNKNOWN_SIZE_LABEL : `Cỡ ${search.size}`, clear: { size: undefined } })
 
   const reset = { page: undefined }
   return (
@@ -63,13 +57,13 @@ export function StudentFilters({ search, onChange, onClear }: StudentFiltersProp
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
         <NativeSelect
           aria-label="Trường"
-          value={search.school_id ?? ''}
-          onChange={(e) => onChange({ school_id: e.target.value || undefined, class_id: undefined, ...reset })}
+          value={schoolId ?? ALL_SCHOOLS}
+          onChange={(e) => onChange({ school_id: e.target.value, class_id: undefined, ...reset })}
         >
-          <option value="">Tất cả trường</option>
+          <option value={ALL_SCHOOLS}>Tất cả trường</option>
           {schools.data?.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -87,11 +81,11 @@ export function StudentFilters({ search, onChange, onClear }: StudentFiltersProp
         <NativeSelect
           aria-label="Lớp"
           value={search.class_id ?? ''}
-          disabled={!search.school_id}
-          title={search.school_id ? undefined : 'Chọn trường trước'}
+          disabled={!schoolId}
+          title={schoolId ? undefined : 'Chọn trường trước'}
           onChange={(e) => onChange({ class_id: e.target.value || undefined, ...reset })}
         >
-          <option value="">{search.school_id ? 'Tất cả lớp' : 'Chọn trường trước'}</option>
+          <option value="">{schoolId ? 'Tất cả lớp' : 'Chọn trường trước'}</option>
           {visibleClasses.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -104,29 +98,6 @@ export function StudentFilters({ search, onChange, onClear }: StudentFiltersProp
           <option value="">Mọi giới tính</option>
           <option value="MALE">Nam</option>
           <option value="FEMALE">Nữ</option>
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Sản phẩm"
-          value={search.product ?? ''}
-          onChange={(e) => onChange({ product: e.target.value || undefined, size: undefined, ...reset })}
-        >
-          <option value="">Mọi sản phẩm</option>
-          {products.data?.map((p) => (
-            <option key={p.code} value={p.code}>{p.name}</option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Cỡ"
-          value={search.size ?? ''}
-          disabled={!search.product}
-          title={search.product ? undefined : 'Chọn sản phẩm trước'}
-          onChange={(e) => onChange({ size: e.target.value || undefined, ...reset })}
-        >
-          <option value="">{search.product ? 'Mọi cỡ' : 'Chọn sản phẩm trước'}</option>
-          {product?.sizes.map((s) => (
-            <option key={s} value={s}>Cỡ {s}</option>
-          ))}
-          {product ? <option value="none">{UNKNOWN_SIZE_LABEL}</option> : null}
         </NativeSelect>
       </div>
       {chips.length > 0 ? (

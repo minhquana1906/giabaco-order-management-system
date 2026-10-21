@@ -14,6 +14,7 @@ dependencies = [
     "itsdangerous",
     "pyyaml",
     "openpyxl",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]

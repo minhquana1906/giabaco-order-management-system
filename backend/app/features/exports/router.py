@@ -1,3 +1,5 @@
+import uuid
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
@@ -11,8 +13,9 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 router = APIRouter(prefix="/api/export", tags=["exports"], dependencies=[Depends(require_admin)])
 
-STUDENTS_SHEET = "Học sinh"
 TRIALS_SHEET = "Lần thử"
+CAMPAIGN_ORDERS_SHEET = "Bảng kê đơn"
+CAMPAIGN_PIVOT_SHEET = "Ma trận"
 
 
 def _download(content: bytes, media_type: str, filename: str) -> Response:
@@ -30,8 +33,14 @@ def _file(dataset: handler.Dataset, fmt: str, name: str, sheet: str) -> Response
 
 
 @router.get("/students.{fmt}")
-async def export_students(fmt: Literal["csv", "xlsx"], session: Session) -> Response:
-    return _file(await handler.students_dataset(session), fmt, "students", STUDENTS_SHEET)
+async def export_students(
+    fmt: Literal["csv", "xlsx"], session: Session, school_id: uuid.UUID | None = None
+) -> Response:
+    if fmt == "csv":
+        csv_bytes = handler.to_csv(*await handler.students_dataset(session, school_id))
+        return _download(csv_bytes, handler.CSV_MEDIA_TYPE, "students.csv")
+    sheets = await handler.student_datasets(session, school_id)
+    return _download(handler.to_xlsx(sheets), handler.XLSX_MEDIA_TYPE, "students.xlsx")
 
 
 @router.get("/trials.{fmt}")
@@ -43,8 +52,25 @@ async def export_trials(fmt: Literal["csv", "xlsx"], session: Session) -> Respon
 async def export_all(session: Session) -> Response:
     content = handler.to_xlsx(
         {
-            STUDENTS_SHEET: await handler.students_dataset(session),
+            **await handler.student_datasets(session),
             TRIALS_SHEET: await handler.trials_dataset(session),
         }
     )
     return _download(content, handler.XLSX_MEDIA_TYPE, "all.xlsx")
+
+
+@router.get("/campaign-orders.xlsx")
+async def export_campaign_orders(
+    campaign_id: uuid.UUID, session: Session, submitted_until: date | None = None
+) -> Response:
+    content = handler.to_xlsx(
+        {
+            CAMPAIGN_ORDERS_SHEET: await handler.campaign_orders_dataset(
+                session, campaign_id, submitted_until
+            ),
+            CAMPAIGN_PIVOT_SHEET: await handler.campaign_pivot_dataset(
+                session, campaign_id, submitted_until
+            ),
+        }
+    )
+    return _download(content, handler.XLSX_MEDIA_TYPE, "campaign-orders.xlsx")

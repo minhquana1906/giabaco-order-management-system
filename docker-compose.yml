@@ -28,6 +28,10 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:8000}
       ADMIN_HOST: ${ADMIN_HOST:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      MEDIA_DIR: /data/uploads
+      CUTOVER_SCHOOL_CODE: ${CUTOVER_SCHOOL_CODE:-LQD}
+    volumes:
+      - uploads:/data/uploads
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -59,3 +63,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

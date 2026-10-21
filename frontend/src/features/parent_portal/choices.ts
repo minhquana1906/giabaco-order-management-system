@@ -1,7 +1,26 @@
-import type { ProductColour } from '@/lib/productColour'
-import type { ChoiceChanges, PublicChoice, PublicProduct, PublicStudent, PublicTrial } from './api'
+import { formatVnd } from '@/lib/format'
+import type {
+  Colour,
+  Img,
+  ItemLine,
+  Kit,
+  KitLine,
+  KitOption,
+  Ordering,
+  OrderLines,
+  PublicStudent,
+  PublicTrial,
+} from './api'
 
-export function derivedSize(product: PublicProduct, trials: PublicTrial[]): string | null {
+export const MAX_QTY = 10
+
+export const PRICE_UNKNOWN = 'Giá đang cập nhật'
+
+export const formatPrice = (price: number | null) => (price == null ? PRICE_UNKNOWN : formatVnd(price))
+
+type SizedProduct = { code: string; sizes: string[] }
+
+export function derivedSize(product: SizedProduct, trials: PublicTrial[]): string | null {
   let best = -1
   for (const t of trials) {
     if (t.product_code === product.code && t.fit === 'FITS') {
@@ -13,8 +32,8 @@ export function derivedSize(product: PublicProduct, trials: PublicTrial[]): stri
 
 export type PortalStep = 'identity' | 'measure' | 'overview'
 
-export function initialStep(hasChoices: boolean, skipIdentity: boolean): PortalStep {
-  if (hasChoices) return 'overview'
+export function initialStep(hasOrder: boolean, skipIdentity: boolean): PortalStep {
+  if (hasOrder) return 'overview'
   return skipIdentity ? 'measure' : 'identity'
 }
 
@@ -24,7 +43,7 @@ export interface Suggestion {
 }
 
 export function suggestionFor(
-  product: PublicProduct,
+  product: SizedProduct,
   student: Pick<PublicStudent, 'trials' | 'data_source' | 'suggested_sizes'>,
 ): Suggestion | null {
   const measured = derivedSize(product, student.trials)
@@ -33,53 +52,214 @@ export function suggestionFor(
   return chart && product.sizes.includes(chart) ? { size: chart, source: 'chart' } : null
 }
 
-export interface PickedSize {
-  size_label: string
-  colour: ProductColour | null
+export interface SlotDraft {
+  productId: string | null
+  size: string | null
+  colour: string | null
 }
 
-export type Picks = Record<string, PickedSize | null | undefined>
-
-export function initialPicks(
-  products: PublicProduct[],
-  saved: Record<string, PublicChoice>,
-  suggested: Record<string, Suggestion | null> = {},
-): Picks {
-  const hasSaved = Object.keys(saved).length > 0
-  return Object.fromEntries(
-    products.map((p) => {
-      const choice = saved[p.code]
-      if (choice) return [p.code, { size_label: choice.size_label, colour: choice.colour }]
-      if (hasSaved) return [p.code, null]
-      const suggestion = suggested[p.code]
-      return [p.code, suggestion ? { size_label: suggestion.size, colour: null } : undefined]
-    }),
-  )
+export interface KitDraft {
+  qty: number
+  size: string | null
+  slots: Record<string, SlotDraft>
 }
 
-export function pickChanges(products: PublicProduct[], picks: Picks, saved: Record<string, PublicChoice>): ChoiceChanges {
-  const changes: ChoiceChanges = {}
-  for (const p of products) {
-    const next = picks[p.code] ?? undefined
-    const current = saved[p.code]
-    if (next && !next.colour) continue
-    if (next === undefined && current === undefined) continue
-    if (next && current && next.size_label === current.size_label && next.colour === current.colour) continue
-    changes[p.code] = next?.colour ? { size_label: next.size_label, colour: next.colour } : undefined
+export interface ItemDraft {
+  qty: number
+  size: string | null
+  colour: string | null
+}
+
+export interface Draft {
+  kits: Record<string, KitDraft>
+  items: Record<string, ItemDraft>
+}
+
+export const needsColourChoice = (colours: Colour[]) => colours.length > 1
+
+const autoColour = (colours: Colour[]) => (colours.length === 1 ? colours[0]!.code : null)
+
+const colourOf = (colours: Colour[], code: string | null): Colour | null =>
+  code ? (colours.find((c) => c.code === code) ?? { code, label: code, hex: '#d4d4d8' }) : null
+
+export function hasSplitLines(order: OrderLines): boolean {
+  const unique = (keys: string[]) => new Set(keys).size < keys.length
+  return unique(order.kit_lines.map((l) => l.kit_id)) || unique(order.item_lines.map((l) => l.product_id))
+}
+
+export const clampQty = (qty: number) => Math.min(MAX_QTY, Math.max(0, qty))
+
+export const selectedOption = (slot: Kit['slots'][number], draft: SlotDraft | undefined): KitOption | undefined =>
+  slot.options.find((o) => o.product_id === draft?.productId)
+
+export const effectiveSlotSize = (kit: KitDraft, slot: SlotDraft | undefined) => slot?.size ?? kit.size
+
+function defaultOption(options: KitOption[]): KitOption | undefined {
+  return options.find((o) => o.suggested) ?? options[0]
+}
+
+function suggestedFor(option: SizedProduct | undefined, student: PublicStudent): string | null {
+  return option ? (suggestionFor(option, student)?.size ?? null) : null
+}
+
+export function initialDraft(ordering: Ordering, student: PublicStudent): Draft {
+  const saved = ordering.order
+  const kits: Draft['kits'] = {}
+  for (const kit of ordering.kits) {
+    const line = saved?.kit_lines.find((l) => l.kit_id === kit.id)
+    const firstOption = defaultOption(kit.slots[0]?.options ?? [])
+    const slots: KitDraft['slots'] = {}
+    for (const slot of kit.slots) {
+      const savedSlot = line?.slots.find((s) => s.slot_id === slot.id)
+      const option = slot.options.find((o) => o.product_id === savedSlot?.product_id) ?? defaultOption(slot.options)
+      slots[slot.id] = {
+        productId: option?.product_id ?? null,
+        size: savedSlot && savedSlot.size_label !== line?.size_label ? savedSlot.size_label : null,
+        colour: savedSlot?.colour ?? (option ? autoColour(option.colours) : null),
+      }
+    }
+    kits[kit.id] = {
+      qty: line?.qty ?? 0,
+      size: line?.size_label ?? suggestedFor(firstOption, student),
+      slots,
+    }
   }
-  return changes
+  const items: Draft['items'] = {}
+  for (const item of ordering.items) {
+    const line = saved?.item_lines.find((l) => l.product_id === item.product_id)
+    items[item.product_id] = {
+      qty: line?.qty ?? 0,
+      size: line?.size_label ?? suggestedFor(item, student),
+      colour: line?.colour ?? autoColour(item.colours),
+    }
+  }
+  return { kits, items }
 }
 
-export function missingColours(products: PublicProduct[], picks: Picks): string[] {
-  return products
-    .filter((p) => {
-      const pick = picks[p.code]
-      return pick != null && !pick.colour
+export function buildPayload(ordering: Pick<Ordering, 'kits' | 'items'>, draft: Draft): OrderLines {
+  const kit_lines: KitLine[] = []
+  for (const kit of ordering.kits) {
+    const d = draft.kits[kit.id]
+    if (!d || d.qty <= 0 || !d.size) continue
+    const slots = kit.slots.flatMap((slot) => {
+      const sd = d.slots[slot.id]
+      const size = effectiveSlotSize(d, sd)
+      return sd?.productId && size
+        ? [{ slot_id: slot.id, product_id: sd.productId, size_label: size, colour: sd.colour }]
+        : []
     })
-    .map((p) => p.code)
+    kit_lines.push({ kit_id: kit.id, qty: d.qty, size_label: d.size, slots })
+  }
+  const item_lines: ItemLine[] = []
+  for (const item of ordering.items) {
+    const d = draft.items[item.product_id]
+    if (!d || d.qty <= 0 || !d.size) continue
+    item_lines.push({ product_id: item.product_id, size_label: d.size, colour: d.colour, qty: d.qty })
+  }
+  return { kit_lines, item_lines }
 }
 
-export function canContinue(products: PublicProduct[], picks: Picks, saved: Record<string, PublicChoice>): boolean {
-  if (products.some((p) => picks[p.code] === undefined)) return false
-  return missingColours(products, picks).length > 0 || Object.keys(pickChanges(products, picks, saved)).length > 0
+export function draftProblems(ordering: Pick<Ordering, 'kits' | 'items'>, draft: Draft): string[] {
+  const problems: string[] = []
+  let any = false
+  for (const kit of ordering.kits) {
+    const d = draft.kits[kit.id]
+    if (!d || d.qty <= 0) continue
+    any = true
+    if (!d.size) problems.push(`kit:${kit.id}`)
+    for (const slot of kit.slots) {
+      const sd = d.slots[slot.id]
+      const option = selectedOption(slot, sd)
+      const size = effectiveSlotSize(d, sd)
+      if (!option || !size || !option.sizes.includes(size)) problems.push(`slot:${slot.id}`)
+      else if (needsColourChoice(option.colours) && !sd?.colour) problems.push(`slot-colour:${slot.id}`)
+    }
+  }
+  for (const item of ordering.items) {
+    const d = draft.items[item.product_id]
+    if (!d || d.qty <= 0) continue
+    any = true
+    if (!d.size || !item.sizes.includes(d.size)) problems.push(`item:${item.product_id}`)
+    else if (needsColourChoice(item.colours) && !d.colour) problems.push(`item-colour:${item.product_id}`)
+  }
+  if (!any) problems.push('empty')
+  return problems
+}
+
+export interface Estimate {
+  total: number
+  hasUnpriced: boolean
+}
+
+export function estimateTotal(ordering: Pick<Ordering, 'kits' | 'items'>, lines: OrderLines): Estimate {
+  let total = 0
+  let hasUnpriced = false
+  const add = (price: number | null, qty: number) => {
+    if (price == null) hasUnpriced = true
+    else total += price * qty
+  }
+  for (const line of lines.kit_lines) add(ordering.kits.find((k) => k.id === line.kit_id)?.price ?? null, line.qty)
+  for (const line of lines.item_lines) add(ordering.items.find((i) => i.product_id === line.product_id)?.price ?? null, line.qty)
+  return { total, hasUnpriced }
+}
+
+export interface ReviewRow {
+  key: string
+  name: string
+  image: Img | null
+  qty: number
+  size: string
+  colour: Colour | null
+  unitPrice: number | null
+  amount: number | null
+  parts: { label: string; name: string; size: string; colour: Colour | null }[]
+}
+
+export function reviewRows(ordering: Pick<Ordering, 'kits' | 'items'>, lines: OrderLines): ReviewRow[] {
+  const rows: ReviewRow[] = []
+  for (const line of lines.kit_lines) {
+    const kit = ordering.kits.find((k) => k.id === line.kit_id)
+    if (!kit) continue
+    const parts = line.slots.flatMap((sl) => {
+      const slot = kit.slots.find((s) => s.id === sl.slot_id)
+      const option = slot?.options.find((o) => o.product_id === sl.product_id)
+      return slot && option
+        ? [{ label: slot.label, name: option.name, size: sl.size_label, colour: colourOf(option.colours, sl.colour) }]
+        : []
+    })
+    rows.push({
+      key: `kit:${kit.id}`,
+      name: kit.name,
+      image: kit.image,
+      qty: line.qty,
+      size: line.size_label,
+      colour: null,
+      unitPrice: kit.price,
+      amount: kit.price == null ? null : kit.price * line.qty,
+      parts,
+    })
+  }
+  for (const line of lines.item_lines) {
+    const item = ordering.items.find((i) => i.product_id === line.product_id)
+    if (!item) continue
+    rows.push({
+      key: `item:${item.product_id}`,
+      name: item.name,
+      image: item.image,
+      qty: line.qty,
+      size: line.size_label,
+      colour: colourOf(item.colours, line.colour),
+      unitPrice: item.price,
+      amount: item.price == null ? null : item.price * line.qty,
+      parts: [],
+    })
+  }
+  return rows
+}
+
+export type OrderingMode = 'none' | 'open' | 'locked'
+
+export function orderingMode(ordering: Pick<Ordering, 'campaign'>): OrderingMode {
+  if (!ordering.campaign) return 'none'
+  return ordering.campaign.status === 'OPEN' ? 'open' : 'locked'
 }

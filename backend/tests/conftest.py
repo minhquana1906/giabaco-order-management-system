@@ -1,4 +1,5 @@
 import os
+import tempfile
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
@@ -26,6 +27,7 @@ os.environ.update(
     ADMIN_PASSWORD_HASH=PasswordHasher().hash(ADMIN_PASSWORD),
     PUBLIC_BASE_URL="http://testserver",
     COOKIE_SECURE="false",
+    MEDIA_DIR=tempfile.mkdtemp(prefix="guniform_media_"),
 )
 
 from app.core.db import SessionLocal  # noqa: E402
@@ -67,11 +69,13 @@ async def _clean() -> AsyncIterator[None]:
     async with SessionLocal() as s:
         await s.execute(
             text(
-                "TRUNCATE staff_accounts, audit_logs, parent_student_links, parent_accounts, "
-                "parent_size_choices, "
-                "fitting_trials, students, school_classes, schools"
+                "TRUNCATE order_lines, order_kit_lines, orders, product_images, staff_accounts, "
+                "audit_logs, parent_student_links, "
+                "parent_accounts, "
+                "fitting_trials, students, school_classes, schools CASCADE"
             )
         )
+        await s.execute(text("DELETE FROM products WHERE code NOT IN ('blazer', 'gile')"))
         await s.commit()
 
 

@@ -16,6 +16,7 @@ from app.core.names import lock_identity
 from app.features.parent_accounts.models import ParentStudentLink
 from app.features.students.models import DataSource, Gender, Student
 from tests.conftest import MakeParent, ParentClient, Payload, child_body, count_rows
+from tests.features.conftest import OpenCampaign
 
 TRIAL = {"product_code": "blazer", "size_label": "2", "fit": "FITS", "note": None}
 
@@ -50,20 +51,28 @@ async def other_class(client: AsyncClient, school_class: dict[str, Any]) -> str:
     return str(r.json()["id"])
 
 
-async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
+async def test_admin_adopts_the_declared_record_and_keeps_links_and_orders(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
     school_class: dict[str, Any],
+    products: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
 ) -> None:
     mother, father = await make_parent(), await make_parent()
     class_2a2 = await other_class(client, school_class)
     declared_id = await declare(mother, school_class)
-    await mother.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer",
-        json={"size_label": "3", "colour": "navy"},
+    await open_campaign(school_class["school_id"])
+    placed = await mother.put(
+        f"/api/parent/children/{declared_id}/order",
+        json={
+            "item_lines": [{"product_id": str(products["blazer"].id), "size_label": "3", "qty": 1}]
+        },
     )
+    assert placed.status_code == 200
+    summary = (await mother.get("/api/parent/children")).json()[0]["order_summary"]
+    assert summary is not None and summary["items"] == 1
     before = (await client.get(f"/api/students/{declared_id}")).json()
 
     async with bus.subscribe() as queue:
@@ -92,16 +101,13 @@ async def test_admin_adopts_the_declared_record_and_keeps_links_and_choices(
     )
     assert body["measured_at"] > before["measured_at"]
     assert [p["parent_id"] for p in body["linked_parents"]] == [mother.parent_id]
-    assert [(c["product_code"], c["size_label"]) for c in body["parent_choices"]] == [
-        ("blazer", "3")
-    ]
     assert [(t["size_label"], t["suggested_size_label"]) for t in body["trials"]] == [("2", "2")]
     assert await count_rows(session, Student) == 1
 
     parent_view = (await mother.get(f"/api/parent/children/{declared_id}")).json()
     assert parent_view["data_source"] == "ADMIN_MEASURED" and parent_view["height_cm"] == 126.5
     assert [t["size_label"] for t in parent_view["trials"]] == ["2"]
-    assert parent_view["choices"] == {"blazer": {"size_label": "3", "colour": "navy"}}
+    assert (await mother.get("/api/parent/children")).json()[0]["order_summary"] == summary
     claim = await father.post(
         "/api/parent/children/claim",
         json={
@@ -403,10 +409,6 @@ async def test_admin_edit_of_a_declared_record_takes_ownership(
 ) -> None:
     mother = await make_parent()
     declared_id = await declare(mother, school_class)
-    await mother.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer",
-        json={"size_label": "3", "colour": "navy"},
-    )
     before = (await client.get(f"/api/students/{declared_id}")).json()
 
     r = await client.put(
@@ -422,9 +424,6 @@ async def test_admin_edit_of_a_declared_record_takes_ownership(
     assert body["portal_token"] == before["portal_token"]
     assert body["measured_at"] > before["measured_at"]
     assert [p["parent_id"] for p in body["linked_parents"]] == [mother.parent_id]
-    assert [(c["product_code"], c["size_label"]) for c in body["parent_choices"]] == [
-        ("blazer", "3")
-    ]
     log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
     assert log is not None and log.actor == "admin"
     assert log.before is not None and log.after is not None

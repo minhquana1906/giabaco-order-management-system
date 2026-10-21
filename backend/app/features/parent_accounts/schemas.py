@@ -11,7 +11,6 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validat
 
 from app.core.phone import normalize_phone
 from app.core.text import reject_control_chars
-from app.features.parent_portal.models import Colour
 from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -85,11 +84,11 @@ class LookupOut(BaseModel):
     class_name: str | None = None
 
 
-class ChildChoice(BaseModel):
-    product_code: str
-    product_name: str
-    size_label: str
-    colour: Colour | None
+class OrderSummary(BaseModel):
+    items: int
+    amount: int
+    has_unpriced: bool
+    status: str
 
 
 class ChildSummary(BaseModel):
@@ -104,7 +103,8 @@ class ChildSummary(BaseModel):
     parent_name: str | None
     parent_phone: str | None
     parent_email: str | None
-    choices: list[ChildChoice]
+    order_summary: OrderSummary | None
+    campaign_open: bool
 
 
 class ChildUpdateIn(BaseModel):

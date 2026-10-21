@@ -105,12 +105,11 @@ match = {"school_id": school["id"], "full_name": "nguyen van an ", "dob": "2018-
 check("parent claim", call(parent, "POST", "/api/parent/children/claim", match, host=PARENT)[0], 200)
 status, resp = call(parent, "GET", "/api/parent/children", host=PARENT)
 child = json.load(resp)[0]
-check("parent choose size", call(
-    parent, "PUT", f"/api/parent/children/{child['student_id']}/size-choices/blazer", {"size_label": "3", "colour": "navy"},
-    host=PARENT,
+check("parent ordering", call(
+    parent, "GET", f"/api/parent/children/{child['student_id']}/ordering", host=PARENT,
 )[0], 200)
-status, resp = call(authed, "GET", "/api/stats/orders")
-check("orders count", status, 200)
+status, resp = call(authed, "GET", "/api/stats/overview")
+check("stats overview", status, 200)
 check("parent logout", call(parent, "POST", "/api/parent/auth/logout", host=PARENT)[0], 204)
 check("parent after logout", call(parent, "GET", "/api/parent/auth/me", host=PARENT)[0], 401)
 check("admin survives parent logout", call(authed, "GET", "/api/products")[0], 200)

@@ -1,28 +1,31 @@
-import { PRODUCT_COLOURS, colourLabel, type ProductColour } from '@/lib/productColour'
+import type { Colour } from '../api'
 import { cn } from '@/lib/utils'
 
-const SWATCH: Record<ProductColour, string> = { navy: '#1b2b4b', ghi: '#a3a9b3' }
-
 interface ColourSelectProps {
-  productCode: string
+  name: string
+  colours: Colour[]
   labelledBy: string
-  value: ProductColour | null
+  value: string | null
   invalid?: boolean
-  onChange: (next: ProductColour) => void
+  onChange: (next: string) => void
 }
 
-export function ColourChip({ colour, className }: { colour: ProductColour | null; className?: string }) {
-  const label = colourLabel(colour)
-  if (!colour || !label) return null
+export function ColourChip({ colour, className }: { colour: Colour | null; className?: string }) {
+  if (!colour) return null
   return (
     <span className={cn('inline-flex items-center gap-2 font-medium text-navy', className)}>
-      <span aria-hidden="true" className="size-4 rounded-full ring-1 ring-inset ring-black/20" style={{ backgroundColor: SWATCH[colour] }} />
-      {label}
+      <span
+        aria-hidden="true"
+        className="size-4 rounded-full ring-1 ring-inset ring-black/20"
+        style={{ backgroundColor: colour.hex }}
+      />
+      {colour.label}
     </span>
   )
 }
 
-export function ColourSelect({ productCode, labelledBy, value, invalid = false, onChange }: ColourSelectProps) {
+export function ColourSelect({ name, colours, labelledBy, value, invalid = false, onChange }: ColourSelectProps) {
+  if (colours.length < 2) return null
   return (
     <div
       role="radiogroup"
@@ -31,11 +34,11 @@ export function ColourSelect({ productCode, labelledBy, value, invalid = false, 
       aria-invalid={invalid || undefined}
       className="grid grid-cols-2 gap-2"
     >
-      {PRODUCT_COLOURS.map((c) => {
-        const on = value === c.value
+      {colours.map((c) => {
+        const on = value === c.code
         return (
           <label
-            key={c.value}
+            key={c.code}
             className={cn(
               'flex min-h-12 cursor-pointer items-center justify-center gap-2.5 rounded-md border px-3 text-base has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
               on
@@ -46,15 +49,15 @@ export function ColourSelect({ productCode, labelledBy, value, invalid = false, 
             <input
               type="radio"
               className="sr-only"
-              name={`colour-${productCode}`}
-              value={c.value}
+              name={name}
+              value={c.code}
               checked={on}
-              onChange={() => onChange(c.value)}
+              onChange={() => onChange(c.code)}
             />
             <span
               aria-hidden="true"
               className={cn('size-5 rounded-full ring-1 ring-inset', on ? 'ring-white/60' : 'ring-black/20')}
-              style={{ backgroundColor: SWATCH[c.value] }}
+              style={{ backgroundColor: c.hex }}
             />
             {c.label}
           </label>

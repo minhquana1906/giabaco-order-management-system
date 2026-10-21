@@ -58,9 +58,9 @@ async def test_child_name_rejects_control_characters(
     ("method", "path"),
     [
         ("GET", "/api/public/students/%00"),
-        ("PUT", "/api/public/students/abc/size-choices/%00"),
-        ("DELETE", "/api/public/students/abc/size-choices/%00"),
-        ("PUT", "/api/public/students/%00/size-choices/blazer"),
+        ("GET", "/api/public/students/abc%00/ordering"),
+        ("PUT", "/api/public/students/abc%00/order"),
+        ("GET", "/api/public/students/%00/ordering"),
     ],
 )
 async def test_public_path_parameters_reject_control_characters(

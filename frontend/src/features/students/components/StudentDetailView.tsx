@@ -9,9 +9,8 @@ import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useProducts } from '@/features/catalog/hooks'
+import { useSchoolProducts } from '@/features/catalog/hooks'
 import { formatCm, formatDate, formatDateTime, formatKg } from '@/lib/format'
-import { colourLabel } from '@/lib/productColour'
 import { ApiError } from '@/lib/http'
 import type { LinkedParent, StudentDetail } from '../api'
 import { useDeleteStudent, useStudent, useUnlinkParent } from '../hooks'
@@ -19,6 +18,7 @@ import { DataSourceBadge } from './DataSourceBadge'
 import { FitBadge } from './FitBadge'
 import { QrCard } from './QrCard'
 import { StudentForm } from './StudentForm'
+import { detailProducts } from './scope'
 
 function Info({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -131,10 +131,8 @@ function UnlinkDialog({
 
 function Profile({ student }: { student: StudentDetail }) {
   const [unlinking, setUnlinking] = useState<LinkedParent | null>(null)
-  const products = useProducts()
-  const productList =
-    products.data?.map((p) => ({ code: p.code, name: p.name })) ??
-    [...new Map(student.trials.map((t) => [t.product_code, { code: t.product_code, name: t.product_name }])).values()]
+  const profile = useSchoolProducts(student.school.id)
+  const productList = detailProducts(profile.data?.map((p) => ({ code: p.code, name: p.name })) ?? [], student.trials)
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       <div className="flex min-w-0 flex-col gap-4">
@@ -155,7 +153,6 @@ function Profile({ student }: { student: StudentDetail }) {
         {productList.map((p) => {
           const trials = student.trials.filter((t) => t.product_code === p.code)
           const derived = student.derived_sizes[p.code] ?? null
-          const choice = student.parent_choices.find((c) => c.product_code === p.code)
           return (
             <Card key={p.code} className="gap-3 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -180,16 +177,6 @@ function Profile({ student }: { student: StudentDetail }) {
                   ))}
                 </ul>
               )}
-              <p className="border-t border-hairline pt-3 text-sm">
-                {choice ? (
-                  <span className="flex flex-wrap items-center gap-2">
-                    Phụ huynh đã chọn <SizeLabel label={choice.size_label} /> ·{' '}
-                    {[colourLabel(choice.colour), formatDateTime(choice.chosen_at)].filter(Boolean).join(' · ')}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Phụ huynh chưa chọn</span>
-                )}
-              </p>
             </Card>
           )
         })}

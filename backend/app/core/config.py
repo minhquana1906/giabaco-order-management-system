@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
     admin_host: str | None = None
     spa_dir: str | None = None
+    media_dir: str = "var/uploads"
 
 
 @lru_cache

@@ -26,20 +26,28 @@ def validate_product(spec: dict[str, Any]) -> None:
 
 
 async def seed_catalog(session: AsyncSession, path: Path) -> int:
-    """Upsert products from `path`; returns the number of products processed."""
+    """Insert products missing from the DB, never overwriting; returns the spec count."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     specs: list[dict[str, Any]] = data.get("products", [])
     for spec in specs:
         validate_product(spec)
     existing = {p.code: p for p in (await session.scalars(select(Product))).all()}
     for position, spec in enumerate(specs):
-        product = existing.get(spec["code"]) or Product(code=spec["code"])
-        product.name = spec["name"]
-        product.sizes = list(spec["sizes"])
-        product.size_guide = spec.get("size_guide")
-        product.position = position
-        product.active = spec.get("active", True)
-        session.add(product)
+        if spec["code"] in existing:
+            continue
+        session.add(
+            Product(
+                code=spec["code"],
+                name=spec["name"],
+                description=spec.get("description"),
+                sizes=list(spec["sizes"]),
+                size_guide=spec.get("size_guide"),
+                colours=list(spec.get("colours", ["ghi"])),
+                gender_target=spec.get("gender_target", "UNISEX"),
+                position=position,
+                active=spec.get("active", True),
+            )
+        )
     await session.commit()
     return len(specs)
 

@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.phone import normalize_phone
 from app.features.parent_accounts.models import LinkOrigin
-from app.features.parent_portal.models import Colour
 from app.features.students.models import HEIGHT_RANGE, WEIGHT_RANGE, DataSource, Fit, Gender
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -109,14 +108,6 @@ class TrialOut(BaseModel):
     tried_at: datetime
 
 
-class ParentChoiceOut(BaseModel):
-    product_code: str
-    product_name: str
-    size_label: str
-    colour: Colour | None
-    chosen_at: datetime
-
-
 class LinkedParentOut(BaseModel):
     parent_id: uuid.UUID
     full_name: str
@@ -146,7 +137,6 @@ class StudentDetail(BaseModel):
     updated_at: datetime
     trials: list[TrialOut]
     derived_sizes: dict[str, str | None]
-    parent_choices: list[ParentChoiceOut]
     linked_parents: list[LinkedParentOut]
 
 
@@ -160,7 +150,7 @@ class StudentListItem(BaseModel):
     weight_kg: float
     parent_phone: str | None
     data_source: DataSource
-    derived_sizes: dict[str, str | None]
+    has_order: bool
     trial_count: int
     has_note: bool
     created_at: datetime

@@ -1,3 +1,5 @@
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg.errors
@@ -9,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
+from app.features.orders.models import Order
 from app.features.students.models import FittingTrial, Student
 from tests.conftest import MakeParent, Payload, claim_key, declare_child
 
@@ -231,17 +234,55 @@ async def test_list_filters_search_and_paging(
     assert await ids(q="+84 988 111 222") == ["Đặng Thị Hương"]
     assert await ids(q="0988") == ["Đặng Thị Hương"]
     assert await ids(gender="FEMALE") == ["Đặng Thị Hương"]
-    assert await ids(grade=2, product="blazer", size="3") == ["Đặng Thị Hương"]
-    assert await ids(product="blazer", size="none") == ["Trần Bình"]
-    assert await ids(product="gile", size="none") == ["Trần Bình", "Lê Văn An", "Đặng Thị Hương"]
+    assert await ids(grade=2, gender="FEMALE") == ["Đặng Thị Hương"]
     assert await ids(grade=5) == []
     page = (await client.get("/api/students", params={"page": 2, "page_size": 2})).json()
     assert page["total"] == 3 and len(page["items"]) == 1 and page["page_size"] == 2
     item = (await client.get("/api/students", params={"q": "le van"})).json()["items"][0]
-    assert item["trial_count"] == 2 and item["derived_sizes"] == {"blazer": "2", "gile": None}
+    assert item["trial_count"] == 2 and item["has_order"] is False and "derived_sizes" not in item
     assert item["class"]["grade"] == 2 and set(item["school"]) == {"id", "name"}
-    assert (await client.get("/api/students", params={"size": "1"})).status_code == 422
     assert (await client.get("/api/students", params={"page_size": 201})).status_code == 422
+
+
+async def test_list_has_order_counts_only_live_submitted_orders(
+    client: AsyncClient,
+    make_student: Any,
+    session: AsyncSession,
+    products: dict[str, Any],
+    open_campaign: Any,
+) -> None:
+    students = {
+        name: await make_student(name) for name in ["Có đơn", "Đơn nháp", "Đơn đã xóa", "Chưa đặt"]
+    }
+    campaign = await open_campaign(students["Có đơn"].school_id)
+    states = {
+        "Có đơn": ("SUBMITTED", datetime.now(UTC), None),
+        "Đơn nháp": ("DRAFT", None, None),
+        "Đơn đã xóa": ("SUBMITTED", datetime.now(UTC), datetime.now(UTC)),
+    }
+    for name, (status, submitted_at, deleted_at) in states.items():
+        session.add(
+            Order(
+                campaign_id=campaign.id,
+                code=f"T{uuid.uuid4().hex[:10]}",
+                student_id=students[name].id,
+                recipient_name=name,
+                source="PARENT",
+                status=status,
+                submitted_at=submitted_at,
+                deleted_at=deleted_at,
+            )
+        )
+    await session.commit()
+
+    items = (await client.get("/api/students")).json()["items"]
+
+    assert {i["full_name"]: i["has_order"] for i in items} == {
+        "Có đơn": True,
+        "Đơn nháp": False,
+        "Đơn đã xóa": False,
+        "Chưa đặt": False,
+    }
 
 
 async def test_list_has_note(client: AsyncClient, student_payload: Payload) -> None:
@@ -352,7 +393,7 @@ async def test_admin_cannot_set_data_source(
     assert promoted.status_code == 200 and promoted.json()["data_source"] == "ADMIN_MEASURED"
 
 
-async def test_detail_lists_linked_parents_and_declared_choices(
+async def test_detail_lists_linked_parents(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
@@ -366,10 +407,6 @@ async def test_detail_lists_linked_parents_and_declared_choices(
         json=claim_key(school_class, full_name="le minh anh", dob="2017-09-01"),
     )
     assert claim.status_code == 200
-    await creator.put(
-        f"/api/parent/children/{declared_id}/size-choices/blazer",
-        json={"size_label": "3", "colour": "navy"},
-    )
     lonely = (await client.post("/api/students", json=student_payload())).json()
 
     detail = (await client.get(f"/api/students/{declared_id}")).json()
@@ -383,8 +420,5 @@ async def test_detail_lists_linked_parents_and_declared_choices(
     assert (parents[1]["email"], parents[1]["phone"]) == (None, "0987654321")
     assert all(p["linked_at"] for p in parents)
     assert set(parents[0]) == {"parent_id", "full_name", "email", "phone", "origin", "linked_at"}
-    assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
-        ("blazer", "3")
-    ]
     assert detail["trials"] == []
     assert lonely["linked_parents"] == []

@@ -11,7 +11,6 @@ from app.core.audit import AuditLog
 from app.core.events import bus
 from app.core.security import hash_password, parent_match_limiter
 from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
-from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.models import DataSource, FittingTrial, Student
 from tests.conftest import (
     CHILDREN,
@@ -22,6 +21,7 @@ from tests.conftest import (
     claim_key,
     count_rows,
 )
+from tests.features.conftest import OpenCampaign
 
 
 async def test_create_child_is_declared_and_linked(
@@ -48,7 +48,8 @@ async def test_create_child_is_declared_and_linked(
         "parent_name": "Mẹ An",
         "parent_phone": "0912345678",
         "parent_email": None,
-        "choices": [],
+        "order_summary": None,
+        "campaign_open": False,
     }
     student = await session.get(Student, uuid.UUID(body["student_id"]))
     assert student is not None and student.data_source is DataSource.PARENT_DECLARED
@@ -219,11 +220,11 @@ async def test_create_child_audits_and_publishes_after_commit(
     assert created_log.after["height_cm"] == 128.5
 
 
-async def test_list_children_only_returns_own_live_children_with_choices(
+async def test_list_children_only_returns_own_live_children_with_order_summary(
     client: AsyncClient,
     make_parent: MakeParent,
     school_class: dict[str, Any],
-    session: AsyncSession,
+    open_campaign: OpenCampaign,
     products: dict[str, Any],
 ) -> None:
     mine, theirs = await make_parent(), await make_parent()
@@ -235,30 +236,27 @@ async def test_list_children_only_returns_own_live_children_with_choices(
         await mine.post(CHILDREN, json=child_body(school_class, full_name="Lê Minh Cúc"))
     ).json()
     await theirs.post(CHILDREN, json=child_body(school_class, full_name="Phạm Gia Hân"))
-    session.add(
-        ParentSizeChoice(
-            student_id=uuid.UUID(first["student_id"]),
-            product_id=products["blazer"].id,
-            size_label="3",
-            colour="ghi",
-        )
+    await open_campaign(school_class["school_id"])
+    placed = await mine.put(
+        f"{CHILDREN}/{first['student_id']}/order",
+        json={
+            "item_lines": [{"product_id": str(products["blazer"].id), "size_label": "3", "qty": 1}]
+        },
     )
-    await session.commit()
+    assert placed.status_code == 200
     await client.delete(f"/api/students/{gone['student_id']}")
 
     r = await mine.get(CHILDREN)
 
     assert r.status_code == 200
     assert [c["student_id"] for c in r.json()] == [first["student_id"], second["student_id"]]
-    assert r.json()[0]["choices"] == [
-        {
-            "product_code": "blazer",
-            "product_name": "Áo Blazer (Vest)",
-            "size_label": "3",
-            "colour": "ghi",
-        }
-    ]
-    assert r.json()[1]["choices"] == []
+    assert r.json()[0]["order_summary"] == {
+        "items": 1,
+        "amount": 500_000,
+        "has_unpriced": False,
+        "status": "SUBMITTED",
+    }
+    assert r.json()[1]["order_summary"] is None
     assert (await theirs.get(CHILDREN)).json()[0]["full_name"] == "Phạm Gia Hân"
     assert len((await theirs.get(CHILDREN)).json()) == 1
 
@@ -708,42 +706,6 @@ async def test_parent_edit_refreshes_measured_at(
     assert after > before
 
 
-async def test_child_choices_follow_catalog_order_and_skip_inactive_products(
-    make_parent: MakeParent,
-    school_class: dict[str, Any],
-    session: AsyncSession,
-    products: dict[str, Any],
-) -> None:
-    parent = await make_parent()
-    child = (await parent.post(CHILDREN, json=child_body(school_class))).json()
-    for code, size in (("gile", "2"), ("blazer", "3")):
-        session.add(
-            ParentSizeChoice(
-                student_id=uuid.UUID(child["student_id"]),
-                product_id=products[code].id,
-                size_label=size,
-            )
-        )
-    await session.commit()
-    original = {code: (p.position, p.active) for code, p in products.items()}
-
-    async def codes() -> list[str]:
-        return [c["product_code"] for c in (await parent.get(CHILDREN)).json()[0]["choices"]]
-
-    try:
-        assert await codes() == ["blazer", "gile"]
-        products["blazer"].position = 99
-        await session.commit()
-        assert await codes() == ["gile", "blazer"]
-        products["gile"].active = False
-        await session.commit()
-        assert await codes() == ["blazer"]
-    finally:
-        for code, (position, active) in original.items():
-            products[code].position, products[code].active = position, active
-        await session.commit()
-
-
 async def test_a_second_linked_parent_can_edit_a_declared_child_as_themselves(
     make_parent: MakeParent, school_class: dict[str, Any], session: AsyncSession
 ) -> None:
@@ -763,3 +725,29 @@ async def test_a_second_linked_parent_can_edit_a_declared_child_as_themselves(
     log = await session.scalar(select(AuditLog).where(AuditLog.action == "student.update"))
     assert log is not None and log.actor == f"parent:{claimer.parent_id}"
     assert (await creator.get(CHILDREN)).json()[0]["student_id"] == created["student_id"]
+
+
+async def test_shown_campaign_is_the_open_one_in_both_endpoints(
+    make_parent: MakeParent,
+    school_class: dict[str, Any],
+    open_campaign: OpenCampaign,
+    products: dict[str, Any],
+    session: AsyncSession,
+) -> None:
+    mine = await make_parent()
+    child = (await mine.post(CHILDREN, json=child_body(school_class))).json()
+    old = await open_campaign(school_class["school_id"])
+    body = {"item_lines": [{"product_id": str(products["blazer"].id), "size_label": "3", "qty": 1}]}
+    assert (await mine.put(f"{CHILDREN}/{child['student_id']}/order", json=body)).status_code == 200
+    old.status = "LOCKED"
+    await session.commit()
+
+    locked = await mine.get(f"{CHILDREN}/{child['student_id']}/ordering")
+    assert locked.json()["campaign"]["id"] == str(old.id)
+    assert (await mine.get(CHILDREN)).json()[0]["order_summary"]["status"] == "SUBMITTED"
+
+    current = await open_campaign(school_class["school_id"])
+    ordering = (await mine.get(f"{CHILDREN}/{child['student_id']}/ordering")).json()
+
+    assert ordering["campaign"]["id"] == str(current.id) and ordering["order"] is None
+    assert (await mine.get(CHILDREN)).json()[0]["order_summary"] is None

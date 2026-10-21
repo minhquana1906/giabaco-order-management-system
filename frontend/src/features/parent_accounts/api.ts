@@ -1,7 +1,6 @@
 import type { School as AdminSchool, SchoolClass } from '@/features/catalog/api'
 import type { DataSource } from '@/features/parent_portal/api'
 import { http } from '@/lib/http'
-import type { ProductColour } from '@/lib/productColour'
 
 export type School = Pick<AdminSchool, 'id' | 'name'>
 
@@ -40,14 +39,15 @@ export interface ChildSummary {
   parent_name: string | null
   parent_phone: string | null
   parent_email: string | null
-  choices: ChildChoice[]
+  order_summary: OrderSummary | null
+  campaign_open: boolean
 }
 
-export interface ChildChoice {
-  product_code: string
-  product_name: string
-  size_label: string
-  colour: ProductColour | null
+export interface OrderSummary {
+  items: number
+  amount: number
+  has_unpriced: boolean
+  status: string
 }
 
 export interface ChildKey {

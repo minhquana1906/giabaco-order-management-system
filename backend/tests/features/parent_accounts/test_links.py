@@ -7,18 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
+from app.features.orders.models import Order
 from app.features.parent_accounts.models import ParentStudentLink
-from app.features.parent_portal.models import ParentSizeChoice
 from tests.conftest import MakeParent, Payload, claim_key, count_rows
+from tests.features.conftest import OpenCampaign
 
 CLAIM = "/api/parent/children/claim"
 
 
-async def test_admin_unlinks_a_parent_and_the_choice_stays(
+async def test_admin_unlinks_a_parent_and_the_order_stays(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
     school_class: dict[str, Any],
+    products: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
 ) -> None:
     mother, father = await make_parent(), await make_parent()
@@ -26,7 +29,14 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     for parent in (mother, father):
         assert (await parent.post(CLAIM, json=claim_key(school_class))).status_code == 200
     url = f"/api/parent/children/{student['id']}"
-    await mother.put(f"{url}/size-choices/blazer", json={"size_label": "3", "colour": "navy"})
+    campaign = await open_campaign(school_class["school_id"])
+    placed = await mother.put(
+        f"{url}/order",
+        json={
+            "item_lines": [{"product_id": str(products["blazer"].id), "size_label": "3", "qty": 1}]
+        },
+    )
+    assert placed.status_code == 200 and campaign.status == "OPEN"
 
     async with bus.subscribe() as queue:
         r = await client.delete(f"/api/students/{student['id']}/parents/{mother.parent_id}")
@@ -35,16 +45,16 @@ async def test_admin_unlinks_a_parent_and_the_choice_stays(
     assert r.status_code == 204 and r.content == b""
     assert (await mother.get(url)).status_code == 404
     assert (
-        await mother.put(f"{url}/size-choices/blazer", json={"size_label": "4", "colour": "navy"})
+        await mother.put(
+            f"{url}/order",
+            json={"item_lines": [{"product_id": str(uuid.uuid4()), "size_label": "4", "qty": 1}]},
+        )
     ).status_code == 404
     assert (await mother.get("/api/parent/children")).json() == []
     assert (await father.get(url)).status_code == 200
     detail = (await client.get(f"/api/students/{student['id']}")).json()
     assert [p["parent_id"] for p in detail["linked_parents"]] == [father.parent_id]
-    assert [(c["product_code"], c["size_label"]) for c in detail["parent_choices"]] == [
-        ("blazer", "3")
-    ]
-    assert await count_rows(session, ParentSizeChoice) == 1
+    assert await count_rows(session, Order) == 1
     log = await session.scalar(
         select(AuditLog).where(AuditLog.action == "parent_student_link.delete")
     )

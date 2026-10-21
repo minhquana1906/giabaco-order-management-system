@@ -218,7 +218,7 @@ def _under(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix + "/")
 
 
-ADMIN_PAGES = ("/", "/login", "/students", "/dashboard")
+ADMIN_PAGES = ("/", "/login", "/students", "/dashboard", "/catalog", "/campaigns", "/orders")
 PARENT_PAGES = ("/parent", "/p")
 PARENT_APIS = ("/api/parent", "/api/public")
 

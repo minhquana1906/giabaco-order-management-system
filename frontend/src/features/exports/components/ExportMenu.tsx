@@ -14,7 +14,7 @@ import {
 import { ApiError } from '@/lib/http'
 import { EXPORT_GROUPS, exportsApi } from '../api'
 
-export function ExportMenu() {
+export function ExportMenu({ schoolId }: { schoolId?: string }) {
   const download = useMutation({
     mutationFn: exportsApi.download,
     onError: (error) =>
@@ -34,7 +34,7 @@ export function ExportMenu() {
             {i > 0 ? <DropdownMenuSeparator /> : null}
             <DropdownMenuLabel className="text-xs text-muted-foreground">{group.title}</DropdownMenuLabel>
             {group.items.map((item) => (
-              <DropdownMenuItem key={item.path} className="min-h-10" onSelect={() => download.mutate(item)}>
+              <DropdownMenuItem key={item.path} className="min-h-10" onSelect={() => download.mutate({ item, schoolId })}>
                 {item.label}
               </DropdownMenuItem>
             ))}

@@ -59,19 +59,3 @@ class ClassMatrix(BaseModel):
     sizes: list[str]
     rows: list[MatrixRow]
     totals: MatrixTotals
-
-
-class OrderSize(BaseModel):
-    size_label: str
-    count: int
-
-
-class OrderProduct(BaseModel):
-    product_code: str
-    product_name: str
-    sizes: list[OrderSize]
-    total: int
-
-
-class Orders(BaseModel):
-    products: list[OrderProduct]

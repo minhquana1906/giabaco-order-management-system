@@ -4,22 +4,28 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.events import bus
-from app.features.parent_portal.models import ParentSizeChoice
+from app.features.orders.models import Order
 from tests.conftest import (
     CHILDREN,
     MakeParent,
     ParentClient,
     Payload,
     claimed_student,
+    count_rows,
     declare_child,
 )
+from tests.features.conftest import OpenCampaign
 
 TRIALS = [{"product_code": "blazer", "size_label": "2", "fit": "FITS", "note": "bí mật"}]
+ORDER_BODY = {
+    "kit_lines": [],
+    "item_lines": [{"product_id": str(uuid.uuid4()), "size_label": "3", "qty": 1}],
+}
 
 
 async def claimed_with_pii(
@@ -92,113 +98,86 @@ async def test_qr_view_also_carries_data_source_and_suggestions(
     assert set(body["suggested_sizes"]) == {"blazer", "gile"}
 
 
-async def test_choice_lifecycle_through_the_account(
+async def test_order_lifecycle_through_the_account(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
     school_class: dict[str, Any],
+    products: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
 ) -> None:
+    await open_campaign(school_class["school_id"])
     parent = await make_parent()
     student = await claimed_with_pii(client, parent, student_payload, school_class)
-    url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
+    base = f"{CHILDREN}/{student['id']}"
+    listed = (await parent.get(CHILDREN)).json()[0]
+    assert listed["order_summary"] is None and listed["campaign_open"] is True
+    body = {
+        "kit_lines": [],
+        "item_lines": [
+            {"product_id": str(products["blazer"].id), "size_label": "3", "qty": 2},
+            {"product_id": str(products["gile"].id), "size_label": "3", "qty": 1},
+        ],
+    }
 
     async with bus.subscribe() as queue:
-        first = await parent.put(url, json={"size_label": "3", "colour": "navy"})
-        assert queue.get_nowait() == {"choices"}
-    assert first.status_code == 200
-    assert set(first.json()) == {"product_code", "size_label", "colour", "chosen_at"}
-    assert first.json()["colour"] == "navy"
-    second = await parent.put(url, json={"size_label": "4", "colour": "ghi"})
-    assert (second.json()["size_label"], second.json()["colour"]) == ("4", "ghi")
-    assert (await parent.get(f"{CHILDREN}/{student['id']}")).json()["choices"] == {
-        "blazer": {"size_label": "4", "colour": "ghi"}
+        r = await parent.put(f"{base}/order", json=body)
+        assert queue.get_nowait() == {"orders"}
+
+    assert r.status_code == 200, r.text
+    assert r.json() == (await parent.get(f"{base}/ordering")).json()
+    assert r.json()["order"]["total"] == 1_000_000 and r.json()["order"]["has_unpriced"] is True
+    assert (await parent.get(CHILDREN)).json()[0]["order_summary"] == {
+        "items": 3,
+        "amount": 1_000_000,
+        "has_unpriced": True,
+        "status": "SUBMITTED",
     }
-    assert (await parent.get(CHILDREN)).json()[0]["choices"] == [
-        {
-            "product_code": "blazer",
-            "product_name": "Áo Blazer (Vest)",
-            "size_label": "4",
-            "colour": "ghi",
-        }
-    ]
-    detail = (await client.get(f"/api/students/{student['id']}")).json()
-    assert [
-        (c["product_code"], c["size_label"], c["colour"]) for c in detail["parent_choices"]
-    ] == [("blazer", "4", "ghi")]
-
-    async with bus.subscribe() as queue:
-        assert (await parent.delete(url)).status_code == 204
-        assert queue.get_nowait() == {"choices"}
-    assert (await parent.delete(url)).status_code == 204
-    assert (await parent.get(f"{CHILDREN}/{student['id']}")).json()["choices"] == {}
-
-    logs = (
-        await session.scalars(
-            select(AuditLog)
-            .where(AuditLog.entity == "parent_size_choice")
-            .order_by(AuditLog.at, AuditLog.action)
-        )
-    ).all()
-    assert [log.action for log in logs] == ["choice.set", "choice.set", "choice.clear"]
-    assert {log.actor for log in logs} == {f"parent:{parent.parent_id}"}
-    assert logs[0].before is None and logs[0].after == {
-        "product_code": "blazer",
-        "size_label": "3",
-        "colour": "navy",
-    }
-    assert logs[1].before == {"size_label": "3", "colour": "navy"} and logs[1].after == {
-        "product_code": "blazer",
-        "size_label": "4",
-        "colour": "ghi",
-    }
-    assert logs[2].before == {"product_code": "blazer", "size_label": "4", "colour": "ghi"}
+    orders = await client.get(f"/api/campaigns/{r.json()['campaign']['id']}/orders")
+    assert orders.status_code == 200 and orders.json()["total"] == 1
+    log = await session.scalar(select(AuditLog).where(AuditLog.action == "order.create"))
+    assert log is not None and log.actor == f"parent:{parent.parent_id}"
 
 
-async def test_qr_path_keeps_the_plain_parent_actor(
-    client: AsyncClient, student_payload: Payload, session: AsyncSession
-) -> None:
-    created = (await client.post("/api/students", json=student_payload())).json()
-
-    await client.put(
-        f"/api/public/students/{created['portal_token']}/size-choices/blazer",
-        json={"size_label": "3", "colour": "navy"},
-    )
-
-    log = await session.scalar(select(AuditLog).where(AuditLog.action == "choice.set"))
-    assert log is not None and log.actor == "parent"
-
-
-async def test_choice_validation_through_the_account(
+async def test_account_order_is_blocked_once_the_campaign_is_locked(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
     school_class: dict[str, Any],
+    products: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
 ) -> None:
+    campaign = await open_campaign(school_class["school_id"])
     parent = await make_parent()
     student = await claimed_with_pii(client, parent, student_payload, school_class)
-    base = f"{CHILDREN}/{student['id']}/size-choices"
+    body = {
+        "kit_lines": [],
+        "item_lines": [{"product_id": str(products["blazer"].id), "size_label": "3", "qty": 1}],
+    }
+    assert (await parent.put(f"{CHILDREN}/{student['id']}/order", json=body)).status_code == 200
+    campaign.status = "LOCKED"
+    await session.commit()
 
-    bad_size = await parent.put(f"{base}/blazer", json={"size_label": "99", "colour": "navy"})
-    unknown_product = await parent.put(f"{base}/nope", json={"size_label": "3", "colour": "navy"})
-    empty = await parent.put(f"{base}/blazer", json={"size_label": "", "colour": "navy"})
+    r = await parent.put(f"{CHILDREN}/{student['id']}/order", json=body)
 
-    assert bad_size.status_code == 422 and bad_size.json()["error"]["code"] == "validation_error"
-    assert unknown_product.status_code == 404
-    assert empty.status_code == 422
-    assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 0
+    assert r.status_code == 409 and r.json()["error"]["code"] == "campaign_locked"
+    assert (await parent.get(CHILDREN)).json()[0]["order_summary"]["status"] == "SUBMITTED"
 
 
-@pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
+@pytest.mark.parametrize(("method", "suffix"), [("GET", "ordering"), ("PUT", "order")])
 async def test_unlinked_or_foreign_children_are_not_found(
     client: AsyncClient,
     make_parent: MakeParent,
     student_payload: Payload,
     school_class: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
     method: str,
+    suffix: str,
 ) -> None:
+    await open_campaign(school_class["school_id"])
     owner, stranger = await make_parent(), await make_parent()
     linked = await claimed_with_pii(client, owner, student_payload, school_class)
     unclaimed = (
@@ -219,67 +198,46 @@ async def test_unlinked_or_foreign_children_are_not_found(
 
     for student_id in (linked["id"], unclaimed["id"], soft_deleted["id"], str(uuid.uuid4())):
         for who in (stranger, owner) if student_id != linked["id"] else (stranger,):
-            path = f"{CHILDREN}/{student_id}" + ("" if method == "GET" else "/size-choices/blazer")
             r = await who.request(
                 method,
-                path,
-                json={"size_label": "3", "colour": "navy"} if method == "PUT" else None,
+                f"{CHILDREN}/{student_id}/{suffix}",
+                json=ORDER_BODY if method == "PUT" else None,
             )
             assert r.status_code == 404, (who is owner, student_id, method)
             assert r.json()["error"]["code"] == "not_found"
-    assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 0
+    assert await count_rows(session, Order) == 0
 
 
-async def test_a_parent_cannot_clear_another_parents_choice(
-    client: AsyncClient,
-    make_parent: MakeParent,
-    student_payload: Payload,
-    school_class: dict[str, Any],
-    session: AsyncSession,
-) -> None:
-    owner, stranger = await make_parent(), await make_parent()
-    student = await claimed_with_pii(client, owner, student_payload, school_class)
-    url = f"{CHILDREN}/{student['id']}/size-choices/blazer"
-    await owner.put(url, json={"size_label": "3", "colour": "navy"})
-
-    assert (await stranger.delete(url)).status_code == 404
-    assert (await stranger.put(url, json={"size_label": "5", "colour": "navy"})).status_code == 404
-
-    choice = await session.scalar(select(ParentSizeChoice))
-    assert choice is not None and choice.size_label == "3"
-
-
-@pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
+@pytest.mark.parametrize(("method", "suffix"), [("GET", "ordering"), ("PUT", "order")])
 async def test_portal_account_routes_reject_admin_sessions(
-    client: AsyncClient, method: str
+    client: AsyncClient, method: str, suffix: str
 ) -> None:
-    path = f"{CHILDREN}/{uuid.uuid4()}" + ("" if method == "GET" else "/size-choices/blazer")
+    path = f"{CHILDREN}/{uuid.uuid4()}/{suffix}"
 
-    r = await client.request(
-        method, path, json={"size_label": "3", "colour": "navy"} if method == "PUT" else None
-    )
+    r = await client.request(method, path, json=ORDER_BODY if method == "PUT" else None)
 
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
 
 
-@pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
+@pytest.mark.parametrize(("method", "suffix"), [("GET", "ordering"), ("PUT", "order")])
 async def test_declared_child_is_unreachable_for_an_unlinked_parent(
     client: AsyncClient,
     make_parent: MakeParent,
     school_class: dict[str, Any],
+    open_campaign: OpenCampaign,
     session: AsyncSession,
     method: str,
+    suffix: str,
 ) -> None:
+    await open_campaign(school_class["school_id"])
     owner, stranger = await make_parent(), await make_parent()
     child = await declare_child(owner, school_class)
-    path = f"{CHILDREN}/{child['student_id']}" + ("" if method == "GET" else "/size-choices/blazer")
+    path = f"{CHILDREN}/{child['student_id']}/{suffix}"
 
-    r = await stranger.request(
-        method, path, json={"size_label": "3", "colour": "navy"} if method == "PUT" else None
-    )
+    r = await stranger.request(method, path, json=ORDER_BODY if method == "PUT" else None)
 
     assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
-    assert await session.scalar(select(func.count()).select_from(ParentSizeChoice)) == 0
+    assert await count_rows(session, Order) == 0
 
 
 async def test_declared_child_token_is_never_handed_to_any_parent_response(

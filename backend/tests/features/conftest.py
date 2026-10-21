@@ -7,12 +7,21 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.campaigns.models import (
+    OPEN,
+    Campaign,
+    CampaignItem,
+    CampaignKit,
+    KitSlot,
+    KitSlotOption,
+)
 from app.features.catalog.models import School, SchoolClass
 from app.features.students.models import DataSource, Fit, FittingTrial, Gender, Student
 
 TrialSpec = tuple[str, str, str, str | None]
 MakeStudent = Callable[..., Awaitable[Student]]
 MakeClass = Callable[..., Awaitable[SchoolClass]]
+OpenCampaign = Callable[..., Awaitable[Campaign]]
 
 
 @pytest.fixture
@@ -99,5 +108,35 @@ def make_school(session: AsyncSession) -> Callable[[str, str], Awaitable[School]
         session.add(school)
         await session.commit()
         return school
+
+    return make
+
+
+@pytest.fixture
+def open_campaign(session: AsyncSession, products: dict[str, Any]) -> OpenCampaign:
+    """Campaign with a priced blazer, an unpriced gile and one kit of both, all colour ghi."""
+
+    async def make(school_id: Any, status: str = OPEN) -> Campaign:
+        blazer, gile = products["blazer"].id, products["gile"].id
+        campaign = Campaign(
+            school_id=uuid.UUID(str(school_id)),
+            name="Đợt đồng phục",
+            school_year="2026-2027",
+            opens_at=datetime.now(UTC) - timedelta(days=1),
+            status=status,
+        )
+        campaign.items = [
+            CampaignItem(product_id=blazer, unit_price=500_000, colour="ghi", sort=0),
+            CampaignItem(product_id=gile, unit_price=None, colour="ghi", sort=1),
+        ]
+        kit = CampaignKit(code="bo", name="Bộ Blazer và Gile", sort=0)
+        kit.slots = [
+            KitSlot(label="Blazer", qty=1, sort=0, options=[KitSlotOption(product_id=blazer)]),
+            KitSlot(label="Gile", qty=1, sort=1, options=[KitSlotOption(product_id=gile)]),
+        ]
+        campaign.kits = [kit]
+        session.add(campaign)
+        await session.commit()
+        return campaign
 
     return make

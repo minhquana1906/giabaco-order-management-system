@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StudentDetail } from '../api'
 import { StudentForm } from './StudentForm'
 
 const json = (body: unknown, status = 200) =>
@@ -14,9 +15,11 @@ const PRODUCTS = [
 ]
 
 let posted: unknown[]
+let profileHangs = false
 
 function handle(url: URL, init?: RequestInit) {
   if (url.pathname === '/api/products') return json(PRODUCTS)
+  if (url.pathname === '/api/schools/s1/products') return json(PRODUCTS)
   if (url.pathname === '/api/schools') return json([{ id: 's1', name: 'Trường A', code: 'A' }])
   if (url.pathname === '/api/schools/s1/classes') return json([{ id: 'c1', school_id: 's1', grade: 2, name: '2A1' }])
   if (url.pathname === '/api/size-suggestions') {
@@ -27,6 +30,10 @@ function handle(url: URL, init?: RequestInit) {
   if (url.pathname === '/api/students' && init?.method === 'POST') {
     posted.push(JSON.parse(String(init.body)))
     return json({ id: 'st1' }, 201)
+  }
+  if (url.pathname === '/api/students/st1' && init?.method === 'PUT') {
+    posted.push(JSON.parse(String(init.body)))
+    return json({ id: 'st1' })
   }
   return json({ error: { code: 'not_found', message: 'x' } }, 404)
 }
@@ -58,10 +65,17 @@ beforeEach(() => {
   posted = []
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => handle(new URL(String(input), 'http://x'), init)),
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input), 'http://x')
+      if (profileHangs && url.pathname === '/api/schools/s1/products') return new Promise<Response>(() => {})
+      return handle(url, init)
+    }),
   )
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  profileHangs = false
+  vi.unstubAllGlobals()
+})
 
 describe('StudentForm trials', () => {
   it('adds and removes trial rows', async () => {
@@ -183,5 +197,41 @@ describe('StudentForm size suggestions', () => {
     await enterMeasures(user, '150', '38')
     await waitFor(() => expect(within(blazer).getByText('Cỡ 4', { selector: 'span' })).toBeInTheDocument())
     expect(sizeSelect(blazer)).toHaveValue('2')
+  })
+})
+
+describe('StudentForm editing', () => {
+  it('keeps a recorded trial for a product outside the school profile while the profile is loading', async () => {
+    profileHangs = true
+    const initial = {
+      id: 'st1',
+      full_name: 'Nguyễn Minh Khang',
+      dob: '2018-03-14',
+      gender: 'MALE',
+      height_cm: 150,
+      weight_kg: 38,
+      parent_name: null,
+      parent_phone: null,
+      parent_email: null,
+      school: { id: 's1', name: 'Trường A' },
+      class: { id: 'c1', name: '2A1', grade: 2 },
+      trials: [
+        { id: 't9', product_code: 'cap', product_name: 'Mũ', size_label: '3', suggested_size_label: null, fit: 'FITS', note: null, tried_at: '2026-10-01' },
+      ],
+    } as unknown as StudentDetail
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const onSaved = vi.fn()
+    render(
+      <QueryClientProvider client={client}>
+        <StudentForm initial={initial} onSaved={onSaved} />
+      </QueryClientProvider>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Lưu thay đổi' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(posted[0]).toMatchObject({
+      school_id: 's1',
+      class_id: 'c1',
+      trials: [{ id: 't9', product_code: 'cap', size_label: '3', fit: 'FITS' }],
+    })
   })
 })

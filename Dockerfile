@@ -13,6 +13,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PATH="/srv/.venv/bin:$PATH" SPA_DIR=
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY backend/ ./
+RUN mkdir -p /data/uploads
 COPY --from=web /web/dist /srv/spa
 EXPOSE 8000
 CMD ["sh", "-c", "alembic upgrade head && python -m app.features.catalog.seed config/catalog.seed.yaml && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips='*'"]

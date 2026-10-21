@@ -22,6 +22,8 @@ export function formatNumber(value: number, maxFractionDigits = 0): string {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: maxFractionDigits }).format(value)
 }
 
+export const formatVnd = (value: number) => `${formatNumber(value)} đ`
+
 export function formatPercent(percent: number, digits = 1): string {
   const text = new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: digits,

@@ -4,13 +4,14 @@ import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
 import { LoadingRows } from '@/components/LoadingRows'
 import { PageHeader } from '@/components/PageHeader'
-import { SizeLabel } from '@/components/SizeLabel'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useProducts } from '@/features/catalog/hooks'
+import { useSchools } from '@/features/catalog/hooks'
+import { defaultSchool } from '@/features/catalog/schoolLogic'
 import { ExportMenu } from '@/features/exports/components/ExportMenu'
 import { formatNumber } from '@/lib/format'
-import { STUDENTS_PAGE_SIZE, type StudentListItem, type StudentListParams } from '../api'
+import { ALL_SCHOOLS, STUDENTS_PAGE_SIZE, type StudentListItem, type StudentListParams } from '../api'
 import { useStudents } from '../hooks'
 import { DataSourceBadge } from './DataSourceBadge'
 import { StudentFilters, hasActiveFilters, type SearchPatch } from './StudentFilters'
@@ -23,25 +24,20 @@ interface StudentListProps {
 
 const genderText = (g: StudentListItem['gender']) => (g === 'MALE' ? 'Nam' : 'Nữ')
 
-function Sizes({ student, products }: { student: StudentListItem; products: { code: string; name: string }[] }) {
-  const tried = products.filter((p) => student.derived_sizes[p.code])
-  if (tried.length === 0) return <span className="text-muted-foreground">—</span>
-  return (
-    <>
-      {tried.map((p) => (
-        <span key={p.code} className="inline-flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">{p.name}</span>
-          <SizeLabel label={student.derived_sizes[p.code]} />
-        </span>
-      ))}
-    </>
-  )
+function OrderStatus({ placed }: { placed: boolean }) {
+  return placed ? <Badge variant="secondary">Đã đặt</Badge> : <span className="text-muted-foreground">Chưa</span>
 }
 
 export function StudentList({ search, onSearchChange, onClear }: StudentListProps) {
-  const query = useStudents(search)
-  const products = useProducts()
-  const productList = products.data ?? []
+  const schools = useSchools()
+  const schoolId =
+    search.school_id === ALL_SCHOOLS
+      ? undefined
+      : (search.school_id ?? (schools.isPending ? undefined : defaultSchool(schools.data ?? [])?.id))
+  const query = useStudents(
+    { ...search, school_id: schoolId },
+    search.school_id !== undefined || !schools.isPending,
+  )
   const filtered = hasActiveFilters(search)
   const page = search.page ?? 1
 
@@ -76,14 +72,12 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
             <TableHeader>
               <TableRow>
                 <TableHead>Họ tên</TableHead>
-                <TableHead>Lớp</TableHead>
+                <TableHead>Lớp / Trường</TableHead>
                 <TableHead>Giới tính</TableHead>
                 <TableHead className="text-right">Chiều cao</TableHead>
                 <TableHead className="text-right">Cân nặng</TableHead>
-                {productList.map((p) => (
-                  <TableHead key={p.code} className="text-center">Cỡ vừa · {p.name}</TableHead>
-                ))}
                 <TableHead className="text-center">Lần thử</TableHead>
+                <TableHead className="text-center">Đơn</TableHead>
                 <TableHead className="text-center">Ghi chú</TableHead>
               </TableRow>
             </TableHeader>
@@ -107,12 +101,10 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
                   <TableCell>{genderText(s.gender)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatNumber(s.height_cm, 1)} cm</TableCell>
                   <TableCell className="text-right tabular-nums">{formatNumber(s.weight_kg, 1)} kg</TableCell>
-                  {productList.map((p) => (
-                    <TableCell key={p.code} className="text-center">
-                      {s.derived_sizes[p.code] ? <SizeLabel label={s.derived_sizes[p.code]} /> : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                  ))}
                   <TableCell className="text-center tabular-nums">{s.trial_count}</TableCell>
+                  <TableCell className="text-center">
+                    <OrderStatus placed={s.has_order} />
+                  </TableCell>
                   <TableCell className="text-center">
                     {s.has_note ? <MessageSquareText className="mx-auto size-4" role="img" aria-label="Có ghi chú" /> : null}
                   </TableCell>
@@ -136,8 +128,10 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
                 <span className="text-sm text-muted-foreground">
                   Lớp {s.class.name} · {genderText(s.gender)} · {formatNumber(s.height_cm, 1)} cm · {formatNumber(s.weight_kg, 1)} kg
                 </span>
-                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Sizes student={s} products={productList} />
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span>{s.school.name}</span>
+                  <span className="tabular-nums">{s.trial_count} lần thử</span>
+                  <OrderStatus placed={s.has_order} />
                 </span>
               </Link>
             </li>
@@ -168,7 +162,7 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
         title="Danh sách học sinh"
         actions={
           <>
-            <ExportMenu />
+            <ExportMenu schoolId={schoolId} />
             <Button className="h-11 md:h-9" asChild>
               <Link to="/students/new">
                 <Plus /> Thêm học sinh
@@ -178,7 +172,7 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
         }
       />
       {query.data ? <p className="-mt-2 text-muted-foreground">{formatNumber(query.data.total)} học sinh</p> : null}
-      <StudentFilters search={search} onChange={onSearchChange} onClear={onClear} />
+      <StudentFilters search={search} schoolId={schoolId} onChange={onSearchChange} onClear={onClear} />
       {body()}
     </div>
   )

@@ -17,6 +17,13 @@ import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ParentParentRouteImport } from './routes/parent/_parent'
 import { Route as ParentLoginRouteImport } from './routes/parent/login'
 import { Route as ParentRegisterRouteImport } from './routes/parent/register'
+import { Route as AdminCampaignsIndexRouteImport } from './routes/_admin/campaigns/index'
+import { Route as AdminCampaignsCampaignIdRouteImport } from './routes/_admin/campaigns/$campaignId'
+import { Route as AdminCatalogIndexRouteImport } from './routes/_admin/catalog.index'
+import { Route as AdminCatalogProductIdRouteImport } from './routes/_admin/catalog.$productId'
+import { Route as AdminCatalogNewRouteImport } from './routes/_admin/catalog.new'
+import { Route as AdminOrdersIndexRouteImport } from './routes/_admin/orders/index'
+import { Route as AdminOrdersOrderIdRouteImport } from './routes/_admin/orders/$orderId'
 import { Route as AdminStudentsIndexRouteImport } from './routes/_admin/students/index'
 import { Route as AdminStudentsStudentIdRouteImport } from './routes/_admin/students/$studentId'
 import { Route as AdminStudentsNewRouteImport } from './routes/_admin/students/new'
@@ -63,6 +70,42 @@ const ParentRegisterRoute = ParentRegisterRouteImport.update({
   path: '/parent/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCampaignsIndexRoute = AdminCampaignsIndexRouteImport.update({
+  id: '/campaigns/',
+  path: '/campaigns/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCampaignsCampaignIdRoute =
+  AdminCampaignsCampaignIdRouteImport.update({
+    id: '/campaigns/$campaignId',
+    path: '/campaigns/$campaignId',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const AdminCatalogIndexRoute = AdminCatalogIndexRouteImport.update({
+  id: '/catalog/',
+  path: '/catalog/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCatalogProductIdRoute = AdminCatalogProductIdRouteImport.update({
+  id: '/catalog/$productId',
+  path: '/catalog/$productId',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCatalogNewRoute = AdminCatalogNewRouteImport.update({
+  id: '/catalog/new',
+  path: '/catalog/new',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrdersIndexRoute = AdminOrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrdersOrderIdRoute = AdminOrdersOrderIdRouteImport.update({
+  id: '/orders/$orderId',
+  path: '/orders/$orderId',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStudentsIndexRoute = AdminStudentsIndexRouteImport.update({
   id: '/students/',
   path: '/students/',
@@ -103,8 +146,15 @@ export interface FileRoutesByFullPath {
   '/parent': typeof ParentParentRouteWithChildren
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
+  '/catalog/$productId': typeof AdminCatalogProductIdRoute
+  '/catalog/new': typeof AdminCatalogNewRoute
+  '/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
+  '/campaigns/': typeof AdminCampaignsIndexRoute
+  '/catalog/': typeof AdminCatalogIndexRoute
+  '/orders/': typeof AdminOrdersIndexRoute
   '/students/': typeof AdminStudentsIndexRoute
   '/parent/': typeof ParentParentIndexRoute
   '/parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
@@ -117,8 +167,15 @@ export interface FileRoutesByTo {
   '/p/$token': typeof PTokenRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
+  '/catalog/$productId': typeof AdminCatalogProductIdRoute
+  '/catalog/new': typeof AdminCatalogNewRoute
+  '/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
+  '/campaigns': typeof AdminCampaignsIndexRoute
+  '/catalog': typeof AdminCatalogIndexRoute
+  '/orders': typeof AdminOrdersIndexRoute
   '/students': typeof AdminStudentsIndexRoute
   '/parent': typeof ParentParentIndexRoute
   '/parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
@@ -134,8 +191,15 @@ export interface FileRoutesById {
   '/parent/_parent': typeof ParentParentRouteWithChildren
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/_admin/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
+  '/_admin/catalog/$productId': typeof AdminCatalogProductIdRoute
+  '/_admin/catalog/new': typeof AdminCatalogNewRoute
+  '/_admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/_admin/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/_admin/students/new': typeof AdminStudentsNewRoute
+  '/_admin/campaigns/': typeof AdminCampaignsIndexRoute
+  '/_admin/catalog/': typeof AdminCatalogIndexRoute
+  '/_admin/orders/': typeof AdminOrdersIndexRoute
   '/_admin/students/': typeof AdminStudentsIndexRoute
   '/parent/_parent/': typeof ParentParentIndexRoute
   '/parent/_parent/children/$studentId': typeof ParentParentChildrenStudentIdRoute
@@ -151,8 +215,15 @@ export interface FileRouteTypes {
     | '/parent'
     | '/parent/login'
     | '/parent/register'
+    | '/campaigns/$campaignId'
+    | '/catalog/$productId'
+    | '/catalog/new'
+    | '/orders/$orderId'
     | '/students/$studentId'
     | '/students/new'
+    | '/campaigns/'
+    | '/catalog/'
+    | '/orders/'
     | '/students/'
     | '/parent/'
     | '/parent/children/$studentId'
@@ -165,8 +236,15 @@ export interface FileRouteTypes {
     | '/p/$token'
     | '/parent/login'
     | '/parent/register'
+    | '/campaigns/$campaignId'
+    | '/catalog/$productId'
+    | '/catalog/new'
+    | '/orders/$orderId'
     | '/students/$studentId'
     | '/students/new'
+    | '/campaigns'
+    | '/catalog'
+    | '/orders'
     | '/students'
     | '/parent'
     | '/parent/children/$studentId'
@@ -181,8 +259,15 @@ export interface FileRouteTypes {
     | '/parent/_parent'
     | '/parent/login'
     | '/parent/register'
+    | '/_admin/campaigns/$campaignId'
+    | '/_admin/catalog/$productId'
+    | '/_admin/catalog/new'
+    | '/_admin/orders/$orderId'
     | '/_admin/students/$studentId'
     | '/_admin/students/new'
+    | '/_admin/campaigns/'
+    | '/_admin/catalog/'
+    | '/_admin/orders/'
     | '/_admin/students/'
     | '/parent/_parent/'
     | '/parent/_parent/children/$studentId'
@@ -257,6 +342,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParentRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/campaigns/': {
+      id: '/_admin/campaigns/'
+      path: '/campaigns'
+      fullPath: '/campaigns/'
+      preLoaderRoute: typeof AdminCampaignsIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/campaigns/$campaignId': {
+      id: '/_admin/campaigns/$campaignId'
+      path: '/campaigns/$campaignId'
+      fullPath: '/campaigns/$campaignId'
+      preLoaderRoute: typeof AdminCampaignsCampaignIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/catalog/': {
+      id: '/_admin/catalog/'
+      path: '/catalog'
+      fullPath: '/catalog/'
+      preLoaderRoute: typeof AdminCatalogIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/catalog/$productId': {
+      id: '/_admin/catalog/$productId'
+      path: '/catalog/$productId'
+      fullPath: '/catalog/$productId'
+      preLoaderRoute: typeof AdminCatalogProductIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/catalog/new': {
+      id: '/_admin/catalog/new'
+      path: '/catalog/new'
+      fullPath: '/catalog/new'
+      preLoaderRoute: typeof AdminCatalogNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/orders/': {
+      id: '/_admin/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AdminOrdersIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/orders/$orderId': {
+      id: '/_admin/orders/$orderId'
+      path: '/orders/$orderId'
+      fullPath: '/orders/$orderId'
+      preLoaderRoute: typeof AdminOrdersOrderIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/students/': {
       id: '/_admin/students/'
       path: '/students'
@@ -304,15 +438,29 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminCampaignsCampaignIdRoute: typeof AdminCampaignsCampaignIdRoute
+  AdminCatalogProductIdRoute: typeof AdminCatalogProductIdRoute
+  AdminCatalogNewRoute: typeof AdminCatalogNewRoute
+  AdminOrdersOrderIdRoute: typeof AdminOrdersOrderIdRoute
   AdminStudentsStudentIdRoute: typeof AdminStudentsStudentIdRoute
   AdminStudentsNewRoute: typeof AdminStudentsNewRoute
+  AdminCampaignsIndexRoute: typeof AdminCampaignsIndexRoute
+  AdminCatalogIndexRoute: typeof AdminCatalogIndexRoute
+  AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
   AdminStudentsIndexRoute: typeof AdminStudentsIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminCampaignsCampaignIdRoute: AdminCampaignsCampaignIdRoute,
+  AdminCatalogProductIdRoute: AdminCatalogProductIdRoute,
+  AdminCatalogNewRoute: AdminCatalogNewRoute,
+  AdminOrdersOrderIdRoute: AdminOrdersOrderIdRoute,
   AdminStudentsStudentIdRoute: AdminStudentsStudentIdRoute,
   AdminStudentsNewRoute: AdminStudentsNewRoute,
+  AdminCampaignsIndexRoute: AdminCampaignsIndexRoute,
+  AdminCatalogIndexRoute: AdminCatalogIndexRoute,
+  AdminOrdersIndexRoute: AdminOrdersIndexRoute,
   AdminStudentsIndexRoute: AdminStudentsIndexRoute,
 }
 

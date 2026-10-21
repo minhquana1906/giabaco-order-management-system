@@ -20,6 +20,7 @@ export function useRealtime() {
       es.addEventListener('changed', () => {
         void queryClient.invalidateQueries({ queryKey: ['students'] })
         void queryClient.invalidateQueries({ queryKey: ['stats'] })
+        void queryClient.invalidateQueries({ queryKey: ['orders'] })
       })
       es.onopen = () => {
         delay = MIN_DELAY_MS

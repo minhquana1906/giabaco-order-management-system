@@ -2,7 +2,8 @@
 
 Usage (cwd: backend/): uv run python -m scripts.seed_demo
 Runs through the real handlers, so audit logs, portal tokens and suggested sizes are populated.
-Deterministic, and a no-op when any student already exists. Refuses non-local databases.
+Deterministic. Students are skipped if any exist; each school without a campaign gets one
+OPEN campaign. Refuses non-local databases.
 """
 
 import asyncio
@@ -17,10 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal, engine
+from app.features.campaigns.handler import create_campaign, replace_items, transition
+from app.features.campaigns.models import Campaign
+from app.features.campaigns.schemas import CampaignIn, ItemIn, ItemsIn
 from app.features.catalog.handler import create_class, create_school, list_classes, list_schools
 from app.features.catalog.models import Product
 from app.features.catalog.schemas import ClassIn, SchoolIn
-from app.features.parent_portal.handler import set_choice
 from app.features.students.handler import create_student, delete_student
 from app.features.students.models import Fit, Student
 from app.features.students.schemas import StudentIn, TrialIn
@@ -204,14 +207,32 @@ async def _ensure_catalog(session: AsyncSession) -> list[tuple[Any, Any, int]]:
     return refs
 
 
+async def _ensure_campaigns(session: AsyncSession, products: list[Product]) -> None:
+    items = ItemsIn(
+        items=[
+            ItemIn(product_id=p.id, colour=p.colours[0], sort=index)
+            for index, p in enumerate(products)
+        ]
+    )
+    for school in await list_schools(session):
+        if await session.scalar(select(Campaign.id).where(Campaign.school_id == school.id)):
+            continue
+        campaign = await create_campaign(
+            session,
+            CampaignIn(
+                school_id=school.id, name="Đợt đồng phục 2026-2027", school_year="2026-2027"
+            ),
+            ACTOR,
+        )
+        await replace_items(session, campaign.id, items, ACTOR)
+        await transition(session, campaign.id, "open", ACTOR)
+
+
 async def main() -> None:
     host = urlparse(get_settings().database_url).hostname
     if host not in LOCAL_HOSTS:
         raise SystemExit(f"Refusing to seed demo data into non-local database host {host!r}")
     async with SessionLocal() as session:
-        if await session.scalar(select(func.count()).select_from(Student)):
-            print("students already exist, skipping demo seed")
-            return
         products = list(
             (
                 await session.scalars(
@@ -222,30 +243,18 @@ async def main() -> None:
         if not {"blazer", "gile"} <= {p.code for p in products}:
             raise SystemExit("Catalog missing blazer/gile; run `make setup` first")
         refs = await _ensure_catalog(session)
+        await _ensure_campaigns(session, products)
+        if await session.scalar(select(func.count()).select_from(Student)):
+            print("students already exist, skipping student seed")
+            return
         rng = random.Random(SEED)
         payloads = _random_students(rng, products, refs) + _edge_cases(refs[-1][0], refs[-1][1])
         ids = [await create_student(session, p, ACTOR) for p in payloads]
         deleted = ids.pop()
         await delete_student(session, deleted, ACTOR)
-
-        tokens = {
-            s.id: s.portal_token
-            for s in (await session.scalars(select(Student).where(Student.id.in_(ids)))).all()
-        }
-        chosen = 0
-        for student_id, payload in zip(ids, payloads, strict=False):
-            by_code = {t.product_code: t.size_label for t in payload.trials if t.fit == Fit.FITS}
-            if not by_code or rng.random() > 0.3:
-                continue
-            for code, size in by_code.items():
-                await set_choice(session, tokens[student_id], code, size)
-            chosen += 1
     await engine.dispose()
     trials = sum(len(p.trials) for p in payloads[:-1])
-    print(
-        f"seeded {len(ids)} students ({trials} trials, {chosen} with parent choices), "
-        "1 soft-deleted"
-    )
+    print(f"seeded {len(ids)} students ({trials} trials), 1 soft-deleted")
 
 
 if __name__ == "__main__":

@@ -55,6 +55,21 @@ async def test_size_suggestions(
     assert r.json() == {"blazer": expected, "gile": expected}
 
 
+async def test_schools_report_open_campaign(
+    client: AsyncClient, make_school: Any, open_campaign: Any
+) -> None:
+    opened = await make_school("Trường Mở", "OPN")
+    locked = await make_school("Trường Khóa", "LCK")
+    await make_school("Trường Không", "NON")
+    await open_campaign(opened.id)
+    await open_campaign(locked.id, status="LOCKED")
+
+    body = (await client.get("/api/schools")).json()
+
+    flags = {s["code"]: s["has_open_campaign"] for s in body}
+    assert flags == {"OPN": True, "LCK": False, "NON": False}
+
+
 async def test_schools_and_classes(client: AsyncClient) -> None:
     r = await client.post("/api/schools", json={"name": "Trường B", "code": "TB"})
     assert r.status_code == 201

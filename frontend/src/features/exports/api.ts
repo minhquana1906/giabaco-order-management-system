@@ -4,14 +4,15 @@ export interface ExportItem {
   label: string
   path: string
   fileName: string
+  schoolScoped?: boolean
 }
 
 export const EXPORT_GROUPS: { title: string; items: ExportItem[] }[] = [
   {
     title: 'Học sinh',
     items: [
-      { label: 'Học sinh (CSV)', path: '/export/students.csv', fileName: 'students.csv' },
-      { label: 'Học sinh (Excel)', path: '/export/students.xlsx', fileName: 'students.xlsx' },
+      { label: 'Học sinh (CSV)', path: '/export/students.csv', fileName: 'students.csv', schoolScoped: true },
+      { label: 'Học sinh (Excel)', path: '/export/students.xlsx', fileName: 'students.xlsx', schoolScoped: true },
     ],
   },
   {
@@ -28,5 +29,6 @@ export const EXPORT_GROUPS: { title: string; items: ExportItem[] }[] = [
 ]
 
 export const exportsApi = {
-  download: (item: ExportItem) => downloadFile(item.path, undefined, item.fileName),
+  download: ({ item, schoolId }: { item: ExportItem; schoolId?: string }) =>
+    downloadFile(item.path, item.schoolScoped && schoolId ? { school_id: schoolId } : undefined, item.fileName),
 }

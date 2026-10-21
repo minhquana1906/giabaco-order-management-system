@@ -1,5 +1,7 @@
 import csv
 import io
+import re
+import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import date, datetime
@@ -9,10 +11,12 @@ from openpyxl import Workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import order_pivot as pivot
+from app.core.errors import ApiError
+from app.features.campaigns.models import OPEN, Campaign, school_products
 from app.features.catalog.models import Product, School, SchoolClass
-from app.features.parent_portal.models import ParentSizeChoice
-from app.features.students.fit_rules import derived_size
-from app.features.students.models import DataSource, Fit, FittingTrial, Student
+from app.features.orders.models import SUBMITTED, Order
+from app.features.students.models import DataSource, FittingTrial, Student
 
 Row = list[Any]
 Dataset = tuple[list[str], list[Row]]
@@ -62,10 +66,32 @@ def _plain(value: Any) -> Any:
     return getattr(value, "value", value)
 
 
-def _choice_cells(choice: ParentSizeChoice | None) -> tuple[Any, Any, Any]:
-    if choice is None:
-        return (None, None, None)
-    return (choice.size_label, choice.colour, _plain(choice.chosen_at))
+async def _open_orders(session: AsyncSession) -> dict[Any, Order]:
+    """The live SUBMITTED order of each student in an OPEN campaign."""
+    found = await session.scalars(
+        select(Order)
+        .join(Campaign, Campaign.id == Order.campaign_id)
+        .where(
+            Campaign.status == OPEN,
+            Order.status == SUBMITTED,
+            Order.student_id.is_not(None),
+            Order.deleted_at.is_(None),
+        )
+    )
+    return {o.student_id: o for o in found}
+
+
+def _order_cells(order: Order | None, product_id: Any) -> tuple[Any, Any]:
+    lines = [line for line in order.lines if line.product_id == product_id] if order else []
+    if not lines:
+        return (None, None)
+    return (", ".join(sorted({line.size_label for line in lines})), sum(line.qty for line in lines))
+
+
+def _order_total(order: Order | None) -> int | None:
+    if order is None or order.totals.has_unpriced:
+        return None
+    return order.totals.amount
 
 
 async def _load(
@@ -101,32 +127,29 @@ async def _live_trials(session: AsyncSession, *, measured_only: bool = False) ->
     return list(await session.scalars(query))
 
 
-async def students_dataset(session: AsyncSession) -> Dataset:
-    """One row per live student, with derived size per product and trial count."""
-    students, products, schools, classes = await _load(session)
-    trials = await _live_trials(session)
-    active = [p for p in products.values() if p.active]
-    fits: dict[tuple[Any, Any], list[str]] = defaultdict(list)
-    counts: dict[Any, int] = defaultdict(int)
-    for trial in trials:
-        counts[trial.student_id] += 1
-        if trial.fit == Fit.FITS:
-            fits[(trial.student_id, trial.product_id)].append(trial.size_label)
-    choices = {
-        (c.student_id, c.product_id): c for c in await session.scalars(select(ParentSizeChoice))
-    }
+def _sheet_title(name: str, taken: set[str]) -> str:
+    base = re.sub(r"[\[\]:*?/\\]", " ", name).strip().strip("'") or "Trường"
+    title, n = base[:31], 1
+    while title.casefold() in taken:
+        n += 1
+        suffix = f" ({n})"
+        title = base[: 31 - len(suffix)] + suffix
+    taken.add(title.casefold())
+    return title
+
+
+def _student_dataset(
+    students: Sequence[Student],
+    products: Sequence[Product],
+    schools: dict[Any, School],
+    classes: dict[Any, SchoolClass],
+    counts: dict[Any, int],
+    orders: dict[Any, Order],
+) -> Dataset:
     headers = [
         *STUDENT_HEADERS,
-        *(f"Cỡ vừa suy ra - {p.name}" for p in active),
-        *(
-            header
-            for p in active
-            for header in (
-                f"{p.name} - cỡ phụ huynh chọn",
-                f"{p.name} - màu phụ huynh chọn",
-                f"{p.name} - thời điểm chọn",
-            )
-        ),
+        *(h for p in products for h in (f"{p.name} - cỡ đặt", f"{p.name} - số lượng đặt")),
+        "Tạm tính đơn (đ)",
         "Số lần thử",
     ]
     rows: list[Row] = []
@@ -147,12 +170,66 @@ async def students_dataset(session: AsyncSession) -> Dataset:
                 s.parent_phone,
                 s.parent_email,
                 _plain(s.data_source),
-                *(derived_size(fits.get((s.id, p.id), []), p.sizes) for p in active),
-                *(cell for p in active for cell in _choice_cells(choices.get((s.id, p.id)))),
+                *(cell for p in products for cell in _order_cells(orders.get(s.id), p.id)),
+                _order_total(orders.get(s.id)),
                 counts[s.id],
             ]
         )
     return headers, rows
+
+
+async def student_datasets(
+    session: AsyncSession, school_id: uuid.UUID | None = None
+) -> dict[str, Dataset]:
+    """One dataset per school, each with only that school's profile products."""
+    schools = list(await session.scalars(select(School).order_by(School.name, School.code)))
+    if school_id is not None:
+        schools = [s for s in schools if s.id == school_id]
+        if not schools:
+            raise ApiError(404, "not_found", "Không tìm thấy trường")
+    students = list(
+        await session.scalars(
+            select(Student).where(Student.deleted_at.is_(None)).order_by(Student.created_at)
+        )
+    )
+    classes = {c.id: c for c in await session.scalars(select(SchoolClass))}
+    counts: dict[Any, int] = defaultdict(int)
+    for trial in await _live_trials(session):
+        counts[trial.student_id] += 1
+    orders = await _open_orders(session)
+    by_id = {s.id: s for s in schools}
+    taken = {"lần thử"}
+    return {
+        _sheet_title(school.name, taken): _student_dataset(
+            [s for s in students if s.school_id == school.id],
+            await school_products(session, school.id),
+            by_id,
+            classes,
+            counts,
+            orders,
+        )
+        for school in schools
+    }
+
+
+async def students_dataset(session: AsyncSession, school_id: uuid.UUID | None = None) -> Dataset:
+    """Single table: the school's own columns, or the union of every profile when unfiltered."""
+    if school_id is not None:
+        return next(iter((await student_datasets(session, school_id)).values()))
+    schools = {
+        s.id: s for s in await session.scalars(select(School).order_by(School.name, School.code))
+    }
+    products: dict[Any, Product] = {}
+    for school in schools.values():
+        for p in await school_products(session, school.id):
+            products.setdefault(p.id, p)
+    students, _, _, classes = await _load(session)
+    counts: dict[Any, int] = defaultdict(int)
+    for trial in await _live_trials(session):
+        counts[trial.student_id] += 1
+    return _student_dataset(
+        students, list(products.values()), schools, classes, counts, await _open_orders(session)
+    )
 
 
 async def trials_dataset(session: AsyncSession) -> Dataset:
@@ -179,6 +256,67 @@ async def trials_dataset(session: AsyncSession) -> Dataset:
     return TRIAL_HEADERS, rows
 
 
+GENDER_LABEL = {"MALE": "Nam", "FEMALE": "Nữ", None: ""}
+CAMPAIGN_ORDER_HEADERS = ["Mã đơn", "Người nhận", "Phụ huynh", "Giới tính", "Lớp", "Cỡ chung"]
+CAMPAIGN_ORDER_TAIL = ["Số bộ", "Thành tiền", "Ghi chú"]
+PIVOT_HEADERS = ["Nhóm", "Tên", "Cỡ", "Nam", "Nữ", "Chưa rõ", "Tổng"]
+
+
+async def campaign_orders_dataset(
+    session: AsyncSession, campaign_id: uuid.UUID, submitted_until: date | None = None
+) -> Dataset:
+    """One row per submitted order: qty per campaign product, kit count and priced total."""
+    campaign = await pivot.campaign_or_404(session, campaign_id)
+    columns = [i.product_id for i in campaign.items]
+    products = {
+        p.id: p.name for p in await session.scalars(select(Product).where(Product.id.in_(columns)))
+    }
+    orders = await session.scalars(
+        pivot.submitted_orders(campaign_id, submitted_until).order_by(Order.code)
+    )
+    rows: list[Row] = []
+    for order in orders:
+        qty: dict[uuid.UUID, int] = defaultdict(int)
+        for line in order.lines:
+            qty[line.product_id] += line.qty
+        rows.append(
+            [
+                order.code,
+                order.recipient_name,
+                order.parent_name,
+                GENDER_LABEL[order.gender],
+                order.class_label,
+                order.default_size,
+                *(qty.get(product_id) for product_id in columns),
+                sum(k.qty for k in order.kit_lines),
+                None if order.totals.has_unpriced else order.totals.amount,
+                order.note,
+            ]
+        )
+    headers = [*CAMPAIGN_ORDER_HEADERS, *(products[p] for p in columns), *CAMPAIGN_ORDER_TAIL]
+    return headers, rows
+
+
+async def campaign_pivot_dataset(
+    session: AsyncSession, campaign_id: uuid.UUID, submitted_until: date | None = None
+) -> Dataset:
+    """Both pivot groups (by product, by kit) stacked, one line per size plus a total line."""
+    rows: list[Row] = []
+    groups: list[tuple[pivot.Group, str]] = [("product", "Món"), ("kit", "Bộ")]
+    for group, label in groups:
+        result = await pivot.campaign_pivot(
+            session, campaign_id, "qty", group, submitted_until=submitted_until
+        )
+        for block in result.blocks:
+            rows += [
+                [label, block.name, r.size_label, r.male, r.female, r.unknown, r.total]
+                for r in block.rows
+            ]
+            t = block.totals
+            rows.append([label, block.name, "Tổng", t.male, t.female, t.unknown, t.total])
+    return PIVOT_HEADERS, rows
+
+
 _FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
 
 
@@ -202,7 +340,8 @@ def to_csv(headers: Sequence[str], rows: Sequence[Row]) -> bytes:
 def to_xlsx(sheets: dict[str, Dataset]) -> bytes:
     """Encode datasets as one workbook, one sheet each."""
     workbook = Workbook()
-    workbook.remove(workbook.active)
+    if sheets:
+        workbook.remove(workbook.active)
     for title, (headers, rows) in sheets.items():
         sheet = workbook.create_sheet(title)
         sheet.append(_safe(headers))

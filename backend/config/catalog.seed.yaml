@@ -12,8 +12,10 @@ products:
   - code: blazer
     name: "Áo Blazer (Vest)"
     sizes: ["1", "2", "3", "4", "5", "6", "7"]
+    colours: ["ghi"]
     size_guide: *provisional_guide
   - code: gile
     name: "Áo Gile"
     sizes: ["1", "2", "3", "4", "5", "6", "7"]
+    colours: ["ghi"]
     size_guide: *provisional_guide

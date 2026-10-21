@@ -19,8 +19,8 @@ from app.core.errors import ApiError
 from app.core.events import bus
 from app.core.names import lock_identity, name_key
 from app.features.catalog.models import Product, School, SchoolClass
+from app.features.orders.models import SUBMITTED, Order
 from app.features.parent_accounts.models import ParentAccount, ParentStudentLink
-from app.features.parent_portal.models import ParentSizeChoice
 from app.features.students.fit_rules import derived_size
 from app.features.students.models import (
     DataSource,
@@ -33,7 +33,6 @@ from app.features.students.schemas import (
     ClassRef,
     LinkedParentOut,
     NamedRef,
-    ParentChoiceOut,
     StudentDetail,
     StudentIn,
     StudentListItem,
@@ -216,7 +215,7 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
     """Create a student with trials in a single transaction.
 
     Unless forced, a single matching parent-declared record is adopted instead: it becomes
-    admin-measured and keeps its id, portal token, parent links and size choices.
+    admin-measured and keeps its id, portal token, parent links and orders.
     """
     await _check_class(session, payload)
     products = await _products_by_code(session)
@@ -369,7 +368,7 @@ async def _derived_for(
 
 
 async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDetail:
-    """Full student detail including trials and parent choices."""
+    """Full student detail including trials."""
     student = await _load_student(session, student_id)
     school = await session.get(School, student.school_id)
     school_class = await session.get(SchoolClass, student.class_id)
@@ -377,13 +376,6 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
     trials = await _active_trials(session, student.id)
     products = {p.id: p for p in (await session.scalars(select(Product))).all()}
     derived, _ = await _derived_for(session, {student.id: trials})
-    choices = (
-        await session.scalars(
-            select(ParentSizeChoice)
-            .where(ParentSizeChoice.student_id == student.id)
-            .order_by(ParentSizeChoice.chosen_at)
-        )
-    ).all()
     links = await session.execute(
         select(ParentStudentLink, ParentAccount)
         .join(ParentAccount, ParentAccount.id == ParentStudentLink.parent_id)
@@ -423,16 +415,6 @@ async def get_detail(session: AsyncSession, student_id: uuid.UUID) -> StudentDet
             for t in trials
         ],
         derived_sizes=derived[student.id],
-        parent_choices=[
-            ParentChoiceOut(
-                product_code=products[c.product_id].code,
-                product_name=products[c.product_id].name,
-                size_label=c.size_label,
-                colour=c.colour,
-                chosen_at=c.chosen_at,
-            )
-            for c in choices
-        ],
         linked_parents=[
             LinkedParentOut(
                 parent_id=parent.id,
@@ -453,8 +435,6 @@ class ListFilters:
     grade: int | None = None
     class_id: uuid.UUID | None = None
     gender: str | None = None
-    product: str | None = None
-    size: str | None = None
     q: str | None = None
     page: int = 1
     page_size: int = 50
@@ -481,31 +461,32 @@ def _search_clauses(q: str) -> list[Any]:
 
 
 async def list_students(session: AsyncSession, f: ListFilters) -> StudentPage:
-    """Filtered, newest-first page. Derived-size filtering happens in Python (<1000 rows)."""
-    products = {p.code: p for p in (await session.scalars(select(Product))).all()}
-    if f.size is not None:
-        if f.product is None:
-            raise ApiError(422, "validation_error", "size cần product", {"product": "Bắt buộc"})
-        product = products.get(f.product)
-        if product is None or (f.size != "none" and f.size not in product.sizes):
-            raise ApiError(422, "validation_error", "Bộ lọc không hợp lệ", {"size": "Không hợp lệ"})
+    """Filtered, newest-first page."""
+    base = (
+        select(Student.id)
+        .join(SchoolClass, SchoolClass.id == Student.class_id)
+        .where(Student.deleted_at.is_(None))
+    )
+    if f.school_id:
+        base = base.where(Student.school_id == f.school_id)
+    if f.class_id:
+        base = base.where(Student.class_id == f.class_id)
+    if f.grade is not None:
+        base = base.where(SchoolClass.grade == f.grade)
+    if f.gender:
+        base = base.where(Student.gender == f.gender)
+    if f.q and f.q.strip():
+        base = base.where(or_(*_search_clauses(f.q)))
+    total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
     query = (
         select(Student, School, SchoolClass)
         .join(School, School.id == Student.school_id)
         .join(SchoolClass, SchoolClass.id == Student.class_id)
-        .where(Student.deleted_at.is_(None))
+        .where(Student.id.in_(base))
         .order_by(Student.created_at.desc(), Student.id)
+        .limit(f.page_size)
+        .offset((f.page - 1) * f.page_size)
     )
-    if f.school_id:
-        query = query.where(Student.school_id == f.school_id)
-    if f.class_id:
-        query = query.where(Student.class_id == f.class_id)
-    if f.grade is not None:
-        query = query.where(SchoolClass.grade == f.grade)
-    if f.gender:
-        query = query.where(Student.gender == f.gender)
-    if f.q and f.q.strip():
-        query = query.where(or_(*_search_clauses(f.q)))
     rows = (await session.execute(query)).all()
 
     trials_by_student: dict[uuid.UUID, list[FittingTrial]] = {r[0].id: [] for r in rows}
@@ -517,14 +498,17 @@ async def list_students(session: AsyncSession, f: ListFilters) -> StudentPage:
         )
         for t in all_trials:
             trials_by_student[t.student_id].append(t)
-    derived, _ = await _derived_for(session, trials_by_student)
-
-    if f.size is not None and f.product is not None:
-        wanted = None if f.size == "none" else f.size
-        rows = [r for r in rows if derived[r[0].id].get(f.product) == wanted]
-
-    total = len(rows)
-    start = (f.page - 1) * f.page_size
+    ordered: set[uuid.UUID] = set()
+    if rows:
+        ordered = set(
+            await session.scalars(
+                select(Order.student_id).where(
+                    Order.student_id.in_(trials_by_student),
+                    Order.status == SUBMITTED,
+                    Order.deleted_at.is_(None),
+                )
+            )
+        )
     items = [
         StudentListItem(
             id=s.id,
@@ -536,11 +520,11 @@ async def list_students(session: AsyncSession, f: ListFilters) -> StudentPage:
             weight_kg=float(s.weight_kg),
             parent_phone=s.parent_phone,
             data_source=s.data_source,
-            derived_sizes=derived[s.id],
+            has_order=s.id in ordered,
             trial_count=len(trials_by_student[s.id]),
             has_note=any(t.note for t in trials_by_student[s.id]),
             created_at=s.created_at,
         )
-        for s, sc, cl in rows[start : start + f.page_size]
+        for s, sc, cl in rows
     ]
     return StudentPage(items=items, total=total, page=f.page, page_size=f.page_size)

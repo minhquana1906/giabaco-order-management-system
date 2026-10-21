@@ -172,7 +172,8 @@ async def test_claim_creates_one_link_and_is_idempotent(
             "parent_name": None,
             "parent_phone": None,
             "parent_email": None,
-            "choices": [],
+            "order_summary": None,
+            "campaign_open": False,
         }
     )
     links = (await session.scalars(select(ParentStudentLink))).all()

@@ -3,7 +3,7 @@ SMOKE := docker compose -p gsmoke --env-file .env.smoke -f docker-compose.yml
 SMOKE_PASSWORD := smoke-pass-123
 
 .DEFAULT_GOAL := help
-.PHONY: help setup seed-demo dev dev-reset dev-api dev-web test lint smoke hash up logs staff
+.PHONY: help setup seed-demo dev dev-reset dev-api dev-web test lint smoke hash up logs staff upload-product-image legacy-thtm
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_./-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-22s %s\n", $$1, $$2}'
@@ -69,3 +69,9 @@ logs: ## Server: follow app logs
 
 staff: ## Server: manage staff accounts, e.g. make staff ARGS="add lan" (also passwd|disable|enable <user>, list)
 	$(COMPOSE_PROD) exec app python -m app.features.auth.staff $(ARGS)
+
+upload-product-image: ## Local: upload a product image via the API, e.g. make upload-product-image ARGS="../docs/references/images/blazer_nam_ghi.webp --product blazer --school LQD --gender MALE --colour ghi"
+	cd backend && uv run python -m scripts.upload_product_image $(ARGS)
+
+legacy-thtm: ## Local: load the Tay Mo order sheet, e.g. make legacy-thtm FILE=docs/references/x.xlsx ARGS=--dry-run (or --commit)
+	cd backend && uv run python -m app.features.orders.legacy_thtm $(abspath $(FILE)) $(ARGS)

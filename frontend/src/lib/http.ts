@@ -43,7 +43,7 @@ export function withQuery(path: string, params?: Params): string {
 
 async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers)
-  if (init.body !== undefined && !headers.has('Content-Type')) {
+  if (init.body !== undefined && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   let res: Response
@@ -67,6 +67,7 @@ export const http = {
     json<T>(withQuery(path, params), { signal }),
   post: <T>(path: string, body?: unknown) =>
     json<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }),
+  postForm: <T>(path: string, body: FormData) => json<T>(path, { method: 'POST', body }),
   put: <T>(path: string, body?: unknown) =>
     json<T>(path, { method: 'PUT', body: body === undefined ? undefined : JSON.stringify(body) }),
   patch: <T>(path: string, body?: unknown) =>

@@ -1,12 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { statsApi } from './api'
+import { statsApi, type PivotParams } from './api'
 
 export const statsKeys = {
   all: ['stats'] as const,
   overview: (schoolId?: string) => [...statsKeys.all, 'overview', schoolId ?? null] as const,
   distribution: (product: string, schoolId?: string) =>
     [...statsKeys.all, 'size-distribution', product, schoolId ?? null] as const,
-  orders: (schoolId?: string) => [...statsKeys.all, 'orders', schoolId ?? null] as const,
+  campaignOverview: (campaignId: string, submittedUntil?: string) =>
+    [...statsKeys.all, 'campaign-overview', campaignId, submittedUntil ?? null] as const,
+  campaignPivot: (params: PivotParams) => [...statsKeys.all, 'campaign-pivot', params] as const,
   matrix: (product: string, schoolId: string) =>
     [...statsKeys.all, 'class-matrix', product, schoolId] as const,
 }
@@ -42,10 +44,22 @@ export function useClassMatrix(product: string | undefined, schoolId: string | u
   })
 }
 
-export function useOrders(schoolId: string | undefined) {
+export function useCampaignOverview(campaignId: string | undefined, submittedUntil?: string) {
   return useQuery({
-    queryKey: statsKeys.orders(schoolId),
-    queryFn: ({ signal }) => statsApi.orders(schoolId, signal),
+    queryKey: statsKeys.campaignOverview(campaignId ?? '', submittedUntil),
+    queryFn: ({ signal }) => statsApi.campaignOverview(campaignId!, submittedUntil, signal),
+    enabled: Boolean(campaignId),
+    refetchInterval: POLL_MS,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useCampaignPivot(params: Omit<PivotParams, 'campaignId'> & { campaignId: string | undefined }) {
+  const { campaignId, ...rest } = params
+  return useQuery({
+    queryKey: statsKeys.campaignPivot({ campaignId: campaignId ?? '', ...rest }),
+    queryFn: ({ signal }) => statsApi.campaignPivot({ campaignId: campaignId!, ...rest }, signal),
+    enabled: Boolean(campaignId),
     refetchInterval: POLL_MS,
     placeholderData: keepPreviousData,
   })

@@ -7,7 +7,8 @@ import { UnitInput } from '@/components/UnitInput'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { useProducts, useSizeSuggestions } from '@/features/catalog/hooks'
+import { useProducts, useSchoolProducts, useSchools, useSizeSuggestions } from '@/features/catalog/hooks'
+import { defaultSchool } from '@/features/catalog/schoolLogic'
 import { ApiError } from '@/lib/http'
 import type { StudentDetail } from '../api'
 import { useCreateStudent, useUpdateStudent } from '../hooks'
@@ -28,7 +29,9 @@ import {
   type Suggestions,
   type TrialRow,
 } from './formLogic'
+import { EmptyProfile } from './EmptyProfile'
 import { ProductTrialCard } from './ProductTrialCard'
+import { formProducts, pickByCodes } from './scope'
 import { useDebounced } from './useDebounced'
 
 interface StudentFormProps {
@@ -41,18 +44,25 @@ interface StudentFormProps {
 
 export function StudentForm({ initial, initialContext, onContextChange, onSaved, onCancel }: StudentFormProps) {
   const editing = Boolean(initial)
-  const products = useProducts()
+  const allProducts = useProducts()
   const create = useCreateStudent()
   const update = useUpdateStudent(initial?.id ?? '')
   const save = editing ? update : create
   const formRef = useRef<HTMLFormElement>(null)
 
   const [values, setValues] = useState<FormValues>(() => (initial ? valuesFromStudent(initial) : emptyValues()))
-  const [ctx, setCtx] = useState(() =>
+  const [pickedCtx, setCtx] = useState(() =>
     initial
       ? { schoolId: initial.school.id, classId: initial.class.id }
       : (initialContext ?? { schoolId: '', classId: '' }),
   )
+  const schools = useSchools()
+  const fallbackSchoolId = editing || pickedCtx.schoolId ? undefined : defaultSchool(schools.data ?? [])?.id
+  const ctx = fallbackSchoolId ? { schoolId: fallbackSchoolId, classId: '' } : pickedCtx
+  const profile = useSchoolProducts(ctx.schoolId)
+  const recordedCodes = initial?.trials.map((t) => t.product_code) ?? []
+  const shownProducts = profile.data && allProducts.data ? formProducts(profile.data, allProducts.data, recordedCodes) : []
+  const shownCodes = shownProducts.map((p) => p.code)
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const [submitted, setSubmitted] = useState(false)
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({})
@@ -70,13 +80,16 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
   const suggestionQuery = useSizeSuggestions(heightN, weightN)
   const suggestions: Suggestions | null = measuresOk ? (suggestionQuery.data ?? null) : null
 
-  const [applied, setApplied] = useState<Suggestions | null>(null)
-  if (suggestions !== applied) {
-    setApplied(suggestions)
-    if (!editing && suggestions) setValues((v) => ({ ...v, trials: applySuggestions(v.trials, suggestions) }))
+  const codesKey = shownCodes.join(',')
+  const [applied, setApplied] = useState<{ suggestions: Suggestions | null; codesKey: string }>({ suggestions: null, codesKey: '' })
+  if (suggestions !== applied.suggestions || codesKey !== applied.codesKey) {
+    setApplied({ suggestions, codesKey })
+    if (!editing && suggestions) {
+      setValues((v) => ({ ...v, trials: applySuggestions(v.trials, suggestions && pickByCodes(suggestions, shownCodes)) }))
+    }
   }
 
-  const clientErrors = validate(values, ctx)
+  const clientErrors = validate({ ...values, trials: pickByCodes(values.trials, shownCodes) }, ctx)
   const allErrors = { ...clientErrors, ...serverErrors }
   const shown: Record<string, string> = {}
   for (const [k, m] of Object.entries(allErrors)) {
@@ -108,8 +121,7 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
       )
       return
     }
-    const codes = products.data?.map((p) => p.code) ?? []
-    const { payload, rowKeys } = toPayload(values, ctx, codes, force)
+    const { payload, rowKeys } = toPayload(values, ctx, [...new Set([...shownCodes, ...recordedCodes])], force)
     try {
       onSaved(await save.mutateAsync(payload))
     } catch (error) {
@@ -207,12 +219,16 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
       </div>
 
       <div className="flex flex-col gap-4 lg:self-stretch">
-        {products.isPending ? (
+        {!ctx.schoolId ? (
+          <p className="text-muted-foreground">Chọn trường để thấy sản phẩm thử.</p>
+        ) : profile.isPending || allProducts.isPending ? (
           <p role="status" className="text-muted-foreground">Đang tải danh sách sản phẩm…</p>
-        ) : products.isError ? (
+        ) : profile.isError || allProducts.isError ? (
           <p role="alert" className="text-destructive">Không tải được danh sách sản phẩm.</p>
+        ) : shownProducts.length === 0 ? (
+          <EmptyProfile />
         ) : (
-          products.data.map((product) => (
+          shownProducts.map((product) => (
             <ProductTrialCard
               key={product.code}
               product={product}

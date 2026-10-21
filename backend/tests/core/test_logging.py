@@ -51,8 +51,8 @@ def test_mask_value_masks_parent_credentials() -> None:
         ("/p/abc-DEF_123", "/p/<token>"),
         ("/api/public/students/abc", "/api/public/students/<token>"),
         (
-            "/api/public/students/abc/size-choices/blazer",
-            "/api/public/students/<token>/size-choices/blazer",
+            "/api/public/students/abc/order",
+            "/api/public/students/<token>/order",
         ),
         ("/api/students/1", "/api/students/1"),
     ],

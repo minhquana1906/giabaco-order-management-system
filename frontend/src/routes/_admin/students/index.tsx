@@ -9,19 +9,14 @@ const int = (v: unknown, min: number, max = Infinity) => {
 }
 
 export const Route = createFileRoute('/_admin/students/')({
-  validateSearch: (s: Record<string, unknown>): StudentListParams => {
-    const product = str(s.product)
-    return {
-      school_id: str(s.school_id),
-      grade: int(s.grade, 1, 12),
-      class_id: str(s.class_id),
-      gender: s.gender === 'MALE' || s.gender === 'FEMALE' ? s.gender : undefined,
-      product,
-      size: product ? str(s.size) : undefined,
-      q: str(s.q),
-      page: int(s.page, 1),
-    }
-  },
+  validateSearch: (s: Record<string, unknown>): StudentListParams => ({
+    school_id: str(s.school_id),
+    grade: int(s.grade, 1, 12),
+    class_id: str(s.class_id),
+    gender: s.gender === 'MALE' || s.gender === 'FEMALE' ? s.gender : undefined,
+    q: str(s.q),
+    page: int(s.page, 1),
+  }),
   component: StudentsPage,
 })
 

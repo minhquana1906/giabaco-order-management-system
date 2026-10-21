@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import get_settings
 from app.core.security import HostSplitMiddleware
 from app.main import ROUTERS, _admin_api_matcher, app
 
@@ -26,10 +29,12 @@ ADMIN_API = [
     "/api/export/students.csv",
     "/api/events",
     "/api/products",
+    "/api/products/x/images",
+    "/api/product-colours",
     "/api/schools",
     "/api/size-suggestions",
 ]
-ADMIN_PAGES = ["/", "/login", "/students", "/students/new", "/dashboard"]
+ADMIN_PAGES = ["/", "/login", "/students", "/students/new", "/dashboard", "/catalog"]
 PARENT_API = ["/api/parent/auth/me", "/api/parent/schools", "/api/public/sometoken"]
 PARENT_PAGES = ["/parent", "/parent/login", "/p/sometoken"]
 
@@ -55,6 +60,16 @@ async def test_public_host_keeps_parent_and_health() -> None:
         assert (await c.get("/api/parent/schools")).status_code == 401
         r = await c.get("/api/public/sometoken")
         assert r.status_code == 404 and r.json()["error"]["message"] != "Not found"
+
+
+@pytest.mark.parametrize("host", ["parent.test", ADMIN])
+async def test_media_served_on_both_hosts(host: str) -> None:
+    target = Path(get_settings().media_dir) / "products" / "split" / "x.png"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"png")
+    async with client(ADMIN, host) as c:
+        r = await c.get("/media/products/split/x.png")
+    assert r.status_code == 200 and r.content == b"png"
 
 
 @pytest.mark.parametrize("path", PARENT_PAGES)

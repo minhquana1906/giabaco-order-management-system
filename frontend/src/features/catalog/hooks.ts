@@ -1,10 +1,16 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { catalogApi } from './api'
+import { useMemo } from 'react'
+import { catalogApi, type ProductUpdateInput } from './api'
+import { colourLookup } from './colourLogic'
 
 export const catalogKeys = {
   all: ['catalog'] as const,
   products: () => [...catalogKeys.all, 'products'] as const,
+  adminProducts: () => [...catalogKeys.all, 'admin-products'] as const,
+  colours: () => [...catalogKeys.all, 'colours'] as const,
+  images: (productId: string, schoolId: string) => [...catalogKeys.all, 'images', productId, schoolId] as const,
   schools: () => [...catalogKeys.all, 'schools'] as const,
+  schoolProducts: (schoolId: string) => [...catalogKeys.all, 'school-products', schoolId] as const,
   classes: (schoolId: string) => [...catalogKeys.all, 'classes', schoolId] as const,
   sizeSuggestions: (heightCm: number, weightKg: number) =>
     [...catalogKeys.all, 'size-suggestions', heightCm, weightKg] as const,
@@ -15,7 +21,7 @@ const CATALOG_STALE_MS = 5 * 60_000
 export const productsQueryOptions = () =>
   queryOptions({
     queryKey: catalogKeys.products(),
-    queryFn: ({ signal }) => catalogApi.products(signal),
+    queryFn: ({ signal }) => catalogApi.products(false, signal),
     staleTime: CATALOG_STALE_MS,
   })
 
@@ -39,6 +45,14 @@ export function useProducts() {
 
 export function useSchools() {
   return useQuery(schoolsQueryOptions())
+}
+
+export function useSchoolProducts(schoolId: string | undefined) {
+  return useQuery({
+    queryKey: catalogKeys.schoolProducts(schoolId ?? ''),
+    queryFn: ({ signal }) => catalogApi.schoolProducts(schoolId!, signal),
+    enabled: Boolean(schoolId),
+  })
 }
 
 export function useClasses(schoolId: string | undefined) {
@@ -90,5 +104,66 @@ export function useSizeSuggestions(heightCm: number | null, weightKg: number | n
     enabled: ready,
     staleTime: CATALOG_STALE_MS,
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useAdminProducts() {
+  return useQuery({
+    queryKey: catalogKeys.adminProducts(),
+    queryFn: ({ signal }) => catalogApi.products(true, signal),
+  })
+}
+
+export function useColours() {
+  return useQuery({
+    queryKey: catalogKeys.colours(),
+    queryFn: ({ signal }) => catalogApi.colours(signal),
+    staleTime: Infinity,
+  })
+}
+
+export function useColourLookup() {
+  const { data } = useColours()
+  return useMemo(() => colourLookup(data), [data])
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: catalogApi.createProduct,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
+  })
+}
+
+export function useUpdateProduct(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ProductUpdateInput) => catalogApi.updateProduct(id, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
+  })
+}
+
+export function useProductImages(productId: string, schoolId: string | undefined) {
+  return useQuery({
+    queryKey: catalogKeys.images(productId, schoolId ?? ''),
+    queryFn: ({ signal }) => catalogApi.listImages(productId, schoolId!, signal),
+    enabled: Boolean(schoolId),
+  })
+}
+
+export function useUploadProductImage(productId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Parameters<typeof catalogApi.uploadProductImage>[1]) =>
+      catalogApi.uploadProductImage(productId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
+  })
+}
+
+export function useDeleteProductImage(productId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (imageId: string) => catalogApi.deleteProductImage(productId, imageId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
   })
 }

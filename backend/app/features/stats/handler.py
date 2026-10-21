@@ -1,19 +1,16 @@
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
+from app.features.campaigns.models import school_products
 from app.features.catalog.models import Product, School, SchoolClass
-from app.features.parent_portal.models import ParentSizeChoice
 from app.features.stats.schemas import (
     ClassMatrix,
     MatrixRow,
     MatrixTotals,
-    OrderProduct,
-    Orders,
-    OrderSize,
     Overview,
     ProductUsage,
     SizeCount,
@@ -119,7 +116,11 @@ async def overview(session: AsyncSession, school_id: uuid.UUID | None) -> Overvi
     """Aggregate headline counts and size-guide accuracy."""
     students = await _students(session, school_id)
     trials = await _trials(session, {s.id for s in students})
-    products = await _active_products(session)
+    products = (
+        await _active_products(session)
+        if school_id is None
+        else await school_products(session, school_id)
+    )
     by_product = []
     for product in products:
         product_trials = [t for t in trials if t.product_id == product.id]
@@ -206,30 +207,3 @@ async def class_matrix(
         rows=[rows[c.id] for c in classes],
         totals=totals,
     )
-
-
-async def orders(session: AsyncSession, school_id: uuid.UUID | None) -> Orders:
-    """Parent size choices per product and size, for live students of any data source."""
-    query = (
-        select(ParentSizeChoice.product_id, ParentSizeChoice.size_label, func.count())
-        .join(Student, Student.id == ParentSizeChoice.student_id)
-        .where(Student.deleted_at.is_(None))
-        .group_by(ParentSizeChoice.product_id, ParentSizeChoice.size_label)
-    )
-    if school_id is not None:
-        query = query.where(Student.school_id == school_id)
-    counts = {(pid, label): n for pid, label, n in await session.execute(query)}
-    products = []
-    for product in await _active_products(session):
-        sizes = [
-            OrderSize(size_label=s, count=counts.get((product.id, s), 0)) for s in product.sizes
-        ]
-        products.append(
-            OrderProduct(
-                product_code=product.code,
-                product_name=product.name,
-                sizes=sizes,
-                total=sum(s.count for s in sizes),
-            )
-        )
-    return Orders(products=products)

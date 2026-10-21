@@ -1,13 +1,21 @@
 import csv
 import io
-from datetime import date
+import uuid
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
 from openpyxl import load_workbook
 
-from app.features.exports.handler import STUDENT_HEADERS, TRIAL_HEADERS, to_csv, to_xlsx
-from app.features.parent_portal.models import ParentSizeChoice
+from app.features.campaigns.models import Campaign, CampaignItem
+from app.features.exports.handler import (
+    STUDENT_HEADERS,
+    TRIAL_HEADERS,
+    _sheet_title,
+    to_csv,
+    to_xlsx,
+)
+from app.features.orders.models import Order, OrderLine
 from app.features.students.models import DataSource, Gender
 
 URLS = [
@@ -65,25 +73,14 @@ async def test_students_csv(client: Any, seeded: None) -> None:
 
     header, body = rows[0], rows[1:]
     assert header[: len(STUDENT_HEADERS)] == STUDENT_HEADERS
-    assert header[len(STUDENT_HEADERS) :] == [
-        "Cỡ vừa suy ra - Áo Blazer (Vest)",
-        "Cỡ vừa suy ra - Áo Gile",
-        "Áo Blazer (Vest) - cỡ phụ huynh chọn",
-        "Áo Blazer (Vest) - màu phụ huynh chọn",
-        "Áo Blazer (Vest) - thời điểm chọn",
-        "Áo Gile - cỡ phụ huynh chọn",
-        "Áo Gile - màu phụ huynh chọn",
-        "Áo Gile - thời điểm chọn",
-        "Số lần thử",
-    ]
+    assert header[len(STUDENT_HEADERS) :] == ["Tạm tính đơn (đ)", "Số lần thử"]
+    assert not any("suy ra" in column for column in header)
     assert len(body) == 3
     names = {r[header.index("Họ và tên")] for r in body}
     assert names == {"Nguyễn Minh Khang", "Lê Thị Ánh", "Trần Văn Bình"}
     khang = next(r for r in body if r[3] == "Nguyễn Minh Khang")
     assert khang[header.index("Tuổi lúc đo")] == "8.0"
     assert khang[header.index("SĐT phụ huynh")] == "0912345678"
-    assert khang[header.index("Cỡ vừa suy ra - Áo Blazer (Vest)")] == "4"
-    assert khang[header.index("Cỡ vừa suy ra - Áo Gile")] == ""
     assert khang[header.index("Số lần thử")] == "3"
     binh = next(r for r in body if r[3] == "Trần Văn Bình")
     assert binh[header.index("Số lần thử")] == "0"
@@ -112,7 +109,7 @@ async def test_trials_csv_is_raw_dataset(client: Any, seeded: None) -> None:
 
 async def test_xlsx_matches_csv(client: Any, seeded: None) -> None:
     students_csv = read_csv((await client.get("/api/export/students.csv")).content)
-    students_xlsx = read_sheet((await client.get("/api/export/students.xlsx")).content, "Học sinh")
+    students_xlsx = read_sheet((await client.get("/api/export/students.xlsx")).content, "Trường A")
     trials_csv = read_csv((await client.get("/api/export/trials.csv")).content)
     trials_xlsx = read_sheet((await client.get("/api/export/trials.xlsx")).content, "Lần thử")
 
@@ -126,8 +123,8 @@ async def test_xlsx_matches_csv(client: Any, seeded: None) -> None:
 async def test_all_xlsx_has_both_sheets(client: Any, seeded: None) -> None:
     content = (await client.get("/api/export/all.xlsx")).content
 
-    assert load_workbook(io.BytesIO(content)).sheetnames == ["Học sinh", "Lần thử"]
-    assert len(read_sheet(content, "Học sinh")) == 4
+    assert load_workbook(io.BytesIO(content)).sheetnames == ["Trường A", "Lần thử"]
+    assert len(read_sheet(content, "Trường A")) == 4
     assert len(read_sheet(content, "Lần thử")) == 5
 
 
@@ -137,23 +134,38 @@ async def test_empty_database_exports_headers_only(client: Any) -> None:
     assert rows == [TRIAL_HEADERS]
 
 
-async def test_students_export_has_data_source_and_parent_choices(
-    client: Any, make_student: Any, session: Any, products: Any
+async def place_order(
+    session: Any,
+    campaign: Any,
+    student: Any,
+    lines: list[tuple[Any, str, int, int | None]],
+    status: str = "SUBMITTED",
+) -> None:
+    order = Order(
+        campaign_id=campaign.id,
+        code=f"T{uuid.uuid4().hex[:10]}",
+        student_id=student.id,
+        recipient_name=student.full_name,
+        source="PARENT",
+        status=status,
+        submitted_at=datetime.now(UTC) if status == "SUBMITTED" else None,
+    )
+    order.lines = [
+        OrderLine(product_id=p.id, size_label=size, colour="ghi", qty=qty, unit_price=price)
+        for p, size, qty, price in lines
+    ]
+    session.add(order)
+    await session.commit()
+
+
+async def test_students_export_has_data_source_and_order_columns(
+    client: Any, make_student: Any, session: Any, products: Any, open_campaign: Any
 ) -> None:
     measured = await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")])
-    declared = await make_student("Lê Tự Khai", data_source=DataSource.PARENT_DECLARED)
-    gone = await make_student("Đã Xóa", deleted=True)
-    chosen = [(measured, "blazer", "3"), (declared, "blazer", "5"), (declared, "gile", "2")]
-    for student, code, size in [*chosen, (gone, "blazer", "1")]:
-        session.add(
-            ParentSizeChoice(
-                student_id=student.id,
-                product_id=products[code].id,
-                size_label=size,
-                colour="ghi" if student is declared and code == "blazer" else None,
-            )
-        )
-    await session.commit()
+    await make_student("Lê Tự Khai", data_source=DataSource.PARENT_DECLARED)
+    await make_student("Đã Xóa", deleted=True)
+    campaign = await open_campaign(measured.school_id)
+    await place_order(session, campaign, measured, [(products["blazer"], "3", 1, 500_000)])
 
     rows = read_csv((await client.get("/api/export/students.csv")).content)
 
@@ -165,14 +177,11 @@ async def test_students_export_has_data_source_and_parent_choices(
         ("Lê Tự Khai", "PARENT_DECLARED"),
     ]:
         assert by_name[name][header.index("data_source")] == source
-    blazer = header.index("Áo Blazer (Vest) - cỡ phụ huynh chọn")
-    gile = header.index("Áo Gile - cỡ phụ huynh chọn")
-    assert by_name["Nguyễn Minh Khang"][blazer] == "3" and by_name["Nguyễn Minh Khang"][gile] == ""
-    assert by_name["Lê Tự Khai"][blazer] == "5" and by_name["Lê Tự Khai"][gile] == "2"
-    assert by_name["Lê Tự Khai"][blazer + 1] == "ghi"
-    assert by_name["Nguyễn Minh Khang"][blazer + 1] == ""
-    assert by_name["Lê Tự Khai"][blazer + 2].startswith("20")
-    assert by_name["Nguyễn Minh Khang"][gile + 2] == ""
+    assert not [h for h in header if "phụ huynh chọn" in h or "thời điểm chọn" in h]
+    blazer = header.index("Áo Blazer (Vest) - cỡ đặt")
+    assert by_name["Nguyễn Minh Khang"][blazer : blazer + 2] == ["3", "1"]
+    assert by_name["Lê Tự Khai"][blazer : blazer + 2] == ["", ""]
+    assert by_name["Lê Tự Khai"][header.index("Tạm tính đơn (đ)")] == ""
     assert by_name["Lê Tự Khai"][header.index("Số lần thử")] == "0"
 
 
@@ -203,7 +212,7 @@ STUDENT_CELL_URLS = [
 def student_rows(url: str, content: bytes) -> list[list[Any]]:
     if url.endswith(".csv"):
         return read_csv(content)
-    return read_sheet(content, "Học sinh")
+    return [list(row) for row in load_workbook(io.BytesIO(content)).worksheets[0].values]
 
 
 @pytest.mark.parametrize("url", STUDENT_CELL_URLS)
@@ -267,33 +276,36 @@ def sheet_cells(url: str, content: bytes, sheet: str) -> list[Any]:
 
 
 @pytest.mark.parametrize("url", STUDENT_CELL_URLS)
-async def test_students_exports_keep_declared_choices_and_drop_deleted_students(
-    client: Any, make_student: Any, session: Any, products: Any, url: str
+async def test_students_exports_use_open_campaign_orders_and_drop_deleted_students(
+    client: Any, make_student: Any, session: Any, products: Any, open_campaign: Any, url: str
 ) -> None:
     measured = await make_student("Nguyễn Minh Khang", [("blazer", "2", "FITS", "3")])
     declared = await make_student("Lê Tự Khai", data_source=DataSource.PARENT_DECLARED)
     gone = await make_student("Đã Xóa", [("blazer", "3", "FITS", "3")], deleted=True)
-    for student, code, size in [
-        (measured, "blazer", "3"),
-        (declared, "blazer", "5"),
-        (declared, "gile", "2"),
-        (gone, "blazer", "1"),
-        (gone, "gile", "7"),
-    ]:
-        session.add(
-            ParentSizeChoice(student_id=student.id, product_id=products[code].id, size_label=size)
-        )
-    await session.commit()
+    campaign = await open_campaign(measured.school_id)
+    await place_order(session, campaign, measured, [(products["blazer"], "3", 2, 500_000)])
+    await place_order(
+        session,
+        campaign,
+        declared,
+        [(products["blazer"], "5", 1, 500_000), (products["gile"], "2", 1, None)],
+    )
+    await place_order(session, campaign, gone, [(products["blazer"], "1", 1, 500_000)])
 
     rows = student_rows(url, (await client.get(url)).content)
 
     header, body = rows[0], rows[1:]
     assert {r[3] for r in body} == {"Nguyễn Minh Khang", "Lê Tự Khai"}
-    blazer = header.index("Áo Blazer (Vest) - cỡ phụ huynh chọn")
-    gile = header.index("Áo Gile - cỡ phụ huynh chọn")
-    by_name = {r[3]: [c or "" for c in r] for r in body}
-    assert (by_name["Nguyễn Minh Khang"][blazer], by_name["Nguyễn Minh Khang"][gile]) == ("3", "")
-    assert (by_name["Lê Tự Khai"][blazer], by_name["Lê Tự Khai"][gile]) == ("5", "2")
+    blazer = header.index("Áo Blazer (Vest) - cỡ đặt")
+    gile = header.index("Áo Gile - cỡ đặt")
+    total = header.index("Tạm tính đơn (đ)")
+    by_name = {r[3]: [str(c) if c is not None else "" for c in r] for r in body}
+    assert by_name["Nguyễn Minh Khang"][blazer : blazer + 2] == ["3", "2"]
+    assert by_name["Nguyễn Minh Khang"][gile : gile + 2] == ["", ""]
+    assert by_name["Nguyễn Minh Khang"][total] == "1000000"
+    assert by_name["Lê Tự Khai"][blazer : blazer + 2] == ["5", "1"]
+    assert by_name["Lê Tự Khai"][gile : gile + 2] == ["2", "1"]
+    assert by_name["Lê Tự Khai"][total] == ""
     assert by_name["Lê Tự Khai"][header.index("data_source")] == "PARENT_DECLARED"
     assert "Đã Xóa" not in {c for r in rows for c in r}
 
@@ -362,3 +374,156 @@ def test_to_xlsx_prefixes_text_and_keeps_numbers_and_empty_cells() -> None:
     assert all(c.data_type == "s" for c in row[:8])
     assert [(c.value, c.data_type) for c in row[8:11]] == [(5, "n"), (-3, "n"), (2.5, "n")]
     assert len(row) == 11
+
+
+async def _blazer_only_campaign(session: Any, products: Any, school_id: Any) -> None:
+    campaign = Campaign(
+        school_id=uuid.UUID(str(school_id)),
+        name="Đợt blazer",
+        school_year="2026-2027",
+        opens_at=datetime.now(UTC) - timedelta(days=1),
+        status="LOCKED",
+    )
+    campaign.items = [CampaignItem(product_id=products["blazer"].id, colour="ghi", sort=0)]
+    session.add(campaign)
+    await session.commit()
+
+
+@pytest.fixture
+async def two_schools(
+    client: Any, make_student: Any, make_school: Any, make_class: Any, session: Any, products: Any
+) -> dict[str, Any]:
+    first = await make_student("Nguyễn Minh Khang")
+    other = await make_school("Trường Q: [LQD]/Một", "LQD")
+    other_class = await make_class(2, "2Q1", other.id)
+    await make_student("Lê Thị Ánh", school_id=other.id, class_id=other_class.id)
+    empty = await make_school("Trường Trống", "TT")
+    await _blazer_only_campaign(session, products, other.id)
+    return {"first": first.school_id, "other": other.id, "empty": empty.id}
+
+
+async def test_students_xlsx_has_one_sheet_per_school_with_only_its_profile(
+    client: Any, two_schools: dict[str, Any], session: Any, products: Any, open_campaign: Any
+) -> None:
+    await open_campaign(two_schools["first"])
+
+    content = (await client.get("/api/export/students.xlsx")).content
+
+    workbook = load_workbook(io.BytesIO(content))
+    assert workbook.sheetnames == ["Trường A", "Trường Q   LQD  Một", "Trường Trống"]
+    tail = ["Tạm tính đơn (đ)", "Số lần thử"]
+    first, other, empty = (list(ws.iter_rows(values_only=True)) for ws in workbook.worksheets)
+    assert list(first[0][len(STUDENT_HEADERS) :]) == [
+        "Áo Blazer (Vest) - cỡ đặt",
+        "Áo Blazer (Vest) - số lượng đặt",
+        "Áo Gile - cỡ đặt",
+        "Áo Gile - số lượng đặt",
+        *tail,
+    ]
+    assert list(other[0][len(STUDENT_HEADERS) :]) == [
+        "Áo Blazer (Vest) - cỡ đặt",
+        "Áo Blazer (Vest) - số lượng đặt",
+        *tail,
+    ]
+    assert list(empty[0][len(STUDENT_HEADERS) :]) == tail
+    assert [r[3] for r in first[1:]] == ["Nguyễn Minh Khang"]
+    assert [r[3] for r in other[1:]] == ["Lê Thị Ánh"]
+    assert len(empty) == 1
+    assert not any("suy ra" in str(c) for ws in (first, other, empty) for c in ws[0])
+
+
+async def test_students_export_school_filter(client: Any, two_schools: dict[str, Any]) -> None:
+    other = two_schools["other"]
+
+    csv_rows = read_csv((await client.get(f"/api/export/students.csv?school_id={other}")).content)
+    workbook = load_workbook(
+        io.BytesIO((await client.get(f"/api/export/students.xlsx?school_id={other}")).content)
+    )
+    all_xlsx = load_workbook(io.BytesIO((await client.get("/api/export/all.xlsx")).content))
+
+    assert [r[3] for r in csv_rows[1:]] == ["Lê Thị Ánh"]
+    assert csv_rows[0][len(STUDENT_HEADERS) :] == [
+        "Áo Blazer (Vest) - cỡ đặt",
+        "Áo Blazer (Vest) - số lượng đặt",
+        "Tạm tính đơn (đ)",
+        "Số lần thử",
+    ]
+    assert workbook.sheetnames == ["Trường Q   LQD  Một"]
+    assert all_xlsx.sheetnames == [
+        "Trường A",
+        "Trường Q   LQD  Một",
+        "Trường Trống",
+        "Lần thử",
+    ]
+    missing = await client.get(f"/api/export/students.csv?school_id={uuid.uuid4()}")
+    assert missing.status_code == 404
+
+
+async def test_students_csv_without_filter_uses_union_of_profiles(
+    client: Any, two_schools: dict[str, Any], open_campaign: Any
+) -> None:
+    await open_campaign(two_schools["first"])
+
+    rows = read_csv((await client.get("/api/export/students.csv")).content)
+
+    assert rows[0][len(STUDENT_HEADERS) :] == [
+        "Áo Blazer (Vest) - cỡ đặt",
+        "Áo Blazer (Vest) - số lượng đặt",
+        "Áo Gile - cỡ đặt",
+        "Áo Gile - số lượng đặt",
+        "Tạm tính đơn (đ)",
+        "Số lần thử",
+    ]
+    assert len(rows) == 3
+
+
+def test_sheet_titles_are_excel_safe_and_unique() -> None:
+    taken: set[str] = set()
+    first = _sheet_title("x" * 40, taken)
+    second = _sheet_title("x" * 40, taken)
+    assert len(first) == 31 and len(second) <= 31 and first != second
+    assert _sheet_title("[]:*?/\\", taken) == "Trường"
+
+
+async def test_campaign_orders_total_is_blank_when_any_line_is_unpriced(
+    client: Any, make_student: Any, session: Any, products: Any, open_campaign: Any
+) -> None:
+    priced = await make_student("Nguyễn Minh Khang")
+    mixed = await make_student("Lê Tự Khai")
+    campaign = await open_campaign(priced.school_id)
+    await place_order(session, campaign, priced, [(products["blazer"], "3", 2, 500_000)])
+    await place_order(
+        session,
+        campaign,
+        mixed,
+        [(products["blazer"], "3", 1, 500_000), (products["gile"], "2", 1, None)],
+    )
+
+    r = await client.get(
+        "/api/export/campaign-orders.xlsx", params={"campaign_id": str(campaign.id)}
+    )
+
+    headers, *rows = [
+        list(x)
+        for x in load_workbook(io.BytesIO(r.content))["Bảng kê đơn"].iter_rows(values_only=True)
+    ]
+    total = headers.index("Thành tiền")
+    assert {row[1]: row[total] for row in rows} == {
+        "Nguyễn Minh Khang": 1_000_000,
+        "Lê Tự Khai": None,
+    }
+
+
+async def test_students_export_ignores_draft_orders(
+    client: Any, make_student: Any, session: Any, products: Any, open_campaign: Any
+) -> None:
+    student = await make_student("Nguyễn Minh Khang")
+    campaign = await open_campaign(student.school_id)
+    await place_order(
+        session, campaign, student, [(products["blazer"], "3", 1, 500_000)], status="DRAFT"
+    )
+
+    url = "/api/export/students.csv"
+    header, row = student_rows(url, (await client.get(url)).content)
+    assert row[header.index("Tạm tính đơn (đ)")] == ""
+    assert row[header.index("Áo Blazer (Vest) - cỡ đặt")] == ""

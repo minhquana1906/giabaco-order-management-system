@@ -2,10 +2,9 @@ import { Link } from '@tanstack/react-router'
 import { ChevronRight, Search, UserPlus } from 'lucide-react'
 import { ActionBar, PageHead, Panel } from '@/components/ParentPage'
 import { LoadError, PARENT_ACTION_PRIMARY, PARENT_BTN, ParentShell } from '@/components/ParentShell'
-import { SizeLabel } from '@/components/SizeLabel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ColourChip } from '@/features/parent_portal/components/ColourSelect'
+import { formatVnd } from '@/lib/format'
 import { requestErrorMessage } from '@/lib/requestError'
 import type { ChildSummary } from '../api'
 import { useChildren } from '../hooks'
@@ -42,20 +41,20 @@ function ChildCard({ child }: { child: ChildSummary }) {
           <p className="w-fit rounded-sm bg-secondary px-2 py-0.5 text-sm font-medium text-navy">Tự khai báo</p>
         ) : null}
         <div className="mt-auto border-t border-hairline pt-4">
-          {child.choices.length > 0 ? (
-            <ul className="flex flex-col gap-3" aria-label="Cỡ đã chọn">
-              {child.choices.map((choice) => (
-                <li key={choice.product_code} className="flex items-center justify-between gap-3">
-                  <span className="text-[15px] text-muted-foreground">{choice.product_name}</span>
-                  <span className="flex items-center gap-3">
-                    <ColourChip colour={choice.colour} className="text-[15px]" />
-                    <SizeLabel label={choice.size_label} scale="md" />
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {child.order_summary ? (
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-navy">Đã đăng ký {child.order_summary.items} sản phẩm</p>
+              <p className="text-[15px] tabular-nums text-muted-foreground">
+                Tạm tính, chưa thanh toán: {formatVnd(child.order_summary.amount)}
+              </p>
+              {child.order_summary.has_unpriced ? (
+                <p className="text-[15px] text-muted-foreground">Một số sản phẩm chưa có giá</p>
+              ) : null}
+            </div>
           ) : (
-            <p className="font-semibold text-navy">Chưa chọn cỡ áo</p>
+            <p className="font-semibold text-navy">
+              {child.campaign_open ? 'Chưa đăng ký đồng phục' : 'Trường chưa mở đăng ký đồng phục'}
+            </p>
           )}
         </div>
       </Link>
