@@ -24,14 +24,14 @@ Mở `http://127.0.0.1:5173`, đăng nhập `admin` cùng mật khẩu vừa đ�
 
 Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tại `/parent/register` rồi đăng nhập `/parent/login`. Phụ huynh nhận hồ sơ con bằng trường + họ tên + ngày sinh, hoặc tự tạo hồ sơ con (bắt buộc số đo, SĐT phụ huynh; tối đa 10 con mỗi tài khoản; nhãn "Phụ huynh tự khai", không tính vào dashboard đo và `export/trials`). Admin và phụ huynh dùng hai phiên độc lập trong cùng cookie.
 
-Trang chọn cỡ có ảnh sản phẩm theo giới tính (WebP trong `frontend/public/products/`: `*_900.webp` làm ảnh thu nhỏ, bản 1600px mở trong lightbox; nguồn gốc ở `assets/`).
+Trang chọn cỡ có ảnh sản phẩm theo trường, giới tính và màu: admin tải ảnh lên qua trang Sản phẩm (`/catalog`), ảnh lưu ở volume `uploads` và phục vụ qua `/media/*`. Không có ảnh thì trang hiện "Chưa có thông tin ảnh sản phẩm".
 
-Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP; không có quên mật khẩu (phụ huynh liên hệ Giabaco); đặt may lại năm sau ghi đè lựa chọn cũ.
+Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP; không có quên mật khẩu (phụ huynh liên hệ Giabaco).
 
-`make seed-demo` nạp 2 trường, 9 lớp, 59 học sinh (148 lần thử, 12 học sinh có lựa chọn của phụ huynh, 1 xóa mềm) và các ca biên (ngoài bảng size, chưa thử áo, nhiều cỡ vừa...). Script bỏ qua nếu DB đã có học sinh và từ chối chạy trên DB không phải `127.0.0.1`/`localhost`. Muốn nạp lại từ đầu (xóa toàn bộ dữ liệu dev):
+`make seed-demo` nạp 2 trường (mỗi trường chưa có đợt thì được một đợt đang mở gồm các sản phẩm đang bán), 9 lớp, 59 học sinh (148 lần thử, 1 xóa mềm) và các ca biên (ngoài bảng size, chưa thử áo, nhiều cỡ vừa...). Học sinh bị bỏ qua nếu DB đã có học sinh. Script từ chối chạy trên DB không phải `127.0.0.1`/`localhost`. Muốn nạp lại từ đầu (xóa toàn bộ dữ liệu dev):
 
 ```bash
-docker compose down -v && make setup && make seed-demo
+make dev-reset
 ```
 
 Cổng: DB dev `127.0.0.1:55432`, DB test `127.0.0.1:55433` (chỉ do `docker-compose.override.yml` mở, production không mở). Nếu login luôn báo sai dù đúng mật khẩu, kiểm tra process cũ đang giữ port 8000: `lsof -nP -iTCP:8000 -sTCP:LISTEN`.
@@ -68,4 +68,4 @@ frontend/src/routes/         TanStack Router file-based
 scripts/smoke.py             smoke chạy trong container
 ```
 
-Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `parent_size_choices`, `parent_student_links` ghi `audit_logs`; không hard delete; không ghi PII vào log.
+Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `orders`, `order_lines`, `parent_student_links` ghi `audit_logs`; không hard delete; không ghi PII vào log.

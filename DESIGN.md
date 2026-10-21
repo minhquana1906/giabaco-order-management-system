@@ -303,7 +303,6 @@ Hình ngôn ngữ chủ đạo là **đường**, không phải khối: viền 1
 ### Navigation
 - Mục nav: `px-[22px] py-3` (`lg:py-2.5`), 14px weight 500, chữ `#D5DBE8`, không bo góc; hover `bg-white/5` + chữ trắng.
 - **Active:** `bg-white/[0.08]`, chữ trắng, cộng `::before` rộng 3px cao hết ô màu brass ở mép trái.
-- Sub-nav sản phẩm: thụt `pl-[34px]`, 13px; khi active thêm nền `bg-brass/[0.14]`.
 - Wordmark: `G-UNIFORM` 20px bold tracking 0.5px với dấu gạch nối màu brass, dưới là `by GIABACO · EDUCHIC` 10px tracking 1.4px.
 
 ### Nhãn dệt cỡ (signature)

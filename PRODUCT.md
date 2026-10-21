@@ -27,8 +27,8 @@ Cỡ được quyết định bằng lần thử thật trên người học sin
 
 - Buổi đo diễn ra trong trường học, nhịp liên tục, nhiều học sinh xếp hàng; nhân viên vừa đo vừa nhập.
 - Quy trình toàn trình G-UNIFORM 10 bước (`assets/materials/quy_trinh_guniform.png`); Slice 1 phục vụ bước 4 "Thu & khóa size" ở mức thu thập.
-- Mô hình 3 Nhà (Nhà trường, Phụ huynh, Giabaco) và cổng GO / HOLD / NO-GO là ngôn ngữ vận hành của Giabaco (`assets/GIABACO_Van_ban_trien_khai_Mo_hinh_3_Nha_G_UNIFORM_2026.md`).
-- Tài liệu đào tạo PH01–PH04, GB01–GB02 (`assets/TAI_LIEU_DAO_TAO_SU_DUNG_UNG_DUNG_G_UNIFORM_GIABACO.md`): phụ huynh "1 việc/màn hình, ưu tiên hình ảnh".
+- Mô hình 3 Nhà (Nhà trường, Phụ huynh, Giabaco) và cổng GO / HOLD / NO-GO là ngôn ngữ vận hành của Giabaco (`docs/references/GIABACO_Van_ban_trien_khai_Mo_hinh_3_Nha_G_UNIFORM_2026.md`).
+- Tài liệu đào tạo PH01–PH04, GB01–GB02 (`docs/references/TAI_LIEU_DAO_TAO_SU_DUNG_UNG_DUNG_G_UNIFORM_GIABACO.md`): phụ huynh "1 việc/màn hình, ưu tiên hình ảnh".
 
 ## Capabilities and Constraints
 
@@ -43,7 +43,7 @@ Cỡ được quyết định bằng lần thử thật trên người học sin
 - G-UNIFORM là tên sản phẩm hiển thị nổi bật; Giabaco (logo "GIABACO EDUCHIC") là thương hiệu bảo chứng ở header/footer.
 - Logo dùng nguyên vẹn (`assets/materials/logo_giabaco.png`): chữ G tricolor xanh navy / trắng / đỏ viền vàng. Màu logo là gốc của bảng màu, được phép phát triển thêm.
 - Giao diện tiếng Việt. Không gắn nhãn "dữ liệu mẫu", "AI tạo" trên UI.
-- Pháp nhân: Công ty TNHH TM DV và XNK Gia Bảo (Giabaco.,Ltd), hotline 0835352004, email Guniform2026@gmail.com (`assets/materials/giabaco_information.txt`).
+- Pháp nhân: Công ty TNHH TM DV và XNK Gia Bảo (Giabaco.,Ltd), hotline 0835352004, email <Guniform2026@gmail.com> (`assets/materials/giabaco_information.txt`).
 
 ## Evidence on Hand
 
