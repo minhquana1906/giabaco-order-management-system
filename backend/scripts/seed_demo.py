@@ -225,7 +225,8 @@ async def _ensure_campaigns(session: AsyncSession, products: list[Product]) -> N
             ACTOR,
         )
         await replace_items(session, campaign.id, items, ACTOR)
-        await transition(session, campaign.id, "open", ACTOR)
+        if school.code == "LQD":
+            await transition(session, campaign.id, "open", ACTOR)
 
 
 async def main() -> None:
