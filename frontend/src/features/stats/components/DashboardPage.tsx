@@ -14,12 +14,14 @@ import { DistributionCard } from './DistributionCard'
 import { KpiRow } from './KpiRow'
 import { NoProfileState } from './NoProfileState'
 import { OrdersTab, type SearchPatch } from './OrdersTab'
+import { SurveyTab } from './SurveyTab'
 import { ProductSelect } from './ProductSelect'
 import { ViewSwitch } from './ViewSwitch'
 
 const DASHBOARD_VIEWS = [
   { value: 'measure', label: 'Số đo' },
   { value: 'orders', label: 'Đơn hàng' },
+  { value: 'survey', label: 'Khảo sát' },
 ] as const satisfies readonly { value: DashboardView; label: string }[]
 
 interface DashboardPageProps {
@@ -47,7 +49,7 @@ export function DashboardPage({ params, onChange, onSchoolChange }: DashboardPag
       title="Thống kê"
       actions={
         <>
-          {schools.data && schools.data.length > 0 ? (
+          {params.view !== 'survey' && schools.data && schools.data.length > 0 ? (
             <Select value={school?.id} onValueChange={onSchoolChange}>
               <SelectTrigger aria-label="Trường" className="w-full min-w-0 sm:w-[290px] max-sm:h-11">
                 <SelectValue />
@@ -72,6 +74,13 @@ export function DashboardPage({ params, onChange, onSchoolChange }: DashboardPag
     />
   )
 
+  if (params.view === 'survey') {
+    return (
+      <Frame header={header}>
+        <SurveyTab />
+      </Frame>
+    )
+  }
   if (schools.isPending) return <Frame header={header}><LoadingRows rows={6} /></Frame>
   if (schools.isError) {
     return (

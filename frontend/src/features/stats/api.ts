@@ -129,6 +129,18 @@ export const statsApi = {
     http.get<Overview>('/stats/overview', { school_id: schoolId }, signal),
   sizeDistribution: (product: string, schoolId: string | undefined, signal?: AbortSignal) =>
     http.get<SizeDistribution>('/stats/size-distribution', { product, school_id: schoolId }, signal),
+  surveyOverview: (signal?: AbortSignal) => http.get<SurveyOverview>('/stats/surveys', undefined, signal),
   classMatrix: (product: string, schoolId: string, signal?: AbortSignal) =>
     http.get<ClassMatrix>('/stats/class-matrix', { product, school_id: schoolId }, signal),
+}
+
+export interface SurveyOverview {
+  total_responses: number
+  unique_children: number
+  with_all_girths: number
+  by_area: Record<string, number>
+  by_gender: Record<string, number>
+  by_measure_method: Record<string, number>
+  by_supply_option: Record<string, number>
+  schools: { school_name: string; province: string; school_area: string; responses: number }[]
 }

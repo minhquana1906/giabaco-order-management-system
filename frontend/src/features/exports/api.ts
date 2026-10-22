@@ -23,6 +23,13 @@ export const EXPORT_GROUPS: { title: string; items: ExportItem[] }[] = [
     ],
   },
   {
+    title: 'Khảo sát phụ huynh',
+    items: [
+      { label: 'Khảo sát (CSV)', path: '/export/surveys.csv', fileName: 'surveys.csv' },
+      { label: 'Khảo sát (Excel)', path: '/export/surveys.xlsx', fileName: 'surveys.xlsx' },
+    ],
+  },
+  {
     title: 'Tất cả',
     items: [{ label: 'Tất cả (Excel)', path: '/export/all.xlsx', fileName: 'all.xlsx' }],
   },

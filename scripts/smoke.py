@@ -4,6 +4,7 @@ Expects ADMIN_HOST=admin.smoke and PUBLIC_BASE_URL=http://parent.smoke."""
 
 import http.cookiejar
 import subprocess
+import datetime
 import json
 import sys
 import time
@@ -113,4 +114,21 @@ check("stats overview", status, 200)
 check("parent logout", call(parent, "POST", "/api/parent/auth/logout", host=PARENT)[0], 204)
 check("parent after logout", call(parent, "GET", "/api/parent/auth/me", host=PARENT)[0], 401)
 check("admin survives parent logout", call(authed, "GET", "/api/products")[0], 200)
+
+survey = {
+    "school_name": "Trường Smoke", "province": "Thành phố Hà Nội", "ward": "Phường Ba Đình", "class_name": "2A1",
+    "child_full_name": "Trần Smoke", "dob": "2018-03-14", "gender": "FEMALE", "parent_phone": "0912345678",
+    "measured_on": (datetime.date.today() - datetime.timedelta(days=1)).isoformat(), "measure_method": "TAPE_TODAY",
+    "height_cm": 128.5, "weight_kg": 26, "chest_cm": 62, "waist_cm": 55,
+    "body_traits": ["TALL_SLIM"], "past_issues": [], "supply_option": "STANDARD",
+}
+check("parent host /survey", call(anon, "GET", "/survey", host=PARENT)[0], 200)
+status, resp = call(raw, "GET", "/survey")
+check("admin host /survey redirects", (status, resp.headers.get("location")), (302, f"http://{PARENT}/survey"))
+check("admin host survey api", call(anon, "POST", "/api/public/surveys", survey)[0], 404)
+check("survey submit", call(anon, "POST", "/api/public/surveys", survey, host=PARENT)[0], 201)
+check("survey invalid", call(anon, "POST", "/api/public/surveys", {**survey, "height_cm": 1.3}, host=PARENT)[0], 422)
+check("anon survey export", call(anon, "GET", "/api/export/surveys.csv")[0], 401)
+status, resp = call(authed, "GET", "/api/export/surveys.csv")
+check("survey export row", (status, b"Tr\xe1\xba\xa7n Smoke" in resp.read()), (200, True))
 print("smoke passed")

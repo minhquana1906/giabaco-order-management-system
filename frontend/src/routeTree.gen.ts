@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SurveyRouteImport } from './routes/survey'
 import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
 import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ParentParentRouteImport } from './routes/parent/_parent'
@@ -43,6 +44,11 @@ const AdminRoute = AdminRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveyRoute = SurveyRouteImport.update({
+  id: '/survey',
+  path: '/survey',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -141,6 +147,7 @@ const ParentParentChildrenNewRoute = ParentParentChildrenNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/survey': typeof SurveyRoute
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
   '/parent': typeof ParentParentRouteWithChildren
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/survey': typeof SurveyRoute
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
   '/parent/login': typeof ParentLoginRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/survey': typeof SurveyRoute
   '/_admin/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
   '/parent/_parent': typeof ParentParentRouteWithChildren
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/survey'
     | '/dashboard'
     | '/p/$token'
     | '/parent'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/survey'
     | '/dashboard'
     | '/p/$token'
     | '/parent/login'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_admin'
     | '/login'
+    | '/survey'
     | '/_admin/dashboard'
     | '/p/$token'
     | '/parent/_parent'
@@ -278,6 +290,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SurveyRoute: typeof SurveyRoute
   PTokenRoute: typeof PTokenRoute
   ParentParentRoute: typeof ParentParentRouteWithChildren
   ParentLoginRoute: typeof ParentLoginRoute
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/survey': {
+      id: '/survey'
+      path: '/survey'
+      fullPath: '/survey'
+      preLoaderRoute: typeof SurveyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_admin/dashboard': {
@@ -486,6 +506,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SurveyRoute: SurveyRoute,
   PTokenRoute: PTokenRoute,
   ParentParentRoute: ParentParentRouteWithChildren,
   ParentLoginRoute: ParentLoginRoute,

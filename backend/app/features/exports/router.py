@@ -14,6 +14,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 router = APIRouter(prefix="/api/export", tags=["exports"], dependencies=[Depends(require_admin)])
 
 TRIALS_SHEET = "Lần thử"
+SURVEYS_SHEET = "Khảo sát"
 CAMPAIGN_ORDERS_SHEET = "Bảng kê đơn"
 CAMPAIGN_PIVOT_SHEET = "Ma trận"
 
@@ -46,6 +47,11 @@ async def export_students(
 @router.get("/trials.{fmt}")
 async def export_trials(fmt: Literal["csv", "xlsx"], session: Session) -> Response:
     return _file(await handler.trials_dataset(session), fmt, "trials", TRIALS_SHEET)
+
+
+@router.get("/surveys.{fmt}")
+async def export_surveys(fmt: Literal["csv", "xlsx"], session: Session) -> Response:
+    return _file(await handler.surveys_dataset(session), fmt, "surveys", SURVEYS_SHEET)
 
 
 @router.get("/all.xlsx")

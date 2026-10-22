@@ -32,6 +32,7 @@ from app.features.parent_portal.router import router as parent_portal_router
 from app.features.realtime.router import router as realtime_router
 from app.features.stats.router import router as stats_router
 from app.features.students.router import router as students_router
+from app.features.surveys.router import router as surveys_router
 
 ROUTERS = (
     auth_router,
@@ -43,6 +44,7 @@ ROUTERS = (
     parent_links_router,
     parent_portal_router,
     parent_children_router,
+    surveys_router,
     stats_router,
     exports_router,
     realtime_router,

@@ -9,6 +9,7 @@ export const statsKeys = {
   campaignOverview: (campaignId: string, submittedUntil?: string) =>
     [...statsKeys.all, 'campaign-overview', campaignId, submittedUntil ?? null] as const,
   campaignPivot: (params: PivotParams) => [...statsKeys.all, 'campaign-pivot', params] as const,
+  surveys: () => [...statsKeys.all, 'surveys'] as const,
   matrix: (product: string, schoolId: string) =>
     [...statsKeys.all, 'class-matrix', product, schoolId] as const,
 }
@@ -60,6 +61,15 @@ export function useCampaignPivot(params: Omit<PivotParams, 'campaignId'> & { cam
     queryKey: statsKeys.campaignPivot({ campaignId: campaignId ?? '', ...rest }),
     queryFn: ({ signal }) => statsApi.campaignPivot({ campaignId: campaignId!, ...rest }, signal),
     enabled: Boolean(campaignId),
+    refetchInterval: POLL_MS,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useSurveyOverview() {
+  return useQuery({
+    queryKey: statsKeys.surveys(),
+    queryFn: ({ signal }) => statsApi.surveyOverview(signal),
     refetchInterval: POLL_MS,
     placeholderData: keepPreviousData,
   })

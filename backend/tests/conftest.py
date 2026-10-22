@@ -36,6 +36,7 @@ from app.core.security import (  # noqa: E402
     parent_auth_limiter,
     parent_match_limiter,
     public_limiter,
+    survey_limiter,
 )
 from app.features.catalog.models import Product  # noqa: E402
 from app.features.catalog.seed import seed_catalog  # noqa: E402
@@ -65,11 +66,13 @@ async def _clean() -> AsyncIterator[None]:
     public_limiter.reset()
     parent_auth_limiter.reset()
     parent_match_limiter.reset()
+    survey_limiter.reset()
     yield
     async with SessionLocal() as s:
         await s.execute(
             text(
-                "TRUNCATE order_lines, order_kit_lines, orders, product_images, staff_accounts, "
+                "TRUNCATE survey_responses, order_lines, order_kit_lines, orders, product_images, "
+                "staff_accounts, "
                 "audit_logs, parent_student_links, "
                 "parent_accounts, "
                 "fitting_trials, students, school_classes, schools CASCADE"

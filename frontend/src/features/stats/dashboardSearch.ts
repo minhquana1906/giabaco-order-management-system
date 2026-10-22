@@ -1,11 +1,11 @@
 import type { PivotGroup, PivotMeasure } from './api'
 
-export type DashboardView = 'measure' | 'orders'
+export type DashboardView = 'measure' | 'orders' | 'survey'
 export type GenderFilter = 'all' | 'male' | 'female'
 
 export interface DashboardSearch {
   school_id?: string
-  view?: 'orders'
+  view?: 'orders' | 'survey'
   product?: string
   campaign_id?: string
   group?: Exclude<PivotGroup, 'product'>
@@ -22,7 +22,7 @@ const oneOf = <T extends string>(value: unknown, allowed: readonly T[]) => allow
 export function parseDashboardSearch(search: Record<string, unknown>): DashboardSearch {
   return {
     school_id: text(search.school_id),
-    view: oneOf(search.view, ['orders']),
+    view: oneOf(search.view, ['orders', 'survey']),
     product: text(search.product),
     campaign_id: text(search.campaign_id),
     group: oneOf(search.group, ['kit', 'class']),

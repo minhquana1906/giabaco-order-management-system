@@ -151,6 +151,8 @@ login_limiter = RateLimiter(5)
 public_limiter = RateLimiter(60)
 parent_auth_limiter = RateLimiter(10)
 parent_match_limiter = RateLimiter(10)
+# Generous: a class Zalo group may submit at once from behind one carrier CGNAT IP.
+survey_limiter = RateLimiter(30)
 
 
 def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
@@ -165,6 +167,7 @@ limit_login = _limit(login_limiter)
 limit_public = _limit(public_limiter)
 limit_parent_auth = _limit(parent_auth_limiter)
 limit_parent_match = _limit(parent_match_limiter)
+limit_survey = _limit(survey_limiter)
 
 _BASE_HEADERS = [
     (b"x-content-type-options", b"nosniff"),
@@ -219,7 +222,7 @@ def _under(path: str, prefix: str) -> bool:
 
 
 ADMIN_PAGES = ("/", "/login", "/students", "/dashboard", "/catalog", "/campaigns", "/orders")
-PARENT_PAGES = ("/parent", "/p")
+PARENT_PAGES = ("/parent", "/p", "/survey")
 PARENT_APIS = ("/api/parent", "/api/public")
 
 

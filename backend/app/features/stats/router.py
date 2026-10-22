@@ -10,7 +10,7 @@ from app.core.db import get_session
 from app.core.order_pivot import CampaignOverview, CampaignPivot, Group, Measure
 from app.core.security import require_admin
 from app.features.stats import handler
-from app.features.stats.schemas import ClassMatrix, Overview, SizeDistribution
+from app.features.stats.schemas import ClassMatrix, Overview, SizeDistribution, SurveyOverview
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
@@ -66,3 +66,8 @@ async def get_campaign_overview(
     campaign_id: uuid.UUID, session: Session, submitted_until: date | None = None
 ) -> CampaignOverview:
     return await pivot.campaign_overview(session, campaign_id, submitted_until)
+
+
+@router.get("/surveys")
+async def get_survey_overview(session: Session) -> SurveyOverview:
+    return await handler.survey_overview(session)

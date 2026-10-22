@@ -1,10 +1,12 @@
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.errors import ApiError
+from app.core.names import name_key
 from app.features.campaigns.models import school_products
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.stats.schemas import (
@@ -16,9 +18,14 @@ from app.features.stats.schemas import (
     SizeCount,
     SizeDistribution,
     SizeGuideAccuracy,
+    SurveyOverview,
+    SurveySchoolRow,
 )
 from app.features.students.fit_rules import derived_size
 from app.features.students.models import DataSource, Fit, FittingTrial, Student
+from app.features.surveys.models import SurveyResponse
+
+SURVEY_SCHOOL_LIMIT = 200
 
 
 def _percent(count: int, total: int) -> float:
@@ -206,4 +213,54 @@ async def class_matrix(
         sizes=list(product.sizes),
         rows=[rows[c.id] for c in classes],
         totals=totals,
+    )
+
+
+async def survey_overview(session: AsyncSession) -> SurveyOverview:
+    """Counts over every survey response; unique children dedup by school, name and birth date."""
+    r = SurveyResponse
+    school_key = name_key(r.school_name)
+
+    async def counts(column: InstrumentedAttribute[str]) -> dict[str, int]:
+        rows = await session.execute(select(column, func.count()).group_by(column))
+        return {key: n for key, n in rows}
+
+    total, with_girths = (
+        await session.execute(
+            select(
+                func.count(),
+                func.count().filter(
+                    r.chest_cm.is_not(None), r.waist_cm.is_not(None), r.hip_cm.is_not(None)
+                ),
+            )
+        )
+    ).one()
+    unique = await session.scalar(
+        select(func.count()).select_from(
+            select(r.parent_phone, name_key(r.child_full_name), r.dob).distinct().subquery()
+        )
+    )
+    schools = await session.execute(
+        select(
+            func.min(r.school_name),
+            func.min(r.province),
+            func.min(r.school_area),
+            func.count(),
+        )
+        .group_by(school_key)
+        .order_by(func.count().desc(), school_key)
+        .limit(SURVEY_SCHOOL_LIMIT)
+    )
+    return SurveyOverview(
+        total_responses=total,
+        unique_children=unique or 0,
+        with_all_girths=with_girths,
+        by_area=await counts(r.school_area),
+        by_gender=await counts(r.gender),
+        by_measure_method=await counts(r.measure_method),
+        by_supply_option=await counts(r.supply_option),
+        schools=[
+            SurveySchoolRow(school_name=n, province=p, school_area=a, responses=c)
+            for n, p, a, c in schools
+        ],
     )

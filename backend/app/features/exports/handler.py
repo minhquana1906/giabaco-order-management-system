@@ -8,15 +8,17 @@ from datetime import date, datetime
 from typing import Any
 
 from openpyxl import Workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import order_pivot as pivot
 from app.core.errors import ApiError
+from app.core.names import name_key
 from app.features.campaigns.models import OPEN, Campaign, school_products
 from app.features.catalog.models import Product, School, SchoolClass
 from app.features.orders.models import SUBMITTED, Order
 from app.features.students.models import DataSource, FittingTrial, Student
+from app.features.surveys.models import SurveyResponse
 
 Row = list[Any]
 Dataset = tuple[list[str], list[Row]]
@@ -254,6 +256,91 @@ async def trials_dataset(session: AsyncSession) -> Dataset:
             ]
         )
     return TRIAL_HEADERS, rows
+
+
+SURVEY_HEADERS = [
+    "Mã phiếu",
+    "Thời điểm gửi",
+    "Phiên bản phiếu",
+    "Phiếu mới nhất",
+    "Trường",
+    "Tỉnh/Thành phố",
+    "Phường/Xã",
+    "Khu vực trường",
+    "Lớp",
+    "Họ tên",
+    "Ngày sinh",
+    "Giới tính",
+    "SĐT Zalo",
+    "Ngày đo",
+    "Tuổi lúc đo",
+    "Cách đo",
+    "Chiều cao (cm)",
+    "Cân nặng (kg)",
+    "BMI",
+    "Vòng ngực (cm)",
+    "Vòng eo (cm)",
+    "Vòng mông (cm)",
+    "Đặc điểm hình thể",
+    "Phom ưa thích",
+    "Vấn đề năm trước",
+    "Hình thức cung ứng",
+]
+
+
+async def surveys_dataset(session: AsyncSession) -> Dataset:
+    """One row per survey response; `Phiếu mới nhất` marks the latest per child for dedup."""
+    rank = (
+        func.row_number()
+        .over(
+            partition_by=(
+                SurveyResponse.parent_phone,
+                name_key(SurveyResponse.child_full_name),
+                SurveyResponse.dob,
+            ),
+            order_by=SurveyResponse.created_at.desc(),
+        )
+        .label("rank")
+    )
+    query = select(SurveyResponse, rank).order_by(
+        name_key(SurveyResponse.school_name),
+        SurveyResponse.class_name,
+        SurveyResponse.created_at,
+    )
+    rows: list[Row] = []
+    for r, position in await session.execute(query):
+        height_m = float(r.height_cm) / 100
+        rows.append(
+            [
+                str(r.id),
+                _plain(r.created_at),
+                r.form_version,
+                position == 1,
+                r.school_name,
+                r.province,
+                r.ward,
+                r.school_area,
+                r.class_name,
+                r.child_full_name,
+                _plain(r.dob),
+                r.gender,
+                r.parent_phone,
+                _plain(r.measured_on),
+                round((r.measured_on - r.dob).days / 365.25, 1),
+                r.measure_method,
+                _plain(r.height_cm),
+                _plain(r.weight_kg),
+                round(float(r.weight_kg) / (height_m * height_m), 1),
+                _plain(r.chest_cm),
+                _plain(r.waist_cm),
+                _plain(r.hip_cm),
+                ", ".join(r.body_traits),
+                r.fit_preference,
+                ", ".join(r.past_issues),
+                r.supply_option,
+            ]
+        )
+    return SURVEY_HEADERS, rows
 
 
 GENDER_LABEL = {"MALE": "Nam", "FEMALE": "Nữ", None: ""}

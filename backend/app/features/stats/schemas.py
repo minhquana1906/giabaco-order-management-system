@@ -59,3 +59,21 @@ class ClassMatrix(BaseModel):
     sizes: list[str]
     rows: list[MatrixRow]
     totals: MatrixTotals
+
+
+class SurveySchoolRow(BaseModel):
+    school_name: str
+    province: str
+    school_area: str
+    responses: int
+
+
+class SurveyOverview(BaseModel):
+    total_responses: int
+    unique_children: int
+    with_all_girths: int
+    by_area: dict[str, int]
+    by_gender: dict[str, int]
+    by_measure_method: dict[str, int]
+    by_supply_option: dict[str, int]
+    schools: list[SurveySchoolRow]
