@@ -151,8 +151,8 @@ login_limiter = RateLimiter(5)
 public_limiter = RateLimiter(60)
 parent_auth_limiter = RateLimiter(10)
 parent_match_limiter = RateLimiter(10)
-# Generous: a class Zalo group may submit at once from behind one carrier CGNAT IP.
-survey_limiter = RateLimiter(30)
+# Generous: a parents' meeting on one school Wi-Fi or carrier CGNAT IP may submit at once.
+survey_limiter = RateLimiter(60)
 
 
 def _limit(limiter: RateLimiter) -> Callable[[Request], None]:

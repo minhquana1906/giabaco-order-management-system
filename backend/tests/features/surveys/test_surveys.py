@@ -42,10 +42,9 @@ async def test_submissions_append_and_export_flags_latest_per_child(
     client: AsyncClient, anon_client: AsyncClient
 ) -> None:
     assert (await anon_client.post(URL, json=survey_body())).status_code == 201
-    # Same child with different spacing/case/accents: a new row that becomes the latest one.
-    again = survey_body(
-        school_name="tieu hoc le quy don", child_full_name="tran bao ngoc", height_cm=129
-    )
+    # Same child resubmitted with another spelling of the school and name: a new row that
+    # becomes the latest one, keyed by phone + name + dob rather than the free-text school.
+    again = survey_body(school_name="TH LQĐ", child_full_name="tran bao ngoc", height_cm=129)
     assert (await anon_client.post(URL, json=again)).status_code == 201
 
     r = await client.get("/api/export/surveys.csv")
@@ -53,11 +52,12 @@ async def test_submissions_append_and_export_flags_latest_per_child(
     assert list(rows[0]) == SURVEY_HEADERS
     latest = {row["Chiều cao (cm)"]: row["Phiếu mới nhất"] for row in rows}
     assert latest == {"128.5": "False", "129.0": "True"}
-    assert rows[0]["Trường"] == "Tiểu học Lê Quý Đôn"
-    assert (rows[0]["Phường/Xã"], rows[0]["Khu vực trường"]) == ("Phường Ba Đình", "URBAN")
-    assert rows[0]["Họ tên"] == "Trần Bảo Ngọc"
-    assert rows[0]["SĐT Zalo"] == "0912345678"
-    assert rows[0]["Vòng mông (cm)"] == ""
+    first = next(row for row in rows if row["Chiều cao (cm)"] == "128.5")
+    assert first["Trường"] == "Tiểu học Lê Quý Đôn"
+    assert (first["Phường/Xã"], first["Khu vực trường"]) == ("Phường Ba Đình", "URBAN")
+    assert first["Họ tên"] == "Trần Bảo Ngọc"
+    assert first["SĐT Zalo"] == "0912345678"
+    assert first["Vòng mông (cm)"] == ""
 
 
 async def test_export_requires_admin(anon_client: AsyncClient) -> None:

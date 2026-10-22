@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest'
-import { emptySurvey, measurementWarnings, toSurveyBody, validateSurvey, type SurveyValues } from './logic'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  emptySurvey,
+  loadDraft,
+  measurementWarnings,
+  saveDraft,
+  toSurveyBody,
+  validateSurvey,
+  type SurveyValues,
+} from './logic'
 
 const TODAY = '2026-10-22'
 
@@ -76,5 +84,18 @@ describe('toSurveyBody', () => {
       waist_cm: 55,
       fit_preference: null,
     })
+  })
+})
+
+describe('draft', () => {
+  afterEach(() => localStorage.clear())
+
+  it('restores a saved draft over the empty form and survives a corrupt one', () => {
+    saveDraft(filled({ child_full_name: 'Nháp' }))
+    expect(loadDraft(TODAY)).toMatchObject({ child_full_name: 'Nháp', ward: 'Phường Ba Đình' })
+    localStorage.setItem('guniform-survey-draft', '{oops')
+    expect(loadDraft(TODAY)).toEqual(emptySurvey(TODAY))
+    saveDraft(null)
+    expect(loadDraft(TODAY)).toEqual(emptySurvey(TODAY))
   })
 })

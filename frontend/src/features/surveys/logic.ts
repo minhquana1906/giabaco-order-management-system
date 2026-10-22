@@ -95,6 +95,28 @@ export function emptySurvey(today: string): SurveyValues {
   }
 }
 
+const DRAFT_KEY = 'guniform-survey-draft'
+
+/** Unsent answers survive a reload, e.g. Zalo's in-app browser killed while the parent measures. */
+export function loadDraft(today: string): SurveyValues {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
+    if (saved && typeof saved === 'object') return { ...emptySurvey(today), ...saved }
+  } catch {
+    // Storage blocked (private mode) or a corrupt draft: start empty.
+  }
+  return emptySurvey(today)
+}
+
+export function saveDraft(values: SurveyValues | null): void {
+  try {
+    if (values) localStorage.setItem(DRAFT_KEY, JSON.stringify(values))
+    else localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // Storage full or blocked: the form still works, only without a draft.
+  }
+}
+
 export function isoDaysBefore(today: string, days: number): string {
   const d = new Date(`${today}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - days)
@@ -123,8 +145,8 @@ export function validateSurvey(values: SurveyValues, today: string): SurveyError
   set('school_name', values.school_name.trim() ? undefined : 'Vui lòng nhập tên trường.')
   set('province', values.province ? undefined : 'Vui lòng chọn tỉnh/thành phố.')
   set('ward', values.ward ? undefined : 'Vui lòng chọn phường/xã.')
-  set('class_name', values.class_name.trim() ? undefined : 'Vui lòng nhập lớp của con.')
-  set('child_full_name', values.child_full_name.trim() ? undefined : 'Vui lòng nhập họ và tên con.')
+  set('class_name', values.class_name.trim() ? undefined : 'Vui lòng nhập lớp của học sinh.')
+  set('child_full_name', values.child_full_name.trim() ? undefined : 'Vui lòng nhập họ và tên học sinh.')
   const dob = dobToIso(values.dob)
   set('dob', dob ? undefined : 'Chọn ngày, tháng, năm sinh hợp lệ.')
   set('gender', values.gender ? undefined : 'Vui lòng chọn giới tính.')
@@ -134,7 +156,7 @@ export function validateSurvey(values: SurveyValues, today: string): SurveyError
   )
   if (!values.measured_on || values.measured_on > today) set('measured_on', 'Chọn ngày đo, không sau hôm nay.')
   else if (values.measured_on < isoDaysBefore(today, MAX_MEASUREMENT_AGE_DAYS)) {
-    set('measured_on', 'Số đo đã cũ hơn 6 tháng, vui lòng đo lại cho con.')
+    set('measured_on', 'Số đo đã cũ hơn 6 tháng, vui lòng đo lại cho học sinh.')
   } else if (dob && values.measured_on <= dob) set('measured_on', 'Ngày đo phải sau ngày sinh.')
   set('measure_method', values.measure_method ? undefined : 'Vui lòng cho biết cách lấy số đo.')
   set('height', rangeError(values.height, 'chiều cao', HEIGHT_RANGE, true))
