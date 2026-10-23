@@ -20,7 +20,7 @@ main() {
 
   rm -rf backend frontend scripts
   cp -a "$stage"/. .
-  $compose up -d --build app caddy
+  $compose up -d --build --remove-orphans app caddy
 
   for _ in $(seq 90); do
     if curl -fsS http://127.0.0.1:8000/api/healthz >/dev/null 2>&1; then

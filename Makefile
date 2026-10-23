@@ -53,7 +53,7 @@ lint: ## ruff, mypy, eslint, tsc
 smoke: ## Build the production image and smoke it (isolated project, then cleaned up)
 	@cd backend && HASH=$$(uv run python -c "from app.core.security import hash_password as h; print(h('$(SMOKE_PASSWORD)'))") && \
 	printf '%s\n' 'POSTGRES_PASSWORD=smokepw' "SESSION_SECRET=$$(openssl rand -hex 32)" 'ADMIN_USERNAME=admin' \
-	  "ADMIN_PASSWORD_HASH='$$HASH'" 'TUNNEL_TOKEN=unused' 'PUBLIC_BASE_URL=http://parent.smoke' 'ADMIN_HOST=admin.smoke' 'COOKIE_SECURE=false' > ../.env.smoke
+	  "ADMIN_PASSWORD_HASH='$$HASH'" 'PUBLIC_BASE_URL=http://parent.smoke' 'ADMIN_HOST=admin.smoke' 'COOKIE_SECURE=false' > ../.env.smoke
 	@$(SMOKE) up -d --build db app; rc=$$?; \
 	[ $$rc -eq 0 ] && $(SMOKE) exec -T app python - $(SMOKE_PASSWORD) < scripts/smoke.py; rc=$$?; \
 	$(SMOKE) down -v >/dev/null 2>&1; rm -f .env.smoke; exit $$rc
