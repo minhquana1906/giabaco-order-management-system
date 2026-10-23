@@ -38,6 +38,7 @@ function setup() {
 
 async function fill(user: UserEvent, confirm = 'matkhau123') {
   await user.type(screen.getByLabelText('Họ và tên'), 'Nguyễn Thị Lan')
+  await user.type(screen.getByLabelText('Email'), 'lan@example.com')
   await user.type(screen.getByLabelText('Số điện thoại'), '0912345678')
   await user.type(screen.getByLabelText('Mật khẩu'), 'matkhau123')
   await user.type(screen.getByLabelText('Xác nhận mật khẩu'), confirm)
@@ -47,7 +48,7 @@ describe('RegisterForm', () => {
   it('lists the fields in a single column order', () => {
     setup()
     const labels = Array.from(document.querySelectorAll('form label')).map((l) => l.textContent)
-    expect(labels).toEqual(['Họ và tên', 'Email (không bắt buộc)', 'Số điện thoại', 'Mật khẩu', 'Xác nhận mật khẩu'])
+    expect(labels).toEqual(['Họ và tên', 'Email', 'Số điện thoại', 'Mật khẩu', 'Xác nhận mật khẩu'])
   })
 
   it('blocks submit when the confirmation differs', async () => {
@@ -62,6 +63,7 @@ describe('RegisterForm', () => {
 
   it('requires a phone', async () => {
     const { user } = setup()
+    await user.type(screen.getByLabelText('Email'), 'lan@example.com')
     await user.type(screen.getByLabelText('Họ và tên'), 'Lan')
     await user.type(screen.getByLabelText('Mật khẩu'), 'matkhau123')
     await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'matkhau123')
@@ -71,7 +73,19 @@ describe('RegisterForm', () => {
     await waitFor(() => expect(screen.getByLabelText('Số điện thoại')).toHaveFocus())
   })
 
-  it('sends only name, phone, null email and password', async () => {
+  it('requires an email', async () => {
+    const { user } = setup()
+    await user.type(screen.getByLabelText('Họ và tên'), 'Lan')
+    await user.type(screen.getByLabelText('Số điện thoại'), '0912345678')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'matkhau123')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'matkhau123')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+
+    expect(await screen.findByText('Vui lòng nhập email.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus())
+  })
+
+  it('sends name, phone, email and password', async () => {
     const { user, onSuccess } = setup()
     await fill(user)
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
@@ -81,7 +95,7 @@ describe('RegisterForm', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       full_name: 'Nguyễn Thị Lan',
       phone: '0912345678',
-      email: null,
+      email: 'lan@example.com',
       password: 'matkhau123',
     })
   })

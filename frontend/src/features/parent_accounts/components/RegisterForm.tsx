@@ -71,7 +71,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
               />
             )}
           </Field>
-          <Field id="email" label="Email (không bắt buộc)" error={errors.email}>
+          <Field id="email" label="Email" error={errors.email}>
             {(control) => (
               <Input
                 {...control}

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { initialsOf, safeParentRedirect, toRegisterBody, validateLogin, validateRegister } from './authLogic'
+import {
+  initialsOf,
+  passwordCriteria,
+  safeParentRedirect,
+  toRegisterBody,
+  validateForgot,
+  validateLogin,
+  validateRegister,
+} from './authLogic'
 
 const valid = {
   full_name: 'Nguyễn Thị Lan',
@@ -10,9 +18,11 @@ const valid = {
 }
 
 describe('validateRegister', () => {
-  it('accepts a complete form, with or without email', () => {
+  it('accepts a complete form', () => {
     expect(validateRegister(valid)).toEqual({})
-    expect(validateRegister({ ...valid, email: '' })).toEqual({})
+  })
+  it('requires an email', () => {
+    expect(validateRegister({ ...valid, email: ' ' }).email).toBe('Vui lòng nhập email.')
   })
   it('accepts a phone with country code', () => {
     expect(validateRegister({ ...valid, phone: '+84912345678' })).toEqual({})
@@ -41,13 +51,31 @@ describe('validateRegister', () => {
 })
 
 describe('toRegisterBody', () => {
-  it('trims, sends null for an empty email and drops the confirmation', () => {
-    expect(toRegisterBody({ ...valid, full_name: ' Lan ', phone: ' 0912345678 ', email: ' ' })).toEqual({
+  it('trims fields and drops the confirmation', () => {
+    expect(
+      toRegisterBody({ ...valid, full_name: ' Lan ', phone: ' 0912345678 ', email: ' lan@example.com ' }),
+    ).toEqual({
       full_name: 'Lan',
       phone: '0912345678',
-      email: null,
+      email: 'lan@example.com',
       password: 'matkhau123',
     })
+  })
+})
+
+describe('validateForgot', () => {
+  it('requires a well-formed email', () => {
+    expect(validateForgot(' ')).toBe('Vui lòng nhập email.')
+    expect(validateForgot('lan@')).toBe('Email chưa đúng định dạng.')
+    expect(validateForgot(' lan@example.com ')).toBeUndefined()
+  })
+})
+
+describe('passwordCriteria', () => {
+  it('tracks length and confirmation separately', () => {
+    expect(passwordCriteria('1234567', '1234567')).toEqual({ longEnough: false, matches: true })
+    expect(passwordCriteria('12345678', '')).toEqual({ longEnough: true, matches: false })
+    expect(passwordCriteria('12345678', '12345678')).toEqual({ longEnough: true, matches: true })
   })
 })
 

@@ -7,14 +7,14 @@ export type School = Pick<AdminSchool, 'id' | 'name'>
 export interface ParentAccount {
   id: string
   full_name: string
-  email: string | null
+  email: string
   phone: string | null
 }
 
 export interface RegisterBody {
   full_name: string
   phone: string
-  email: string | null
+  email: string
   password: string
 }
 
@@ -23,6 +23,8 @@ export const parentAuthApi = {
   register: (body: RegisterBody) => http.post<ParentAccount>('/parent/auth/register', body),
   login: (body: { identifier: string; password: string }) => http.post<ParentAccount>('/parent/auth/login', body),
   logout: () => http.post<void>('/parent/auth/logout'),
+  forgot: (email: string) => http.post<{ accepted: boolean }>('/parent/auth/forgot', { email }),
+  reset: (body: { token: string; password: string }) => http.post<void>('/parent/auth/reset', body),
 }
 
 export type Gender = 'MALE' | 'FEMALE'

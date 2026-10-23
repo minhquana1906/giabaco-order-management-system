@@ -26,7 +26,7 @@ Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tạ
 
 Trang chọn cỡ có ảnh sản phẩm theo trường, giới tính và màu: admin tải ảnh lên qua trang Sản phẩm (`/catalog`), ảnh lưu ở volume `uploads` và phục vụ qua `/media/*`. Không có ảnh thì trang hiện "Chưa có thông tin ảnh sản phẩm".
 
-Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP; không có quên mật khẩu (phụ huynh liên hệ Giabaco).
+Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP.
 
 `make seed-demo` nạp 2 trường (mỗi trường chưa có đợt thì được một đợt đang mở gồm các sản phẩm đang bán), 9 lớp, 59 học sinh (148 lần thử, 1 xóa mềm) và các ca biên (ngoài bảng size, chưa thử áo, nhiều cỡ vừa...). Học sinh bị bỏ qua nếu DB đã có học sinh. Script từ chối chạy trên DB không phải `127.0.0.1`/`localhost`. Muốn nạp lại từ đầu (xóa toàn bộ dữ liệu dev):
 

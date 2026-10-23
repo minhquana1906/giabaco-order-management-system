@@ -72,6 +72,18 @@ export function useParentLogout() {
   })
 }
 
+export function useForgotPassword() {
+  return useMutation({ mutationFn: parentAuthApi.forgot })
+}
+
+export function useResetPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: parentAuthApi.reset,
+    onSuccess: () => queryClient.removeQueries({ queryKey: parentKeys.all }),
+  })
+}
+
 export const childPortalSource = (studentId: string) =>
   pathSource(`/parent/children/${encodeURIComponent(studentId)}`, parentKeys.child(studentId), parentKeys.children())
 

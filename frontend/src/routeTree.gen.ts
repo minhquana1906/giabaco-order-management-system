@@ -16,8 +16,10 @@ import { Route as SurveyRouteImport } from './routes/survey'
 import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
 import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ParentParentRouteImport } from './routes/parent/_parent'
+import { Route as ParentForgotRouteImport } from './routes/parent/forgot'
 import { Route as ParentLoginRouteImport } from './routes/parent/login'
 import { Route as ParentRegisterRouteImport } from './routes/parent/register'
+import { Route as ParentResetRouteImport } from './routes/parent/reset'
 import { Route as AdminCampaignsIndexRouteImport } from './routes/_admin/campaigns/index'
 import { Route as AdminCampaignsCampaignIdRouteImport } from './routes/_admin/campaigns/$campaignId'
 import { Route as AdminCatalogIndexRouteImport } from './routes/_admin/catalog.index'
@@ -66,6 +68,11 @@ const ParentParentRoute = ParentParentRouteImport.update({
   path: '/parent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParentForgotRoute = ParentForgotRouteImport.update({
+  id: '/parent/forgot',
+  path: '/parent/forgot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ParentLoginRoute = ParentLoginRouteImport.update({
   id: '/parent/login',
   path: '/parent/login',
@@ -74,6 +81,11 @@ const ParentLoginRoute = ParentLoginRouteImport.update({
 const ParentRegisterRoute = ParentRegisterRouteImport.update({
   id: '/parent/register',
   path: '/parent/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParentResetRoute = ParentResetRouteImport.update({
+  id: '/parent/reset',
+  path: '/parent/reset',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCampaignsIndexRoute = AdminCampaignsIndexRouteImport.update({
@@ -151,8 +163,10 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
   '/parent': typeof ParentParentRouteWithChildren
+  '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/parent/reset': typeof ParentResetRoute
   '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/catalog/new': typeof AdminCatalogNewRoute
@@ -173,8 +187,10 @@ export interface FileRoutesByTo {
   '/survey': typeof SurveyRoute
   '/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
+  '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/parent/reset': typeof ParentResetRoute
   '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/catalog/new': typeof AdminCatalogNewRoute
@@ -198,8 +214,10 @@ export interface FileRoutesById {
   '/_admin/dashboard': typeof AdminDashboardRoute
   '/p/$token': typeof PTokenRoute
   '/parent/_parent': typeof ParentParentRouteWithChildren
+  '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
+  '/parent/reset': typeof ParentResetRoute
   '/_admin/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/_admin/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/_admin/catalog/new': typeof AdminCatalogNewRoute
@@ -223,8 +241,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/p/$token'
     | '/parent'
+    | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
+    | '/parent/reset'
     | '/campaigns/$campaignId'
     | '/catalog/$productId'
     | '/catalog/new'
@@ -245,8 +265,10 @@ export interface FileRouteTypes {
     | '/survey'
     | '/dashboard'
     | '/p/$token'
+    | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
+    | '/parent/reset'
     | '/campaigns/$campaignId'
     | '/catalog/$productId'
     | '/catalog/new'
@@ -269,8 +291,10 @@ export interface FileRouteTypes {
     | '/_admin/dashboard'
     | '/p/$token'
     | '/parent/_parent'
+    | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
+    | '/parent/reset'
     | '/_admin/campaigns/$campaignId'
     | '/_admin/catalog/$productId'
     | '/_admin/catalog/new'
@@ -293,8 +317,10 @@ export interface RootRouteChildren {
   SurveyRoute: typeof SurveyRoute
   PTokenRoute: typeof PTokenRoute
   ParentParentRoute: typeof ParentParentRouteWithChildren
+  ParentForgotRoute: typeof ParentForgotRoute
   ParentLoginRoute: typeof ParentLoginRoute
   ParentRegisterRoute: typeof ParentRegisterRoute
+  ParentResetRoute: typeof ParentResetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -348,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParentParentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/parent/forgot': {
+      id: '/parent/forgot'
+      path: '/parent/forgot'
+      fullPath: '/parent/forgot'
+      preLoaderRoute: typeof ParentForgotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/parent/login': {
       id: '/parent/login'
       path: '/parent/login'
@@ -360,6 +393,13 @@ declare module '@tanstack/react-router' {
       path: '/parent/register'
       fullPath: '/parent/register'
       preLoaderRoute: typeof ParentRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parent/reset': {
+      id: '/parent/reset'
+      path: '/parent/reset'
+      fullPath: '/parent/reset'
+      preLoaderRoute: typeof ParentResetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_admin/campaigns/': {
@@ -509,8 +549,10 @@ const rootRouteChildren: RootRouteChildren = {
   SurveyRoute: SurveyRoute,
   PTokenRoute: PTokenRoute,
   ParentParentRoute: ParentParentRouteWithChildren,
+  ParentForgotRoute: ParentForgotRoute,
   ParentLoginRoute: ParentLoginRoute,
   ParentRegisterRoute: ParentRegisterRoute,
+  ParentResetRoute: ParentResetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -90,11 +90,9 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
           </Link>
         </p>
         <p>
-          Quên mật khẩu? Vui lòng liên hệ Giabaco (
-          <a className="font-semibold text-navy underline" href="tel:0835352004">
-            0835352004
-          </a>
-          ).
+          <Link to="/parent/forgot" className="inline-flex min-h-11 items-center font-semibold text-navy underline">
+            Quên mật khẩu?
+          </Link>
         </p>
       </div>
     </ParentShell>

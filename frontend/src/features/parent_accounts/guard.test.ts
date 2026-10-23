@@ -20,6 +20,18 @@ describe('requireParentSession', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('re-checks the server once the cached session is stale', async () => {
+    const client = new QueryClient()
+    client.setQueryData(parentKeys.me(), { id: 'p1' }, { updatedAt: Date.now() - 120_000 })
+    const fetchMock = vi.fn().mockResolvedValue(json({ error: { code: 'unauthorized', message: 'x' } }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const error = await requireParentSession(client, '/parent').catch((e: unknown) => e)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(isRedirect(error)).toBe(true)
+  })
+
   it('redirects to login when the server rejects the session', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json({ error: { code: 'unauthorized', message: 'x' } }, 401))
     vi.stubGlobal('fetch', fetchMock)

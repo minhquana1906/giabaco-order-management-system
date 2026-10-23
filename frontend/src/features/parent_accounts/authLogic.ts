@@ -21,12 +21,18 @@ export function isValidPhone(raw: string): boolean {
   return /^0\d{9}$/.test(cleaned)
 }
 
+export function validateEmail(value: string): string | undefined {
+  const email = value.trim()
+  if (!email) return 'Vui lòng nhập email.'
+  return EMAIL_PATTERN.test(email) ? undefined : 'Email chưa đúng định dạng.'
+}
+
 export function validateRegister(values: RegisterValues): RegisterErrors {
   const errors: RegisterErrors = {}
-  const email = values.email.trim()
   const phone = values.phone.trim()
+  const emailError = validateEmail(values.email)
   if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên.'
-  if (email && !EMAIL_PATTERN.test(email)) errors.email = 'Email chưa đúng định dạng.'
+  if (emailError) errors.email = emailError
   if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.'
   else if (!isValidPhone(phone)) errors.phone = 'Số điện thoại chưa đúng định dạng.'
   if (values.password.length < MIN_PASSWORD_LENGTH)
@@ -44,11 +50,26 @@ export function validateLogin(values: { identifier: string; password: string }):
   return errors
 }
 
+export const validateForgot = validateEmail
+
+export function tokenFromHash(hash: string): string | undefined {
+  return new URLSearchParams(hash.replace(/^#/, '')).get('token') || undefined
+}
+
+export interface PasswordCriteria {
+  longEnough: boolean
+  matches: boolean
+}
+
+export function passwordCriteria(password: string, confirm: string): PasswordCriteria {
+  return { longEnough: password.length >= MIN_PASSWORD_LENGTH, matches: confirm !== '' && confirm === password }
+}
+
 export function toRegisterBody(values: RegisterValues): RegisterBody {
   return {
     full_name: values.full_name.trim(),
     phone: values.phone.trim(),
-    email: values.email.trim() || null,
+    email: values.email.trim(),
     password: values.password,
   }
 }
