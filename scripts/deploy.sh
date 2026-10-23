@@ -10,7 +10,9 @@ main() {
 
   tar xzf - -C "$stage"
   test -f "$stage/docker-compose.yml"
-  grep -q '^ADMIN_HOST=.' .env || { echo "ADMIN_HOST missing in .env" >&2; exit 1; }
+  for key in ADMIN_HOST PUBLIC_HOST; do
+    grep -q "^$key=." .env || { echo "$key missing in .env" >&2; exit 1; }
+  done
 
   mkdir -p "$HOME/backups"
   $compose exec -T db pg_dump -U guniform -d guniform | gzip > "$HOME/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
@@ -18,7 +20,7 @@ main() {
 
   rm -rf backend frontend scripts
   cp -a "$stage"/. .
-  $compose up -d --build app
+  $compose up -d --build app caddy
 
   for _ in $(seq 90); do
     if curl -fsS http://127.0.0.1:8000/api/healthz >/dev/null 2>&1; then

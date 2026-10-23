@@ -6,7 +6,7 @@ import { parentMeQueryOptions } from './hooks'
 
 export async function requireParentSession(queryClient: QueryClient, href: string) {
   try {
-    await queryClient.fetchQuery({ ...parentMeQueryOptions(), staleTime: 0 })
+    await queryClient.ensureQueryData(parentMeQueryOptions())
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       throw redirect({ to: '/parent/login', search: { redirect: href } })

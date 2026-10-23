@@ -10,13 +10,21 @@ const json = (body: unknown, status = 200) =>
 afterEach(() => vi.unstubAllGlobals())
 
 describe('requireParentSession', () => {
-  it('re-checks the server even when a fresh session is cached', async () => {
+  it('uses a fresh cached session without hitting the server', async () => {
     const client = new QueryClient()
     client.setQueryData(parentKeys.me(), { id: 'p1' })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(requireParentSession(client, '/parent')).resolves.toBeUndefined()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects to login when the server rejects the session', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json({ error: { code: 'unauthorized', message: 'x' } }, 401))
     vi.stubGlobal('fetch', fetchMock)
 
-    const error = await requireParentSession(client, '/parent').catch((e: unknown) => e)
+    const error = await requireParentSession(new QueryClient(), '/parent').catch((e: unknown) => e)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(isRedirect(error)).toBe(true)

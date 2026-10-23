@@ -128,7 +128,7 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          git archive --format=tar.gz HEAD Dockerfile Makefile docker-compose.yml .dockerignore .env.example backend frontend scripts \
+          git archive --format=tar.gz HEAD Dockerfile Makefile docker-compose.yml Caddyfile .dockerignore .env.example backend frontend scripts \
             | ssh -p 2222 -i ~/.ssh/deploy -o StrictHostKeyChecking=yes -o BatchMode=yes \
               "${{ vars.GCE_SSH_USER }}@localhost"
       - name: Verify public hosts

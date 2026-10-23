@@ -35,6 +35,22 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
 
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-}
+      ADMIN_HOST: ${ADMIN_HOST:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    depends_on:
+      - app
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
@@ -64,3 +80,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  caddy_data:

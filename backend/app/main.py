@@ -80,8 +80,10 @@ def _mount_spa(app: FastAPI, spa_dir: Path) -> None:
             raise HTTPException(404, "Not found")
         candidate = (root / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(root):
-            return FileResponse(candidate)
-        return FileResponse(index)
+            # Vite emits content-hashed names under assets/, so they can never change in place.
+            headers = {"Cache-Control": MEDIA_CACHE_CONTROL} if path.startswith("assets/") else None
+            return FileResponse(candidate, headers=headers)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 def _guarded(route: APIRoute) -> bool:

@@ -6,7 +6,7 @@ Công cụ thu thập số đo và thử áo của học sinh cho dự án G Bla
 |---|---|
 | `PRODUCT.md`, `DESIGN.md` | Định hướng sản phẩm và thiết kế UI |
 
-Stack: FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL 16 (backend, `uv`); Vite + React + TanStack Router/Query + shadcn/ui + Tailwind (frontend, `pnpm`); Docker Compose + Cloudflare Tunnel (production).
+Stack: FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL 16 (backend, `uv`); Vite + React + TanStack Router/Query + shadcn/ui + Tailwind (frontend, `pnpm`); Docker Compose + Caddy (production).
 
 ## Yêu cầu
 
@@ -52,7 +52,7 @@ Thử QR trên điện thoại trong LAN: chạy `pnpm dev --host` trong `fronte
 
 ## CI/CD
 
-`.github/workflows/ci-cd.yml`: PR vào `main` chạy backend (ruff, mypy, pytest), frontend (eslint, tsc, vitest, build) và `make smoke`. Push hoặc merge vào `main` chạy thêm job `deploy`: mở IAP tunnel tới VM, gửi bản release qua SSH tới `scripts/deploy.sh` (khóa CI chỉ chạy được script này). Script `pg_dump` DB vào `~/backups` (giữ 10 bản), thay code, `docker compose up -d --build app`, chờ `healthz`; workflow kiểm tra lại cả hai host. Rollback: chạy workflow thủ công (`Run workflow`) với `ref` là commit cũ trên `main`, chỉ khi hai commit cùng migration head; nếu bản mới đã thêm migration thì khôi phục `~/backups/predeploy-*.sql.gz` (hoặc snapshot) trước, vì image cũ không biết revision mới và sẽ không khởi động.
+`.github/workflows/ci-cd.yml`: PR vào `main` chạy backend (ruff, mypy, pytest), frontend (eslint, tsc, vitest, build) và `make smoke`. Push hoặc merge vào `main` chạy thêm job `deploy`: mở IAP tunnel tới VM, gửi bản release qua SSH tới `scripts/deploy.sh` (khóa CI chỉ chạy được script này). Script `pg_dump` DB vào `~/backups` (giữ 10 bản), thay code, `docker compose up -d --build app caddy`, chờ `healthz`; workflow kiểm tra lại cả hai host. Rollback: chạy workflow thủ công (`Run workflow`) với `ref` là commit cũ trên `main`, chỉ khi hai commit cùng migration head; nếu bản mới đã thêm migration thì khôi phục `~/backups/predeploy-*.sql.gz` (hoặc snapshot) trước, vì image cũ không biết revision mới và sẽ không khởi động.
 
 Thiết lập một lần (gcloud và gh đã đăng nhập): `bash scripts/setup-cd.sh`. Script tạo service account + Workload Identity Federation (chỉ repo này, nhánh `main`), cài khóa deploy và `ADMIN_HOST` trên VM, đặt secrets/variables cho repo.
 

@@ -1,0 +1,9 @@
+{$PUBLIC_HOST}, {$ADMIN_HOST} {
+	@compress not path /api/events
+	encode @compress zstd gzip
+
+	# The app trusts CF-Connecting-IP as the rate-limit key; set it here so clients cannot spoof it.
+	reverse_proxy app:8000 {
+		header_up CF-Connecting-IP {remote_host}
+	}
+}
