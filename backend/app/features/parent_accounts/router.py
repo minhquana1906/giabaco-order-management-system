@@ -3,12 +3,15 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.security import (
+    PARENT_SESSION_AT_KEY,
     PARENT_SESSION_KEY,
+    limit_forgot,
     limit_parent_auth,
     limit_parent_match,
     require_admin,
@@ -22,10 +25,12 @@ from app.features.parent_accounts.schemas import (
     ChildSummary,
     ChildUpdateIn,
     ClassOut,
+    ForgotIn,
     LoginIn,
     LookupOut,
     ParentAccountOut,
     RegisterIn,
+    ResetIn,
     SchoolOut,
 )
 
@@ -64,6 +69,24 @@ async def login(payload: LoginIn, request: Request, session: Session) -> ParentA
 @router.post("/auth/logout", status_code=204)
 async def logout(request: Request) -> Response:
     request.session.pop(PARENT_SESSION_KEY, None)
+    request.session.pop(PARENT_SESSION_AT_KEY, None)
+    return Response(status_code=204)
+
+
+@router.post("/auth/forgot", status_code=202, dependencies=[Depends(limit_forgot)])
+async def forgot_password(
+    payload: ForgotIn, session: Session, background: BackgroundTasks
+) -> dict[str, bool]:
+    """Same answer whether or not the email has an account."""
+    link = await handler.request_reset(session, payload, get_settings().public_base_url)
+    if link is not None:
+        background.add_task(handler.send_reset_email, payload.email, link)
+    return {"accepted": True}
+
+
+@router.post("/auth/reset", status_code=204, dependencies=[Depends(limit_parent_auth)])
+async def reset_password(payload: ResetIn, session: Session) -> Response:
+    await handler.reset_password(session, payload)
     return Response(status_code=204)
 
 

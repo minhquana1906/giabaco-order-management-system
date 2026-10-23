@@ -23,6 +23,7 @@ from app.core.errors import ApiError
 ADMIN_ACTOR = "admin"
 SESSION_KEY = "username"
 PARENT_SESSION_KEY = "parent_id"
+PARENT_SESSION_AT_KEY = "parent_at"
 _hasher = PasswordHasher()
 
 
@@ -77,13 +78,31 @@ async def require_admin(request: Request) -> str:
     raise ApiError(401, "unauthorized", "Cần đăng nhập")
 
 
-def require_parent(request: Request) -> uuid.UUID:
-    """Dependency: return the signed-in parent id or raise 401. Ignores the admin key."""
-    raw = request.session.get(PARENT_SESSION_KEY)
+async def require_parent(request: Request) -> uuid.UUID:
+    """Dependency: return the signed-in parent id or raise 401. Ignores the admin key.
+
+    A session stamped before the account's last password reset is rejected.
+    """
+    from app.core.db import SessionLocal
+
     try:
-        return uuid.UUID(raw)
+        parent_id = uuid.UUID(request.session.get(PARENT_SESSION_KEY))
     except (TypeError, ValueError):
         raise ApiError(401, "unauthorized", "Cần đăng nhập") from None
+    async with SessionLocal() as session:
+        row = (
+            await session.execute(
+                text("SELECT password_changed_at FROM parent_accounts WHERE id = :id"),
+                {"id": parent_id},
+            )
+        ).first()
+    if row is None:
+        raise ApiError(401, "unauthorized", "Cần đăng nhập")
+    changed_at = row[0]
+    signed_in_at = float(request.session.get(PARENT_SESSION_AT_KEY, 0.0))
+    if changed_at is not None and signed_in_at < changed_at.timestamp():
+        raise ApiError(401, "unauthorized", "Cần đăng nhập")
+    return parent_id
 
 
 def parent_actor(parent_id: uuid.UUID) -> str:
@@ -150,6 +169,7 @@ class RateLimiter:
 login_limiter = RateLimiter(5)
 public_limiter = RateLimiter(60)
 parent_auth_limiter = RateLimiter(10)
+forgot_limiter = RateLimiter(5, window_s=900.0)
 parent_match_limiter = RateLimiter(10)
 # Generous: a parents' meeting on one school Wi-Fi or carrier CGNAT IP may submit at once.
 survey_limiter = RateLimiter(60)
@@ -166,6 +186,7 @@ def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
 limit_login = _limit(login_limiter)
 limit_public = _limit(public_limiter)
 limit_parent_auth = _limit(parent_auth_limiter)
+limit_forgot = _limit(forgot_limiter)
 limit_parent_match = _limit(parent_match_limiter)
 limit_survey = _limit(survey_limiter)
 

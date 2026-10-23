@@ -29,11 +29,10 @@ async def test_register_with_email_signs_in(anon_client: AsyncClient) -> None:
     assert me.status_code == 200 and me.json() == body
 
 
-async def test_register_with_phone_only_has_no_email(anon_client: AsyncClient) -> None:
+async def test_register_requires_email(anon_client: AsyncClient) -> None:
     r = await anon_client.post(REGISTER, json=register_body(email=None))
 
-    assert r.status_code == 201
-    assert r.json()["email"] is None and r.json()["phone"] == "0912345678"
+    assert r.status_code == 422 and "email" in r.json()["error"]["fields"]
 
 
 async def test_register_without_phone_key_is_422(anon_client: AsyncClient) -> None:
@@ -46,7 +45,7 @@ async def test_register_without_phone_key_is_422(anon_client: AsyncClient) -> No
 
 
 async def test_register_with_phone_normalizes_and_logs_in_again(anon_client: AsyncClient) -> None:
-    r = await anon_client.post(REGISTER, json=register_body(email=None, phone="+84 912 345 678"))
+    r = await anon_client.post(REGISTER, json=register_body(phone="+84 912 345 678"))
     assert r.status_code == 201 and r.json()["phone"] == "0912345678"
 
     for identifier in ("0912345678", "+84912345678"):
@@ -74,7 +73,8 @@ async def test_login_by_email_ignores_case(anon_client: AsyncClient) -> None:
     [
         ({"phone": None}, "phone"),
         ({"phone": ""}, "phone"),
-        ({"email": None, "phone": "  "}, "phone"),
+        ({"email": None}, "email"),
+        ({"phone": "  "}, "phone"),
         ({"password": "short"}, "password"),
         ({"email": "not-an-email"}, "email"),
         ({"phone": "12345"}, "phone"),
@@ -131,11 +131,7 @@ async def test_wrong_identifier_and_wrong_password_look_the_same(anon_client: As
 
 @pytest.mark.parametrize("path", [REGISTER, LOGIN])
 async def test_auth_endpoints_are_rate_limited(anon_client: AsyncClient, path: str) -> None:
-    body = (
-        {"identifier": "x@example.com", "password": "x"}
-        if path == LOGIN
-        else register_body(email=None)
-    )
+    body = {"identifier": "x@example.com", "password": "x"} if path == LOGIN else register_body()
     statuses = [(await anon_client.post(path, json=body)).status_code for _ in range(11)]
 
     assert statuses[:10].count(429) == 0 and statuses[10] == 429

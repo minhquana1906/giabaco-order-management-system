@@ -30,7 +30,7 @@ async def test_create_child_is_declared_and_linked(
     school_class: dict[str, Any],
     session: AsyncSession,
 ) -> None:
-    parent = await make_parent(full_name="Mẹ An", phone="0912345678")
+    parent = await make_parent(full_name="Mẹ An", phone="0912345678", email="me.an@example.com")
 
     r = await parent.post(CHILDREN, json=child_body(school_class))
 
@@ -47,7 +47,7 @@ async def test_create_child_is_declared_and_linked(
         "data_source": "PARENT_DECLARED",
         "parent_name": "Mẹ An",
         "parent_phone": "0912345678",
-        "parent_email": None,
+        "parent_email": "me.an@example.com",
         "order_summary": None,
         "campaign_open": False,
     }
@@ -56,7 +56,7 @@ async def test_create_child_is_declared_and_linked(
     assert student.portal_token and (student.height_cm, student.weight_kg) == (128.5, 25.0)
     assert (student.parent_phone, student.parent_email, student.parent_name) == (
         "0912345678",
-        None,
+        "me.an@example.com",
         "Mẹ An",
     )
     assert await count_rows(session, FittingTrial) == 0

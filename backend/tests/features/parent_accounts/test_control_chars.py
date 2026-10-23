@@ -15,7 +15,7 @@ LOGIN = "/api/parent/auth/login"
         (REGISTER, register_body(full_name="a\x00b"), "full_name"),
         (REGISTER, register_body(full_name="a\tb"), "full_name"),
         (REGISTER, register_body(email="a\x00@b.vn"), "email"),
-        (REGISTER, register_body(email=None, phone="09\x0012345678"), "phone"),
+        (REGISTER, register_body(phone="09\x0012345678"), "phone"),
         (REGISTER, register_body(password="pass\x00word123"), "password"),
         (REGISTER, register_body(password="pass\nword123"), "password"),
         (LOGIN, {"identifier": "a\x00b", "password": "x"}, "identifier"),

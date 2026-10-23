@@ -26,16 +26,14 @@ def _non_blank_name(value: str) -> str:
 FullName = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_non_blank_name)]
 
 
-def _optional_email(value: str | None) -> str | None:
-    if value is None or not value.strip():
-        return None
+def _email(value: str) -> str:
     value = reject_control_chars(value.strip().lower())
     if not _EMAIL_RE.match(value):
         raise ValueError("Email không hợp lệ")
     return value
 
 
-OptionalEmail = Annotated[str | None, Field(max_length=200), AfterValidator(_optional_email)]
+Email = Annotated[str, Field(max_length=200), AfterValidator(_email)]
 Phone = Annotated[str, AfterValidator(normalize_phone)]
 Password = Annotated[str, Field(max_length=128), AfterValidator(reject_control_chars)]
 Identifier = Annotated[str, Field(max_length=200), AfterValidator(reject_control_chars)]
@@ -52,7 +50,16 @@ Weight = Annotated[
 class RegisterIn(BaseModel):
     full_name: FullName
     phone: Phone
-    email: OptionalEmail = None
+    email: Email
+    password: Annotated[Password, Field(min_length=8)]
+
+
+class ForgotIn(BaseModel):
+    email: Email
+
+
+class ResetIn(BaseModel):
+    token: Annotated[str, Field(min_length=1, max_length=200)]
     password: Annotated[Password, Field(min_length=8)]
 
 
@@ -64,7 +71,7 @@ class LoginIn(BaseModel):
 class ParentAccountOut(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: str | None
+    email: str
     phone: str | None
 
 

@@ -49,9 +49,9 @@ async def test_parent_session_cannot_reach_admin_routes(
 @pytest.mark.parametrize(
     "session", [{}, {SESSION_KEY: ADMIN_USERNAME}, {PARENT_SESSION_KEY: "not-a-uuid"}]
 )
-def test_require_parent_rejects_non_parent_sessions(session: dict[str, Any]) -> None:
+async def test_require_parent_rejects_non_parent_sessions(session: dict[str, Any]) -> None:
     with pytest.raises(ApiError) as exc:
-        require_parent(SimpleNamespace(session=session))  # type: ignore[arg-type]
+        await require_parent(SimpleNamespace(session=session))  # type: ignore[arg-type]
     assert exc.value.status == 401
 
 

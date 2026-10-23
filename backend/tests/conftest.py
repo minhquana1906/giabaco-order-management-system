@@ -32,6 +32,7 @@ os.environ.update(
 
 from app.core.db import SessionLocal  # noqa: E402
 from app.core.security import (  # noqa: E402
+    forgot_limiter,
     login_limiter,
     parent_auth_limiter,
     parent_match_limiter,
@@ -65,6 +66,7 @@ async def _clean() -> AsyncIterator[None]:
     login_limiter.reset()
     public_limiter.reset()
     parent_auth_limiter.reset()
+    forgot_limiter.reset()
     parent_match_limiter.reset()
     survey_limiter.reset()
     yield
@@ -171,6 +173,18 @@ def register_body(**overrides: Any) -> dict[str, Any]:
     }
 
 
+@pytest.fixture(autouse=True)
+def outbox(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
+    """Capture outgoing email instead of calling Resend."""
+    sent: list[dict[str, str]] = []
+
+    async def fake_send(to: str, subject: str, html: str, text: str) -> None:
+        sent.append({"to": to, "subject": subject, "html": html, "text": text})
+
+    monkeypatch.setattr("app.core.email.send", fake_send)
+    return sent
+
+
 async def count_rows(session: AsyncSession, model: Any) -> int:
     return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
@@ -190,6 +204,8 @@ async def make_parent() -> AsyncIterator[MakeParent]:
         clients.append(parent)
         if phone is None:
             phone = f"0{uuid.uuid4().int % 10**9:09d}"
+        if email is None:
+            email = f"p{uuid.uuid4().hex[:12]}@example.com"
         r = await parent.post(
             "/api/parent/auth/register",
             json={"full_name": full_name, "email": email, "phone": phone, "password": password},

@@ -1,47 +1,69 @@
 """Parent account use cases."""
 
+import hashlib
 import secrets
+import time
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from app.core import audit
+from app.core import audit, email
 from app.core.errors import ApiError
 from app.core.events import bus
 from app.core.names import lock_identity, name_key
 from app.core.phone import normalize_phone
-from app.core.security import PARENT_SESSION_KEY, hash_password, parent_actor, verify_password
+from app.core.security import (
+    PARENT_SESSION_AT_KEY,
+    PARENT_SESSION_KEY,
+    hash_password,
+    parent_actor,
+    verify_password,
+)
 from app.features.campaigns.models import OPEN, Campaign, campaign_for_student
 from app.features.catalog.models import School, SchoolClass
 from app.features.orders.models import Order
-from app.features.parent_accounts.models import LinkOrigin, ParentAccount, ParentStudentLink
+from app.features.parent_accounts.models import (
+    LinkOrigin,
+    ParentAccount,
+    ParentPasswordReset,
+    ParentStudentLink,
+)
 from app.features.parent_accounts.schemas import (
     ChildIn,
     ChildKeyIn,
     ChildSummary,
     ChildUpdateIn,
+    ForgotIn,
     LoginIn,
     LookupOut,
     OrderSummary,
     ParentAccountOut,
     RegisterIn,
+    ResetIn,
 )
 from app.features.students.models import DataSource, Student, student_snapshot
 
 MAX_CHILDREN = 10
+RESET_TTL = timedelta(minutes=30)
+RESET_RESEND_AFTER = timedelta(seconds=60)
 
 
 def account_out(parent: ParentAccount) -> ParentAccountOut:
     return ParentAccountOut(
         id=parent.id, full_name=parent.full_name, email=parent.email, phone=parent.phone
     )
+
+
+def _sign_in(request: Request, parent: ParentAccount) -> None:
+    request.session[PARENT_SESSION_KEY] = str(parent.id)
+    request.session[PARENT_SESSION_AT_KEY] = time.time()
 
 
 async def load_parent(session: AsyncSession, parent_id: uuid.UUID) -> ParentAccount:
@@ -68,10 +90,10 @@ async def register(session: AsyncSession, request: Request, payload: RegisterIn)
         raise ApiError(409, "account_exists", "Email hoặc số điện thoại đã được đăng ký") from None
     await audit.record(
         session, parent_actor(parent.id), "parent_account.register", "parent_account", parent.id,
-        None, {"has_email": parent.email is not None, "has_phone": parent.phone is not None},
+        None, {"has_phone": parent.phone is not None},
     )  # fmt: skip
     await session.commit()
-    request.session[PARENT_SESSION_KEY] = str(parent.id)
+    _sign_in(request, parent)
     return parent
 
 
@@ -95,8 +117,89 @@ async def login(session: AsyncSession, request: Request, payload: LoginIn) -> Pa
     )
     if parent is None or not password_ok:
         raise ApiError(401, "invalid_credentials", "Sai thông tin đăng nhập")
-    request.session[PARENT_SESSION_KEY] = str(parent.id)
+    _sign_in(request, parent)
     return parent
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def request_reset(session: AsyncSession, payload: ForgotIn, base_url: str) -> str | None:
+    """Make a reset link for the email's account; None if there is none or one was just sent."""
+    parent = await session.scalar(select(ParentAccount).where(ParentAccount.email == payload.email))
+    if parent is None:
+        return None
+    now = datetime.now(UTC)
+    recent = await session.scalar(
+        select(func.count())
+        .select_from(ParentPasswordReset)
+        .where(
+            ParentPasswordReset.parent_id == parent.id,
+            ParentPasswordReset.used_at.is_(None),
+            ParentPasswordReset.created_at > now - RESET_RESEND_AFTER,
+        )
+    )
+    if recent:
+        return None
+    await session.execute(
+        update(ParentPasswordReset)
+        .where(ParentPasswordReset.parent_id == parent.id, ParentPasswordReset.used_at.is_(None))
+        .values(used_at=now)
+    )
+    token = secrets.token_urlsafe(32)
+    session.add(
+        ParentPasswordReset(
+            parent_id=parent.id, token_hash=_token_hash(token), expires_at=now + RESET_TTL
+        )
+    )
+    await audit.record(
+        session, "anonymous", "parent_account.reset_requested", "parent_account",
+        parent.id, None, None,
+    )  # fmt: skip
+    await session.commit()
+    return f"{base_url.rstrip('/')}/parent/reset#token={token}"
+
+
+async def send_reset_email(to: str, link: str) -> None:
+    minutes = int(RESET_TTL.total_seconds() // 60)
+    text = (
+        "Bạn vừa yêu cầu đặt lại mật khẩu tài khoản G-UNIFORM.\n\n"
+        f"Mở liên kết sau để đặt mật khẩu mới (hiệu lực {minutes} phút, dùng một lần):\n"
+        f"{link}\n\n"
+        "Nếu bạn không yêu cầu, hãy bỏ qua email này. Mật khẩu của bạn vẫn an toàn."
+    )
+    html = (
+        "<p>Bạn vừa yêu cầu đặt lại mật khẩu tài khoản G-UNIFORM.</p>"
+        f'<p><a href="{link}" style="display:inline-block;padding:12px 20px;background:#1B2B4B;'
+        'color:#fff;border-radius:8px;text-decoration:none">Đặt lại mật khẩu</a></p>'
+        f"<p>Hoặc mở liên kết này: {link}</p>"
+        f"<p>Liên kết có hiệu lực {minutes} phút và chỉ dùng một lần.</p>"
+        "<p>Nếu bạn không yêu cầu, hãy bỏ qua email này. Mật khẩu của bạn vẫn an toàn.</p>"
+    )
+    await email.send(to, "Đặt lại mật khẩu tài khoản G-UNIFORM", html, text)
+
+
+async def reset_password(session: AsyncSession, payload: ResetIn) -> None:
+    """Spend a reset token, set the new password and invalidate every earlier session."""
+    reset = await session.scalar(
+        select(ParentPasswordReset)
+        .where(ParentPasswordReset.token_hash == _token_hash(payload.token))
+        .with_for_update()
+    )
+    now = datetime.now(UTC)
+    if reset is None or reset.used_at is not None or reset.expires_at <= now:
+        raise ApiError(400, "invalid_reset_token", "Liên kết đã hết hạn hoặc đã được sử dụng")
+    parent = await session.get(ParentAccount, reset.parent_id)
+    assert parent is not None  # parent_id is ON DELETE CASCADE
+    parent.password_hash = await run_in_threadpool(hash_password, payload.password)
+    parent.password_changed_at = now
+    reset.used_at = now
+    await audit.record(
+        session, parent_actor(parent.id), "parent_account.password_reset", "parent_account",
+        parent.id, None, None,
+    )  # fmt: skip
+    await session.commit()
 
 
 async def children(

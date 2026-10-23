@@ -2,8 +2,9 @@
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -16,16 +17,26 @@ class LinkOrigin(enum.StrEnum):
 
 class ParentAccount(Base):
     __tablename__ = "parent_accounts"
-    __table_args__ = (
-        CheckConstraint(
-            "email IS NOT NULL OR phone IS NOT NULL", name="ck_parent_accounts_identifier"
-        ),
-    )
 
     full_name: Mapped[str] = mapped_column(Text)
-    email: Mapped[str | None] = mapped_column(Text, unique=True)
+    email: Mapped[str] = mapped_column(Text, unique=True)
     phone: Mapped[str | None] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
+    # Sessions signed in before this moment are rejected; set when a reset changes the password.
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ParentPasswordReset(Base):
+    """A single-use reset link; only the SHA-256 of the token is stored."""
+
+    __tablename__ = "parent_password_resets"
+
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("parent_accounts.id", ondelete="CASCADE")
+    )
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ParentStudentLink(Base):

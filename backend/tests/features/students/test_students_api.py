@@ -401,7 +401,9 @@ async def test_detail_lists_linked_parents(
 ) -> None:
     creator = await make_parent(email="Me.Tao@Example.com", phone="0911222333", full_name="Mẹ Tạo")
     declared_id = (await declare_child(creator, school_class))["student_id"]
-    claimer = await make_parent(phone="0987654321", full_name="Bố Nhận")
+    claimer = await make_parent(
+        email="bo.nhan@example.com", phone="0987654321", full_name="Bố Nhận"
+    )
     claim = await claimer.post(
         "/api/parent/children/claim",
         json=claim_key(school_class, full_name="le minh anh", dob="2017-09-01"),
@@ -417,7 +419,7 @@ async def test_detail_lists_linked_parents(
         (claimer.parent_id, "Bố Nhận", "CLAIMED"),
     ]
     assert (parents[0]["email"], parents[0]["phone"]) == ("me.tao@example.com", "0911222333")
-    assert (parents[1]["email"], parents[1]["phone"]) == (None, "0987654321")
+    assert (parents[1]["email"], parents[1]["phone"]) == ("bo.nhan@example.com", "0987654321")
     assert all(p["linked_at"] for p in parents)
     assert set(parents[0]) == {"parent_id", "full_name", "email", "phone", "origin", "linked_at"}
     assert detail["trials"] == []
