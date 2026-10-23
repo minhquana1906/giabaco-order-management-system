@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     admin_host: str | None = None
     spa_dir: str | None = None
     media_dir: str = "var/uploads"
+    resend_api_key: str | None = None
+    mail_from: str = ""
 
 
 @lru_cache

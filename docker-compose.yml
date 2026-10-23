@@ -30,6 +30,8 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       MEDIA_DIR: /data/uploads
       CUTOVER_SCHOOL_CODE: ${CUTOVER_SCHOOL_CODE:-LQD}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     volumes:
       - uploads:/data/uploads
     ports:

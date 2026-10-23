@@ -15,13 +15,13 @@ dependencies = [
     "pyyaml",
     "openpyxl",
     "python-multipart>=0.0.32",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
     "pytest-asyncio",
-    "httpx",
     "ruff",
     "mypy",
     "types-pyyaml",

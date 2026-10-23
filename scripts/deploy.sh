@@ -10,7 +10,7 @@ main() {
 
   tar xzf - -C "$stage"
   test -f "$stage/docker-compose.yml"
-  for key in ADMIN_HOST PUBLIC_HOST; do
+  for key in ADMIN_HOST PUBLIC_HOST RESEND_API_KEY MAIL_FROM; do
     grep -q "^$key=." .env || { echo "$key missing in .env" >&2; exit 1; }
   done
 
