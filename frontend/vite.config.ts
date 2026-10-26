@@ -30,7 +30,8 @@ export default defineConfig({
       },
     },
   },
-  build: { outDir: 'dist' },
+  // Vite's default target keeps class static blocks (Safari 16.4+); lower it so iOS 15 to 16.3 can parse the chunks.
+  build: { outDir: 'dist', target: 'safari15' },
   test: {
     environment: 'jsdom',
     globals: true,
