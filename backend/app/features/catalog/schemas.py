@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 from pydantic_core import PydanticCustomError
@@ -129,6 +129,9 @@ class ColourOut(BaseModel):
 class SchoolIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     code: str = Field(min_length=1, max_length=50)
+    grades: list[Annotated[int, Field(ge=1, le=12)]] = Field(
+        default=list(range(1, 13)), max_length=12
+    )
 
     @field_validator("name", "code")
     @classmethod

@@ -71,7 +71,7 @@ async def test_schools_report_open_campaign(
 
 
 async def test_schools_and_classes(client: AsyncClient) -> None:
-    r = await client.post("/api/schools", json={"name": "Trường B", "code": "TB"})
+    r = await client.post("/api/schools", json={"name": "Trường B", "code": "TB", "grades": []})
     assert r.status_code == 201
     school = r.json()
     dup = await client.post("/api/schools", json={"name": "Khác", "code": "TB"})
@@ -99,7 +99,9 @@ async def test_schools_and_classes(client: AsyncClient) -> None:
 
 
 async def _school_with_classes(client: AsyncClient, *names: tuple[int, str]) -> dict[str, Any]:
-    school = (await client.post("/api/schools", json={"name": "Trường C", "code": "TC"})).json()
+    school = (
+        await client.post("/api/schools", json={"name": "Trường C", "code": "TC", "grades": []})
+    ).json()
     classes = [
         (
             await client.post(f"/api/schools/{school['id']}/classes", json={"grade": g, "name": n})
@@ -120,7 +122,9 @@ async def test_class_name_must_start_with_grade(client: AsyncClient, grade: int,
 
 
 async def test_class_valid_for_two_digit_grade(client: AsyncClient) -> None:
-    school = (await client.post("/api/schools", json={"name": "Trường D", "code": "TD"})).json()
+    school = (
+        await client.post("/api/schools", json={"name": "Trường D", "code": "TD", "grades": []})
+    ).json()
     r = await client.post(
         f"/api/schools/{school['id']}/classes", json={"grade": 10, "name": "10A1"}
     )
@@ -163,3 +167,15 @@ async def test_edit_class_conflict(client: AsyncClient) -> None:
         f"/api/schools/{school_id}/classes/{second}", json={"grade": 3, "name": "3A1"}
     )
     assert r.status_code == 409 and r.json()["error"]["code"] == "duplicate_class"
+
+
+async def test_new_school_gets_default_classes(client: AsyncClient) -> None:
+    school = (await client.post("/api/schools", json={"name": "Trường F", "code": "TF"})).json()
+    names = [c["name"] for c in (await client.get(f"/api/schools/{school['id']}/classes")).json()]
+    assert len(names) == 120 and {"1A1", "1A10", "12A1", "12A10"} <= set(names)
+
+    custom = await client.post(
+        "/api/schools", json={"name": "Trường G", "code": "TG", "grades": [6, 6, 7]}
+    )
+    listing = (await client.get(f"/api/schools/{custom.json()['id']}/classes")).json()
+    assert {c["grade"] for c in listing} == {6, 7} and len(listing) == 20

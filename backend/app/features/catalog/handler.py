@@ -32,6 +32,7 @@ from app.features.orders.models import OrderLine
 from app.features.students.models import FittingTrial
 
 GENDER_SLUG = {"MALE": "nam", "FEMALE": "nu"}
+DEFAULT_CLASSES_PER_GRADE = 10
 
 
 async def list_products(session: AsyncSession, include_inactive: bool = False) -> Sequence[Product]:
@@ -328,6 +329,12 @@ async def create_school(session: AsyncSession, payload: SchoolIn) -> School:
     school = School(name=payload.name, code=payload.code)
     session.add(school)
     try:
+        await session.flush()
+        session.add_all(
+            SchoolClass(school_id=school.id, grade=g, name=f"{g}A{n}")
+            for g in sorted(set(payload.grades))
+            for n in range(1, DEFAULT_CLASSES_PER_GRADE + 1)
+        )
         await session.commit()
     except IntegrityError:
         await session.rollback()
@@ -352,7 +359,7 @@ async def list_classes(session: AsyncSession, school_id: uuid.UUID) -> Sequence[
     result = await session.scalars(
         select(SchoolClass)
         .where(SchoolClass.school_id == school_id)
-        .order_by(SchoolClass.grade, SchoolClass.name)
+        .order_by(SchoolClass.grade, func.length(SchoolClass.name), SchoolClass.name)
     )
     return result.all()
 

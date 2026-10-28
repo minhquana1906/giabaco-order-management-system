@@ -196,7 +196,7 @@ async def _ensure_catalog(session: AsyncSession) -> list[tuple[Any, Any, int]]:
     existing_schools = {s.code: s for s in await list_schools(session)}
     for (name, code), classes in SCHOOLS.items():
         school = existing_schools.get(code) or await create_school(
-            session, SchoolIn(name=name, code=code)
+            session, SchoolIn(name=name, code=code, grades=sorted({g for g, _ in classes}))
         )
         existing = {c.name: c for c in await list_classes(session, school.id)}
         for grade, class_name in classes:

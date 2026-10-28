@@ -349,7 +349,7 @@ async def list_classes(session: AsyncSession, school_id: uuid.UUID) -> Sequence[
     result = await session.scalars(
         select(SchoolClass)
         .where(SchoolClass.school_id == school_id)
-        .order_by(SchoolClass.grade, SchoolClass.name)
+        .order_by(SchoolClass.grade, func.length(SchoolClass.name), SchoolClass.name)
     )
     return result.all()
 

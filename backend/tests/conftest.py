@@ -227,7 +227,9 @@ async def products(session: AsyncSession) -> dict[str, Product]:
 @pytest_asyncio.fixture
 async def school_class(client: AsyncClient) -> dict[str, Any]:
     code = uuid.uuid4().hex[:6]
-    school = (await client.post("/api/schools", json={"name": "Trường A", "code": code})).json()
+    school = (
+        await client.post("/api/schools", json={"name": "Trường A", "code": code, "grades": []})
+    ).json()
     cls = (
         await client.post(f"/api/schools/{school['id']}/classes", json={"grade": 2, "name": "2A1"})
     ).json()

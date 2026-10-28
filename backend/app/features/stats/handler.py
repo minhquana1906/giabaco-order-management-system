@@ -182,7 +182,7 @@ async def class_matrix(
         await session.scalars(
             select(SchoolClass)
             .where(SchoolClass.school_id == school_id)
-            .order_by(SchoolClass.grade, SchoolClass.name)
+            .order_by(SchoolClass.grade, func.length(SchoolClass.name), SchoolClass.name)
         )
     )
     students = await _students(session, school_id)
