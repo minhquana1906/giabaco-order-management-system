@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+from app.features.master_data import models as _master_data  # noqa: F401 - products FK target
 
 
 class School(Base):
