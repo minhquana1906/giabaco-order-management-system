@@ -1,9 +1,10 @@
-"""Image sniffing by magic bytes; dimensions are read from the file header only."""
+"""Product image validation and WebP optimisation; lookup of the image shown for a product."""
 
-import struct
+import io
 import uuid
 from dataclasses import dataclass
 
+from PIL import Image, ImageOps
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,67 +13,49 @@ from app.features.catalog.schemas import ImageRef
 
 MEDIA_URL_PREFIX = "/media/"
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-_JPEG_SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+MAX_EDGE = 1600
+# Decoded size is ~4 bytes per pixel, so this caps one decode at ~100 MB (decompression bomb guard).
+MAX_PIXELS = 25_000_000
+WEBP_QUALITY = 85
 
 
 @dataclass(frozen=True)
-class ImageInfo:
-    ext: str
+class OptimizedImage:
+    data: bytes
     width: int
     height: int
 
 
-def _png(data: bytes) -> ImageInfo | None:
-    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR" or len(data) < 24:
+def _encode(img: Image.Image, *, lossless: bool) -> bytes:
+    out = io.BytesIO()
+    img.save(out, "WEBP", quality=WEBP_QUALITY, lossless=lossless)
+    return out.getvalue()
+
+
+def optimize(data: bytes) -> OptimizedImage | None:
+    """WebP bytes (long edge <= MAX_EDGE) of a PNG/JPEG/WebP; None when unreadable or too large.
+
+    A WebP already within the size limit is returned unchanged (same `data` object). PNG keeps
+    the smaller of lossy and lossless output so flat text such as size charts stays sharp.
+    shortcut: an animated WebP wider than MAX_EDGE keeps only its first frame.
+    """
+    try:
+        with Image.open(io.BytesIO(data), formats=("PNG", "JPEG", "WEBP")) as img:
+            if img.width * img.height > MAX_PIXELS:
+                return None
+            source_format = img.format
+            if source_format == "WEBP" and max(img.size) <= MAX_EDGE:
+                img.load()
+                return OptimizedImage(data, img.width, img.height)
+            fixed = ImageOps.exif_transpose(img)
+            fixed = fixed.convert("RGBA" if fixed.has_transparency_data else "RGB")
+            fixed.thumbnail((MAX_EDGE, MAX_EDGE), Image.Resampling.LANCZOS)
+            encoded = _encode(fixed, lossless=False)
+            if source_format == "PNG":
+                encoded = min(encoded, _encode(fixed, lossless=True), key=len)
+            return OptimizedImage(encoded, fixed.width, fixed.height)
+    except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
         return None
-    width, height = struct.unpack(">II", data[16:24])
-    return ImageInfo("png", width, height)
-
-
-def _jpeg(data: bytes) -> ImageInfo | None:
-    if data[:3] != b"\xff\xd8\xff":
-        return None
-    i = 2
-    while i + 9 < len(data):
-        if data[i] != 0xFF:
-            return None
-        marker = data[i + 1]
-        if marker == 0xFF:
-            i += 1
-            continue
-        if marker in _JPEG_SOF:
-            height, width = struct.unpack(">HH", data[i + 5 : i + 9])
-            return ImageInfo("jpg", width, height)
-        if marker == 0xD8 or 0xD0 <= marker <= 0xD7 or marker == 0x01:
-            i += 2
-            continue
-        i += 2 + struct.unpack(">H", data[i + 2 : i + 4])[0]
-    return None
-
-
-def _webp(data: bytes) -> ImageInfo | None:
-    if data[:4] != b"RIFF" or data[8:12] != b"WEBP" or len(data) < 30:
-        return None
-    kind = data[12:16]
-    if kind == b"VP8 " and data[23:26] == b"\x9d\x01\x2a":
-        width, height = struct.unpack("<HH", data[26:30])
-        return ImageInfo("webp", width & 0x3FFF, height & 0x3FFF)
-    if kind == b"VP8L" and data[20] == 0x2F:
-        bits = int.from_bytes(data[21:25], "little")
-        return ImageInfo("webp", (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1)
-    if kind == b"VP8X":
-        width = int.from_bytes(data[24:27], "little") + 1
-        height = int.from_bytes(data[27:30], "little") + 1
-        return ImageInfo("webp", width, height)
-    return None
-
-
-def sniff(data: bytes) -> ImageInfo | None:
-    """Return type and size when `data` is a WebP, JPEG or PNG with a readable header."""
-    info = _png(data) or _jpeg(data) or _webp(data)
-    if info is None or info.width <= 0 or info.height <= 0:
-        return None
-    return info
 
 
 async def find_image(
