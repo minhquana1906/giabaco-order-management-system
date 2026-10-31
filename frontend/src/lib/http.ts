@@ -1,31 +1,62 @@
 export interface ApiErrorBody {
-  error?: { code?: string; message?: string; fields?: Record<string, string> }
+  error?: { code?: string; message?: string; fields?: Record<string, string>; request_id?: string }
+}
+
+export interface ApiErrorMeta {
+  /** Short reference printed in the server log for this request. */
+  requestId?: string
+  /** Seconds to wait before retrying, from the `Retry-After` header of a 429. */
+  retryAfterS?: number
 }
 
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly fields?: Record<string, string>
+  readonly requestId?: string
+  readonly retryAfterS?: number
 
-  constructor(status: number, code: string, message: string, fields?: Record<string, string>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields?: Record<string, string>,
+    meta?: ApiErrorMeta,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.fields = fields
+    this.requestId = meta?.requestId
+    this.retryAfterS = meta?.retryAfterS
   }
 }
 
-const FALLBACK_MESSAGE = 'Có lỗi xảy ra, vui lòng thử lại.'
+export const GENERIC_ERROR_MESSAGE = 'Chưa thực hiện được thao tác. Vui lòng thử lại sau ít phút.'
+export const MAINTENANCE_MESSAGE = 'Máy chủ đang khởi động lại hoặc bảo trì. Vui lòng thử lại sau ít phút.'
+export const TOO_LARGE_MESSAGE = 'Dữ liệu gửi lên quá lớn (tối đa 8 MB). Chọn tệp nhỏ hơn rồi thử lại.'
+
+/** Messages for responses that do not carry our JSON envelope (proxy or middleware replies). */
+function fallbackMessage(status: number): string {
+  if (status === 413) return TOO_LARGE_MESSAGE
+  if (status === 502 || status === 503 || status === 504) return MAINTENANCE_MESSAGE
+  return GENERIC_ERROR_MESSAGE
+}
 
 export async function parseApiError(res: Response): Promise<ApiError> {
   const body = (await res.json().catch(() => null)) as ApiErrorBody | null
   const err = body?.error
+  const retryAfter = Number(res.headers.get('Retry-After'))
   return new ApiError(
     res.status,
     err?.code ?? 'http_error',
-    err?.message ?? FALLBACK_MESSAGE,
+    err?.message ?? fallbackMessage(res.status),
     err?.fields,
+    {
+      requestId: err?.request_id ?? res.headers.get('X-Request-ID') ?? undefined,
+      retryAfterS: retryAfter > 0 ? retryAfter : undefined,
+    },
   )
 }
 

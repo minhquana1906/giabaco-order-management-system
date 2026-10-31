@@ -5,10 +5,17 @@ import logging
 import re
 import sys
 import time
+import uuid
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+REQUEST_ID_HEADER = "X-Request-ID"
+_REQUEST_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 PII_KEYS = frozenset(
     {
@@ -61,6 +68,9 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": mask_text(record.getMessage()),
         }
+        request_id = request_id_var.get()
+        if request_id:
+            payload["request_id"] = request_id
         extra = getattr(record, "ctx", None)
         if extra:
             payload.update(mask_value(extra))
@@ -82,8 +92,22 @@ def setup_logging() -> None:
 request_logger = logging.getLogger("app.request")
 
 
+def _actor_kind(scope: Scope) -> str:
+    """Who is calling, by session key only; never the username or id itself."""
+    session = scope.get("session") or {}
+    if session.get("username"):
+        return "staff"
+    if session.get("parent_id"):
+        return "parent"
+    return "anonymous"
+
+
 class RequestLogMiddleware:
-    """Log method, path (no query, token masked), status and duration. Never the body."""
+    """Give every request an id and log method, path (no query, token masked), status, duration.
+
+    The id is echoed in `X-Request-ID` and stamped on every log line of the request, so one
+    failing screen can be traced end to end. Never logs the body.
+    """
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -92,6 +116,9 @@ class RequestLogMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        inbound = Headers(scope=scope).get(REQUEST_ID_HEADER, "")
+        request_id = inbound if _REQUEST_ID.match(inbound) else uuid.uuid4().hex[:12]
+        token = request_id_var.set(request_id)
         start = time.perf_counter()
         status = 500
 
@@ -99,20 +126,23 @@ class RequestLogMiddleware:
             nonlocal status
             if message["type"] == "http.response.start":
                 status = message["status"]
+                MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
             await send(message)
 
         try:
             await self.app(scope, receive, send_wrapper)
         finally:
-            path = mask_path(scope["path"])
-            request_logger.info(
+            request_logger.log(
+                logging.ERROR if status >= 500 else logging.INFO,
                 "request",
                 extra={
                     "ctx": {
                         "method": scope["method"],
-                        "path": path,
+                        "path": mask_path(scope["path"]),
                         "status": status,
                         "ms": round((time.perf_counter() - start) * 1000, 1),
+                        "actor": _actor_kind(scope),
                     }
                 },
             )
+            request_id_var.reset(token)
