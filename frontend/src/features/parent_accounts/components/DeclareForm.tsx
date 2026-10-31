@@ -80,7 +80,7 @@ export function DeclareForm({
     weight: api.weight_kg,
     ...clientErrors,
   }
-  const formError = childErrorMessage(error, 'Chưa lưu được thông tin. Vui lòng thử lại.')
+  const formError = childErrorMessage(error, 'Chưa lưu được thông tin. Vui lòng thử lại sau ít phút.')
 
   if (classes.isPending) {
     return (
@@ -92,11 +92,11 @@ export function DeclareForm({
     )
   }
   if (classes.isError) {
-    return <LoadError message="Chưa tải được danh sách lớp." onRetry={() => void classes.refetch()} />
+    return <LoadError message="Chưa tải được danh sách lớp. Bấm Thử lại hoặc quay lại sau ít phút." onRetry={() => void classes.refetch()} />
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:max-w-[560px] lg:gap-8">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-1 flex-col gap-6 lg:gap-8">
       <div>
         <Panel title="Học sinh">
           {summary}
@@ -124,7 +124,7 @@ export function DeclareForm({
             optionClassName="min-h-[52px] text-lg font-semibold"
             onChange={(g) => set('gender', g)}
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3">
             <Field id="height" label="Chiều cao (cm)" error={errors.height}>
               {(control) => (
                 <UnitInput

@@ -56,7 +56,7 @@ describe('RegisterForm', () => {
     await fill(user, 'matkhau124')
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
 
-    expect(await screen.findByText('Mật khẩu xác nhận không khớp.')).toBeInTheDocument()
+    expect(await screen.findByText('Mật khẩu xác nhận chưa giống. Nhập lại đúng mật khẩu ở ô trên.')).toBeInTheDocument()
     expect(onSuccess).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
   })

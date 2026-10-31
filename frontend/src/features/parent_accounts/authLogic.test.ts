@@ -42,7 +42,7 @@ describe('validateRegister', () => {
   })
   it('requires the confirmation to match the password', () => {
     expect(validateRegister({ ...valid, confirm_password: 'matkhau124' }).confirm_password).toBe(
-      'Mật khẩu xác nhận không khớp.',
+      'Mật khẩu xác nhận chưa giống. Nhập lại đúng mật khẩu ở ô trên.',
     )
   })
   it('requires a name', () => {
@@ -66,7 +66,7 @@ describe('toRegisterBody', () => {
 describe('validateForgot', () => {
   it('requires a well-formed email', () => {
     expect(validateForgot(' ')).toBe('Vui lòng nhập email.')
-    expect(validateForgot('lan@')).toBe('Email chưa đúng định dạng.')
+    expect(validateForgot('lan@')).toBe('Email chưa đúng. Ví dụ: ten@gmail.com.')
     expect(validateForgot(' lan@example.com ')).toBeUndefined()
   })
 })

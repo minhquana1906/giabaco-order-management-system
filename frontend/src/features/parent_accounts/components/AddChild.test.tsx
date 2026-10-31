@@ -71,7 +71,7 @@ describe('AddChild', () => {
 
     await user.click(screen.getByRole('button', { name: 'Đúng, nhận hồ sơ này' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('không còn khớp')
+    expect(await screen.findByRole('status')).toHaveTextContent('Chưa tìm thấy hồ sơ khớp')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

@@ -51,7 +51,7 @@ export function RegisterForm({ redirect, onSuccess }: { redirect?: string; onSuc
   const errors = { ...serverErrors, ...clientErrors }
   const formError =
     register.isError && Object.values(serverErrors).every((m) => !m)
-      ? authErrorMessage(register.error, 'Không tạo được tài khoản. Vui lòng thử lại.')
+      ? authErrorMessage(register.error, 'Chưa tạo được tài khoản. Vui lòng thử lại sau ít phút.')
       : null
 
   return (

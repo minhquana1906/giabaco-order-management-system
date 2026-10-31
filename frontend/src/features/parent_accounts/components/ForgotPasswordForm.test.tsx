@@ -34,7 +34,7 @@ describe('ForgotPasswordForm', () => {
     await user.type(screen.getByLabelText('Email đã đăng ký'), 'lan@')
     await user.click(screen.getByRole('button', { name: 'Gửi liên kết đặt lại mật khẩu' }))
 
-    expect(await screen.findByText('Email chưa đúng định dạng.')).toBeInTheDocument()
+    expect(await screen.findByText('Email chưa đúng. Ví dụ: ten@gmail.com.')).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

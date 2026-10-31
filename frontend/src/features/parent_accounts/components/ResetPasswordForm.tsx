@@ -15,7 +15,7 @@ import { useResetPassword } from '../hooks'
 function Criterion({ ok, children }: { ok: boolean; children: string }) {
   const Icon = ok ? Check : Circle
   return (
-    <li className={ok ? 'flex items-center gap-2 text-emerald-700' : 'flex items-center gap-2 text-muted-foreground'}>
+    <li className={ok ? 'flex items-center gap-2 text-success-ink' : 'flex items-center gap-2 text-muted-foreground'}>
       <Icon className="size-4" aria-hidden />
       <span>{children}</span>
     </li>
@@ -36,7 +36,9 @@ export function ResetPasswordForm({ token, onSuccess }: { token: string | undefi
       <ParentShell center>
         <PageHead title="Liên kết không dùng được" divider={false} />
         <Panel flush>
-          <p role="alert">Liên kết đã hết hạn hoặc đã được sử dụng. Hãy gửi lại yêu cầu để nhận liên kết mới.</p>
+          <p role="alert">
+            Liên kết đặt lại mật khẩu đã hết hạn (sau 30 phút) hoặc đã được dùng. Hãy yêu cầu liên kết mới.
+          </p>
           <Button asChild size="lg" className={PARENT_BTN}>
             <Link to="/parent/forgot">Gửi lại yêu cầu mới</Link>
           </Button>
@@ -72,7 +74,7 @@ export function ResetPasswordForm({ token, onSuccess }: { token: string | undefi
               />
             )}
           </Field>
-          <Field id="confirm_password" label="Xác nhận mật khẩu mới" error={touched && !criteria.matches ? 'Mật khẩu xác nhận không khớp.' : undefined}>
+          <Field id="confirm_password" label="Xác nhận mật khẩu mới" error={touched && !criteria.matches ? 'Mật khẩu xác nhận chưa giống. Nhập lại đúng mật khẩu ở ô trên.' : undefined}>
             {(control) => (
               <PasswordInput
                 {...control}
@@ -90,7 +92,7 @@ export function ResetPasswordForm({ token, onSuccess }: { token: string | undefi
           </ul>
           {reset.isError ? (
             <p role="alert" className="font-medium text-destructive">
-              {requestErrorMessage(reset.error, 'Chưa đặt lại được mật khẩu. Vui lòng thử lại.')}
+              {requestErrorMessage(reset.error, 'Chưa đặt lại được mật khẩu. Vui lòng thử lại sau ít phút.')}
             </p>
           ) : null}
           <Button type="submit" size="lg" className={PARENT_BTN} disabled={reset.isPending}>

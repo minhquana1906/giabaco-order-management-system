@@ -53,7 +53,7 @@ function ChildCard({ child }: { child: ChildSummary }) {
             </div>
           ) : (
             <p className="font-semibold text-navy">
-              {child.campaign_open ? 'Chưa đăng ký đồng phục' : 'Trường chưa mở đăng ký đồng phục'}
+              {child.campaign_open ? 'Chưa đăng ký đồng phục.' : 'Trường chưa mở đợt đăng ký. Giabaco sẽ thông báo khi mở.'}
             </p>
           )}
         </div>
@@ -77,7 +77,7 @@ export function ChildrenList() {
     body = (
       <Panel flush className="mx-auto w-full max-w-[520px]">
         <LoadError
-          message={requestErrorMessage(children.error, 'Chưa tải được danh sách. Vui lòng thử lại.')}
+          message={requestErrorMessage(children.error, 'Chưa tải được danh sách hồ sơ. Bấm Thử lại hoặc quay lại sau ít phút.')}
           onRetry={() => void children.refetch()}
         />
       </Panel>
@@ -86,7 +86,8 @@ export function ChildrenList() {
     body = (
       <div className="flex flex-col items-center gap-5 rounded-lg border border-dashed border-input bg-white px-6 py-14 text-center">
         <UserPlus className="size-10 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
-        <p className="text-xl font-semibold text-navy">Chưa có hồ sơ</p>
+        <p className="text-xl font-semibold text-navy">Chưa có hồ sơ.</p>
+        <p className="text-muted-foreground">Bấm Kiểm tra hồ sơ để bắt đầu.</p>
         <AddChildLink className={`${PARENT_BTN} sm:w-auto sm:min-w-[240px]`} />
       </div>
     )

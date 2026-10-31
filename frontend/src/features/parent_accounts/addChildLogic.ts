@@ -21,14 +21,20 @@ export function outcomeAfterClaimError(error: unknown): StepOutcome | null {
   if (!(error instanceof ApiError)) return null
   if (error.code === 'ambiguous_match') return { step: 'contact', notice: null }
   if (error.code === 'no_match') {
-    return { step: 'search', notice: 'Hồ sơ này không còn khớp. Vui lòng kiểm tra thông tin rồi tìm lại.' }
+    return {
+      step: 'search',
+      notice: 'Chưa tìm thấy hồ sơ khớp với thông tin đã nhập. Kiểm tra lại thông tin hoặc liên hệ Giabaco.',
+    }
   }
   return null
 }
 
 export function outcomeAfterCreateError(error: unknown): StepOutcome | null {
   if (error instanceof ApiError && error.code === 'child_exists') {
-    return { step: 'search', notice: 'Hồ sơ này đã có trong hệ thống. Hãy tìm lại để nhận hồ sơ đó.' }
+    return {
+      step: 'search',
+      notice: 'Hồ sơ của con đã có trong hệ thống. Dùng "Tìm hồ sơ" để nhận hồ sơ về tài khoản của bạn.',
+    }
   }
   return null
 }
@@ -39,7 +45,8 @@ export function validateChildKey(values: ChildKey, today: string): ChildKeyError
   const errors: ChildKeyErrors = {}
   if (!values.school_id) errors.school_id = 'Vui lòng chọn trường.'
   if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên học sinh.'
-  if (!values.dob || values.dob > today) errors.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
+  if (!values.dob || values.dob > today)
+    errors.dob = 'Vui lòng chọn ngày, tháng, năm sinh hợp lệ (không được là ngày trong tương lai).'
   return errors
 }
 
@@ -62,10 +69,17 @@ export function parseMeasure(text: string): number | null {
   return Number(normalized)
 }
 
-function measureError(text: string, label: string, unit: string, range: { min: number; max: number }) {
+function measureError(
+  text: string,
+  label: string,
+  unit: string,
+  range: { min: number; max: number },
+  rangeHint = '',
+) {
   const value = parseMeasure(text)
   if (value === null) return `Vui lòng nhập ${label}.`
-  if (value < range.min || value > range.max) return `${label[0]!.toUpperCase()}${label.slice(1)} cần từ ${range.min} đến ${range.max} ${unit}.`
+  if (value < range.min || value > range.max)
+    return `${label[0]!.toUpperCase()}${label.slice(1)} phải từ ${range.min} đến ${range.max} ${unit}.${rangeHint}`
   return undefined
 }
 
@@ -73,7 +87,13 @@ export function validateDeclared(values: DeclaredValues): DeclaredErrors {
   const errors: DeclaredErrors = {}
   if (!values.class_id) errors.class_id = 'Vui lòng chọn lớp.'
   if (!values.gender) errors.gender = 'Vui lòng chọn giới tính.'
-  const height = measureError(values.height, 'chiều cao', 'cm', HEIGHT_RANGE)
+  const height = measureError(
+    values.height,
+    'chiều cao',
+    'cm',
+    HEIGHT_RANGE,
+    ' Nếu đo bằng mét, hãy đổi sang cm, ví dụ 135.',
+  )
   if (height) errors.height = height
   const weight = measureError(values.weight, 'cân nặng', 'kg', WEIGHT_RANGE)
   if (weight) errors.weight = weight

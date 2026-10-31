@@ -125,7 +125,11 @@ async def test_wrong_identifier_and_wrong_password_look_the_same(anon_client: As
 
     for r in (wrong_password, wrong_identifier, junk_phone):
         assert r.status_code == 401 and r.json()["error"]["code"] == "invalid_credentials"
-    assert wrong_password.json() == wrong_identifier.json() == junk_phone.json()
+    bodies = [
+        {k: v for k, v in r.json()["error"].items() if k != "request_id"}
+        for r in (wrong_password, wrong_identifier, junk_phone)
+    ]
+    assert bodies[0] == bodies[1] == bodies[2]
     assert (await anon_client.get("/api/parent/auth/me")).status_code == 401
 
 

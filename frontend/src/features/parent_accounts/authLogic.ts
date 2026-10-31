@@ -24,7 +24,7 @@ export function isValidPhone(raw: string): boolean {
 export function validateEmail(value: string): string | undefined {
   const email = value.trim()
   if (!email) return 'Vui lòng nhập email.'
-  return EMAIL_PATTERN.test(email) ? undefined : 'Email chưa đúng định dạng.'
+  return EMAIL_PATTERN.test(email) ? undefined : 'Email chưa đúng. Ví dụ: ten@gmail.com.'
 }
 
 export function validateRegister(values: RegisterValues): RegisterErrors {
@@ -34,10 +34,11 @@ export function validateRegister(values: RegisterValues): RegisterErrors {
   if (!values.full_name.trim()) errors.full_name = 'Vui lòng nhập họ và tên.'
   if (emailError) errors.email = emailError
   if (!phone) errors.phone = 'Vui lòng nhập số điện thoại.'
-  else if (!isValidPhone(phone)) errors.phone = 'Số điện thoại chưa đúng định dạng.'
+  else if (!isValidPhone(phone)) errors.phone = 'Số điện thoại gồm 10 số, ví dụ 0912345678.'
   if (values.password.length < MIN_PASSWORD_LENGTH)
     errors.password = `Mật khẩu cần ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`
-  if (values.confirm_password !== values.password) errors.confirm_password = 'Mật khẩu xác nhận không khớp.'
+  if (values.confirm_password !== values.password)
+    errors.confirm_password = 'Mật khẩu xác nhận chưa giống. Nhập lại đúng mật khẩu ở ô trên.'
   return errors
 }
 
@@ -45,8 +46,8 @@ export type LoginErrors = Partial<Record<'identifier' | 'password', string>>
 
 export function validateLogin(values: { identifier: string; password: string }): LoginErrors {
   const errors: LoginErrors = {}
-  if (!values.identifier.trim()) errors.identifier = 'Nhập email hoặc số điện thoại.'
-  if (!values.password) errors.password = 'Nhập mật khẩu.'
+  if (!values.identifier.trim()) errors.identifier = 'Vui lòng nhập email hoặc số điện thoại.'
+  if (!values.password) errors.password = 'Vui lòng nhập mật khẩu.'
   return errors
 }
 

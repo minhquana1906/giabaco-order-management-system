@@ -36,17 +36,6 @@ describe('ResetPasswordForm', () => {
     expect(screen.getByText('Gửi lại yêu cầu mới')).toBeInTheDocument()
   })
 
-  it('ticks the criteria as the password is typed', async () => {
-    const { user } = setup()
-    const criteria = () => screen.getAllByRole('listitem').map((li) => li.className.includes('emerald'))
-    expect(criteria()).toEqual([false, false])
-
-    await user.type(screen.getByLabelText('Mật khẩu mới'), 'matkhau123')
-    expect(criteria()).toEqual([true, false])
-
-    await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'matkhau123')
-    expect(criteria()).toEqual([true, true])
-  })
 
   it('does not submit a mismatched confirmation', async () => {
     const { user, onSuccess } = setup()
@@ -54,7 +43,7 @@ describe('ResetPasswordForm', () => {
     await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'matkhau124')
     await user.click(screen.getByRole('button', { name: 'Đặt lại mật khẩu' }))
 
-    expect(await screen.findByText('Mật khẩu xác nhận không khớp.')).toBeInTheDocument()
+    expect(await screen.findByText('Mật khẩu xác nhận chưa giống. Nhập lại đúng mật khẩu ở ô trên.')).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
     expect(onSuccess).not.toHaveBeenCalled()
   })

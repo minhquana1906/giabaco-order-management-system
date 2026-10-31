@@ -74,7 +74,7 @@ export function ForgotPasswordForm() {
           </Field>
           {forgot.isError ? (
             <p role="alert" className="font-medium text-destructive">
-              {requestErrorMessage(forgot.error, 'Chưa gửi được yêu cầu. Vui lòng thử lại.')}
+              {requestErrorMessage(forgot.error, 'Chưa gửi được yêu cầu. Vui lòng thử lại sau ít phút.')}
             </p>
           ) : null}
           <Button type="submit" size="lg" className={PARENT_BTN} disabled={forgot.isPending}>

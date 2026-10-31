@@ -96,14 +96,14 @@ function SearchStep({
   if (schools.isError) {
     return (
       <Panel>
-        <LoadError message="Chưa tải được danh sách trường." onRetry={() => void schools.refetch()} />
+        <LoadError message="Chưa tải được danh sách trường. Bấm Thử lại hoặc quay lại sau ít phút." onRetry={() => void schools.refetch()} />
       </Panel>
     )
   }
   if (schools.data.length === 0) {
     return (
       <Panel>
-        <p className="text-muted-foreground">Chưa có trường nào để chọn.</p>
+        <p className="text-muted-foreground">Hệ thống chưa có trường nào. Vui lòng liên hệ Giabaco để được hỗ trợ.</p>
         <ContactActions />
       </Panel>
     )
@@ -117,7 +117,7 @@ function SearchStep({
             {notice}
           </p>
         ) : null}
-        <div className="grid gap-5 md:grid-cols-2 md:gap-x-6">
+        <div className="grid gap-5 md:grid-cols-[repeat(2,minmax(0,1fr))] md:items-start md:gap-x-6">
           <Field id="school_id" label="Trường" error={errors.school_id} className="md:col-span-2">
             {(control) => (
               <NativeSelect {...control} className={PARENT_CONTROL} value={value.school_id} onChange={(e) => set('school_id', e.target.value)}>
@@ -155,7 +155,7 @@ function SearchStep({
         </div>
         {error ? (
           <p role="alert" className="font-medium text-destructive">
-            {requestErrorMessage(error, 'Chưa tìm được hồ sơ. Vui lòng thử lại.')}
+            {requestErrorMessage(error, 'Chưa tìm được hồ sơ. Vui lòng thử lại sau ít phút.')}
           </p>
         ) : null}
       </Panel>
@@ -187,7 +187,7 @@ function ConfirmStep({
       <StudentTag name={match.full_name} detail={`Lớp ${match.class_name} · ${match.school_name}`} />
       {error ? (
         <p role="alert" className="font-medium text-destructive">
-          {childErrorMessage(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại.')}
+          {childErrorMessage(error, 'Chưa nhận được hồ sơ. Vui lòng thử lại sau ít phút.')}
         </p>
       ) : null}
       <ActionBar>
@@ -205,7 +205,10 @@ function ConfirmStep({
 function ContactStep({ onBack }: { onBack: () => void }) {
   return (
     <>
-      <PageHead title="Vui lòng liên hệ Giabaco" meta="Có nhiều hồ sơ trùng với thông tin này." />
+      <PageHead
+        title="Vui lòng liên hệ Giabaco"
+        meta="Có nhiều hồ sơ trùng thông tin này. Vui lòng liên hệ Giabaco để được xác nhận."
+      />
       <Panel>
         <ContactActions />
       </Panel>
@@ -291,7 +294,7 @@ export function AddChild() {
   } else if (step === 'declare') {
     body = (
       <>
-        <PageHead title="Chưa có hồ sơ" />
+        <PageHead title="Chưa có hồ sơ" meta="Điền thông tin để tạo hồ sơ mới." />
         <DeclareForm
           summary={
             <dl className="flex flex-col gap-1 rounded-md bg-muted px-4 py-3">
@@ -325,7 +328,7 @@ export function AddChild() {
   }
 
   return (
-    <ParentShell actions={<AccountNav current="add" />} focusKey={step} width={step === 'declare' ? 'wide' : 'form'}>
+    <ParentShell actions={<AccountNav current="add" />} focusKey={step} width="form">
       <BackLink label="Thông tin học sinh" onClick={() => void navigate({ to: '/parent' })} />
       {body}
     </ParentShell>

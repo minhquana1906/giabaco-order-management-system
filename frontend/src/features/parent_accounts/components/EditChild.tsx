@@ -33,14 +33,14 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
   } else if (children.isError) {
     body = (
       <Panel flush>
-        <LoadError message="Chưa tải được thông tin." onRetry={() => void children.refetch()} />
+        <LoadError message="Chưa tải được thông tin học sinh. Bấm Thử lại hoặc quay lại sau ít phút." onRetry={() => void children.refetch()} />
       </Panel>
     )
   } else if (!child) {
     body = (
       <Panel flush>
         <div role="alert" className="flex flex-col gap-4">
-          <p className="font-medium text-destructive">Hồ sơ này không còn trong tài khoản.</p>
+          <p className="font-medium text-destructive">Hồ sơ này không còn trong tài khoản của bạn. Hãy quay lại danh sách hồ sơ.</p>
           <Button size="lg" className={PARENT_BTN} onClick={onClose}>
             Quay lại
           </Button>
@@ -81,7 +81,7 @@ export function EditChild({ studentId, student, onClose, onLocked }: EditChildPr
   }
 
   return (
-    <ParentShell actions={<AccountNav current="list" />} width="wide">
+    <ParentShell actions={<AccountNav current="list" />} width="form">
       <BackLink label="Hồ sơ học sinh" onClick={onClose} />
       {body}
     </ParentShell>

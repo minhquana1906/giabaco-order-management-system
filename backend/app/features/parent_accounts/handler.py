@@ -1,6 +1,7 @@
 """Parent account use cases."""
 
 import hashlib
+import logging
 import secrets
 import time
 import uuid
@@ -50,7 +51,12 @@ from app.features.parent_accounts.schemas import (
 )
 from app.features.students.models import DataSource, Student, student_snapshot
 
+logger = logging.getLogger("app.parent_accounts")
+
 MAX_CHILDREN = 10
+_NO_MATCH = (
+    "Chưa tìm thấy hồ sơ khớp với thông tin đã nhập. Kiểm tra lại thông tin hoặc liên hệ Giabaco."
+)
 RESET_TTL = timedelta(minutes=30)
 RESET_RESEND_AFTER = timedelta(seconds=60)
 
@@ -70,7 +76,7 @@ async def load_parent(session: AsyncSession, parent_id: uuid.UUID) -> ParentAcco
     """The signed-in account; a cookie for a vanished account is unauthorized."""
     parent = await session.get(ParentAccount, parent_id)
     if parent is None:
-        raise ApiError(401, "unauthorized", "Cần đăng nhập")
+        raise ApiError(401, "unauthorized", "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.")
     return parent
 
 
@@ -87,12 +93,18 @@ async def register(session: AsyncSession, request: Request, payload: RegisterIn)
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        raise ApiError(409, "account_exists", "Email hoặc số điện thoại đã được đăng ký") from None
+        raise ApiError(
+            409,
+            "account_exists",
+            "Email hoặc số điện thoại này đã có tài khoản. "
+            'Hãy đăng nhập, hoặc bấm "Quên mật khẩu?" nếu bạn quên mật khẩu.',
+        ) from None
     await audit.record(
         session, parent_actor(parent.id), "parent_account.register", "parent_account", parent.id,
         None, {"has_phone": parent.phone is not None},
     )  # fmt: skip
     await session.commit()
+    logger.info("parent_accounts.registered", extra={"ctx": {"parent_id": str(parent.id)}})
     _sign_in(request, parent)
     return parent
 
@@ -116,7 +128,14 @@ async def login(session: AsyncSession, request: Request, payload: LoginIn) -> Pa
         verify_password, parent.password_hash if parent else None, payload.password
     )
     if parent is None or not password_ok:
-        raise ApiError(401, "invalid_credentials", "Sai thông tin đăng nhập")
+        logger.warning("parent_accounts.login_failed")
+        raise ApiError(
+            401,
+            "invalid_credentials",
+            "Email, số điện thoại hoặc mật khẩu chưa đúng. "
+            'Kiểm tra lại hoặc bấm "Quên mật khẩu?" để đặt lại.',
+        )
+    logger.info("parent_accounts.login_succeeded", extra={"ctx": {"parent_id": str(parent.id)}})
     _sign_in(request, parent)
     return parent
 
@@ -158,6 +177,7 @@ async def request_reset(session: AsyncSession, payload: ForgotIn, base_url: str)
         parent.id, None, None,
     )  # fmt: skip
     await session.commit()
+    logger.info("parent_accounts.reset_requested", extra={"ctx": {"parent_id": str(parent.id)}})
     return f"{base_url.rstrip('/')}/parent/reset#token={token}"
 
 
@@ -189,7 +209,12 @@ async def reset_password(session: AsyncSession, payload: ResetIn) -> None:
     )
     now = datetime.now(UTC)
     if reset is None or reset.used_at is not None or reset.expires_at <= now:
-        raise ApiError(400, "invalid_reset_token", "Liên kết đã hết hạn hoặc đã được sử dụng")
+        raise ApiError(
+            400,
+            "invalid_reset_token",
+            "Liên kết đặt lại mật khẩu đã hết hạn (sau 30 phút) hoặc đã được dùng. "
+            "Hãy yêu cầu liên kết mới.",
+        )
     parent = await session.get(ParentAccount, reset.parent_id)
     assert parent is not None  # parent_id is ON DELETE CASCADE
     parent.password_hash = await run_in_threadpool(hash_password, payload.password)
@@ -200,6 +225,7 @@ async def reset_password(session: AsyncSession, payload: ResetIn) -> None:
         parent.id, None, None,
     )  # fmt: skip
     await session.commit()
+    logger.info("parent_accounts.reset_completed", extra={"ctx": {"parent_id": str(parent.id)}})
 
 
 async def children(
@@ -271,7 +297,11 @@ async def child(session: AsyncSession, parent_id: uuid.UUID, student_id: uuid.UU
     """One linked child; a student gone since the request began reads as not found."""
     found = await children(session, parent_id, student_id)
     if not found:
-        raise ApiError(404, "not_found", "Không tìm thấy học sinh")
+        raise ApiError(
+            404,
+            "not_found",
+            _NO_MATCH,
+        )
     return found[0]
 
 
@@ -316,10 +346,20 @@ async def claim(session: AsyncSession, parent: ParentAccount, key: ChildKeyIn) -
     await lock_identity(session, key.school_id, key.full_name, key.dob)
     matches = await _matches(session, key)
     if not matches:
-        raise ApiError(404, "no_match", "Không tìm thấy hồ sơ phù hợp")
-    if len(matches) > 1:
         raise ApiError(
-            409, "ambiguous_match", "Có nhiều hồ sơ trùng khớp, vui lòng liên hệ Giabaco"
+            404,
+            "no_match",
+            _NO_MATCH,
+        )
+    if len(matches) > 1:
+        logger.warning(
+            "parent_accounts.claim_ambiguous",
+            extra={"ctx": {"school_id": str(key.school_id), "matches_at_least": len(matches)}},
+        )
+        raise ApiError(
+            409,
+            "ambiguous_match",
+            "Có nhiều hồ sơ trùng thông tin này. Vui lòng liên hệ Giabaco để được xác nhận.",
         )
     student = matches[0]
     link_id = await session.scalar(
@@ -335,6 +375,10 @@ async def claim(session: AsyncSession, parent: ParentAccount, key: ChildKeyIn) -
             {"parent_id": str(parent.id), "student_id": str(student.id), "origin": "CLAIMED"},
         )  # fmt: skip
         await session.commit()
+        logger.info(
+            "parent_accounts.child_linked",
+            extra={"ctx": {"parent_id": str(parent.id), "student_id": str(student.id)}},
+        )
         bus.publish("students")
     return await child(session, parent.id, student.id)
 
@@ -345,7 +389,7 @@ async def list_schools(session: AsyncSession) -> Sequence[School]:
 
 async def list_classes(session: AsyncSession, school_id: uuid.UUID) -> Sequence[SchoolClass]:
     if await session.get(School, school_id) is None:
-        raise ApiError(404, "not_found", "Không tìm thấy trường")
+        raise ApiError(404, "not_found", "Trường này không còn trong hệ thống. Tải lại trang.")
     result = await session.scalars(
         select(SchoolClass)
         .where(SchoolClass.school_id == school_id)
@@ -362,8 +406,8 @@ async def check_class(session: AsyncSession, school_id: uuid.UUID, class_id: uui
         raise ApiError(
             422,
             "validation_error",
-            "Lớp không thuộc trường đã chọn",
-            {"class_id": "Lớp không thuộc trường đã chọn"},
+            "Lớp này không thuộc trường đã chọn. Vui lòng chọn lại lớp.",
+            {"class_id": "Lớp này không thuộc trường đã chọn. Vui lòng chọn lại lớp."},
         )
 
 
@@ -386,7 +430,10 @@ async def create_child(
     if await _matches(session, payload):
         await session.rollback()
         raise ApiError(
-            409, "child_exists", "Hồ sơ của con đã có, hãy dùng chức năng tìm hồ sơ để nhận"
+            409,
+            "child_exists",
+            "Hồ sơ của con đã có trong hệ thống. "
+            'Dùng "Tìm hồ sơ" để nhận hồ sơ về tài khoản của bạn.',
         )
     await session.execute(
         select(ParentAccount.id)
@@ -398,7 +445,7 @@ async def create_child(
         raise ApiError(
             409,
             "child_limit",
-            f"Mỗi tài khoản chỉ liên kết tối đa {MAX_CHILDREN} hồ sơ con, vui lòng liên hệ Giabaco",
+            f"Tài khoản đã đủ {MAX_CHILDREN} hồ sơ con. Nếu cần thêm, vui lòng liên hệ Giabaco.",
         )
     student = Student(
         school_id=payload.school_id,
@@ -428,6 +475,10 @@ async def create_child(
         {"parent_id": str(parent.id), "student_id": str(student.id), "origin": "CREATED"},
     )  # fmt: skip
     await session.commit()
+    logger.info(
+        "parent_accounts.child_created",
+        extra={"ctx": {"parent_id": str(parent.id), "student_id": str(student.id)}},
+    )
     bus.publish("students")
     return await child(session, parent.id, student.id)
 
@@ -447,9 +498,18 @@ async def update_child(
         .with_for_update(of=Student)
     )
     if student is None:
-        raise ApiError(404, "not_found", "Không tìm thấy học sinh")
+        raise ApiError(
+            404,
+            "not_found",
+            "Hồ sơ này không còn trong tài khoản của bạn. Hãy quay lại danh sách hồ sơ.",
+        )
     if student.data_source is not DataSource.PARENT_DECLARED:
-        raise ApiError(409, "measured_locked", "Hồ sơ đã được Giabaco đo, không thể sửa")
+        raise ApiError(
+            409,
+            "measured_locked",
+            "Giabaco đã đo hồ sơ này nên bạn không sửa được. "
+            "Nếu cần thay đổi, vui lòng liên hệ Giabaco.",
+        )
     await check_class(session, student.school_id, payload.class_id)
     before = student_snapshot(student)
     student.class_id = payload.class_id
@@ -466,6 +526,10 @@ async def update_child(
         student_snapshot(student),
     )  # fmt: skip
     await session.commit()
+    logger.info(
+        "parent_accounts.child_updated",
+        extra={"ctx": {"parent_id": str(parent.id), "student_id": str(student.id)}},
+    )
     bus.publish("students")
     return await child(session, parent.id, student.id)
 
@@ -480,7 +544,7 @@ async def unlink(
         )
     )
     if link is None:
-        raise ApiError(404, "not_found", "Không tìm thấy liên kết")
+        raise ApiError(404, "not_found", "Liên kết này đã được gỡ trước đó. Tải lại trang.")
     before = {
         "parent_id": str(link.parent_id),
         "student_id": str(link.student_id),
@@ -491,4 +555,8 @@ async def unlink(
         session, actor, "parent_student_link.delete", "parent_student_link", link.id, before, None
     )
     await session.commit()
+    logger.info(
+        "parent_accounts.child_unlinked",
+        extra={"ctx": {"parent_id": str(parent_id), "student_id": str(student_id)}},
+    )
     bus.publish("students")

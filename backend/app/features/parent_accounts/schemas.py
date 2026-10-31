@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 from app.core.phone import normalize_phone
 from app.core.text import reject_control_chars
@@ -19,7 +20,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 def _non_blank_name(value: str) -> str:
     value = unicodedata.normalize("NFC", reject_control_chars(value.strip()))
     if not value:
-        raise ValueError("Không được để trống")
+        raise PydanticCustomError("blank", "Vui lòng nhập thông tin này.")
     return value
 
 
@@ -29,7 +30,7 @@ FullName = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_n
 def _email(value: str) -> str:
     value = reject_control_chars(value.strip().lower())
     if not _EMAIL_RE.match(value):
-        raise ValueError("Email không hợp lệ")
+        raise PydanticCustomError("invalid_email", "Email chưa đúng. Ví dụ: ten@gmail.com.")
     return value
 
 
@@ -128,7 +129,10 @@ class ChildIn(ChildKeyIn, ChildUpdateIn):
     @classmethod
     def _dob(cls, v: date) -> date:
         if v >= date.today():
-            raise ValueError("Ngày sinh phải trong quá khứ")
+            raise PydanticCustomError(
+                "future_dob",
+                "Vui lòng chọn ngày, tháng, năm sinh hợp lệ (không được là ngày trong tương lai).",
+            )
         return v
 
 

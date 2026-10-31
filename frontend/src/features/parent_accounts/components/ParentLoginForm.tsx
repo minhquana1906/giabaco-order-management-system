@@ -70,7 +70,7 @@ export function ParentLoginForm({ redirect, onSuccess }: { redirect?: string; on
           </Field>
           {login.isError ? (
             <p role="alert" className="font-medium text-destructive">
-              {authErrorMessage(login.error, 'Không đăng nhập được. Vui lòng thử lại.')}
+              {authErrorMessage(login.error, 'Chưa đăng nhập được. Vui lòng thử lại sau ít phút.')}
             </p>
           ) : null}
           <Button type="submit" size="lg" className={PARENT_BTN} disabled={login.isPending}>

@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ApiError } from '@/lib/http'
 import { requestErrorMessage } from '@/lib/requestError'
+import { SESSION_NOT_STORED_MESSAGE } from '@/features/auth/hooks'
 import { pathSource } from '@/features/parent_portal/api'
 import { parentAuthApi, parentChildrenApi, type ChildKey, type DeclaredBody, type CreateChildBody, type ParentAccount } from './api'
 
@@ -27,7 +28,7 @@ async function confirmSession(queryClient: QueryClient): Promise<ParentAccount> 
     return await queryClient.fetchQuery({ ...parentMeQueryOptions(), staleTime: 0 })
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      throw new ApiError(401, 'session_not_stored', error.message)
+      throw new ApiError(401, 'session_not_stored', SESSION_NOT_STORED_MESSAGE)
     }
     throw error
   }
@@ -68,7 +69,7 @@ export function useParentLogout() {
       await navigate({ to: '/parent/login', search: {} })
       queryClient.removeQueries({ queryKey: parentKeys.all })
     },
-    onError: (error) => toast.error(requestErrorMessage(error, 'Chưa đăng xuất được. Vui lòng thử lại.')),
+    onError: (error) => toast.error(requestErrorMessage(error, 'Chưa đăng xuất được. Vui lòng thử lại sau ít phút.')),
   })
 }
 

@@ -43,11 +43,11 @@ afterEach(() => vi.unstubAllGlobals())
 describe('ChildrenList', () => {
   it('says the school has not opened registration when there is no open campaign', async () => {
     renderList([child({ campaign_open: false })])
-    expect(await screen.findByText('Trường chưa mở đăng ký đồng phục')).toBeInTheDocument()
+    expect(await screen.findByText('Trường chưa mở đợt đăng ký. Giabaco sẽ thông báo khi mở.')).toBeInTheDocument()
   })
 
   it('says the child is not registered when the campaign is open', async () => {
     renderList([child()])
-    expect(await screen.findByText('Chưa đăng ký đồng phục')).toBeInTheDocument()
+    expect(await screen.findByText('Chưa đăng ký đồng phục.')).toBeInTheDocument()
   })
 })
