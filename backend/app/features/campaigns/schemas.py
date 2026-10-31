@@ -38,7 +38,7 @@ class CampaignBody(BaseModel):
     @model_validator(mode="after")
     def _window(self) -> Self:
         if self.opens_at and self.closes_at and self.closes_at <= self.opens_at:
-            raise ValueError("Thời gian đóng phải sau thời gian mở")
+            raise ValueError("Hạn đăng ký phải sau thời điểm mở đợt.")
         return self
 
 

@@ -168,7 +168,7 @@ describe('buildPayload', () => {
       slots: { ...d.kits.k1!.slots, s2: { productId: 'gile_nam', size: '4', colour: 'ghi' } },
     }
     d.items.cap = { qty: 1, size: 'M', colour: 'navy' }
-    expect(buildPayload(o, d)).toEqual({
+    expect(buildPayload(o, d)).toMatchObject({
       kit_lines: [
         {
           kit_id: 'k1',
@@ -202,6 +202,25 @@ describe('draftProblems', () => {
     const d = initialDraft(o, student())
     d.kits.k1 = { ...d.kits.k1!, qty: 1, size: '9' }
     expect(draftProblems(o, d)).toContain('slot:s1')
+  })
+
+  it('requires configured measurements and preserves a saved snapshot and note', () => {
+    const field = { key: 'chest', label: 'Ngực', instruction: '', required: true }
+    const o = ordering({ items: [{ ...loose, tailor_measurements: [field] }] })
+    const d = initialDraft(o, student())
+    d.items.cap = { qty: 2, size: null, colour: 'ghi', is_tailor: true, measurements: {}, note: 'Rộng' }
+    expect(draftProblems(o, d)).toContain('item:cap')
+    d.items.cap.measurements = { chest: 501 }
+    expect(draftProblems(o, d)).toContain('item:cap')
+    d.items.cap.measurements = { chest: 500 }
+    expect(draftProblems(o, d)).toEqual([])
+    d.items.cap.measurements = { chest: 70 }
+    expect(draftProblems(o, d)).toEqual([])
+    expect(buildPayload(o, d).item_lines[0]).toMatchObject({ qty: 2, is_tailor: true, measurements: { chest: 70 }, note: 'Rộng' })
+    expect(draftProblems(ordering({ items: [loose] }), d)).toContain('item:cap')
+    d.items.cap.line_id = 'saved'
+    d.items.cap.tailor_measurements = [field]
+    expect(draftProblems(ordering({ items: [loose] }), d)).toEqual([])
   })
 })
 

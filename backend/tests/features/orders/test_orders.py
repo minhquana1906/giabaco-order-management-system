@@ -1,8 +1,10 @@
+import io
 import uuid
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from openpyxl import load_workbook
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import SessionLocal
 from app.core.errors import ApiError
 from app.features.campaigns.models import Campaign
+from app.features.catalog.models import MeasurementType, Product
 from app.features.orders import handler, lines
 from app.features.orders.models import STAFF
 from app.features.orders.schemas import LinesIn
@@ -356,3 +359,106 @@ async def test_audit_snapshots_carry_no_personal_data(
     dump = " ".join(part or "" for row in rows for part in row)
     for secret in ("Riêng", "Phụ Huynh", "0901234567"):
         assert secret not in dump
+
+
+async def test_tailor_snapshot_kit_export_and_validation(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    s = await Setup(client).build()
+    definition = {
+        "key": "chest",
+        "label": "Vòng ngực",
+        "instruction": "Đo quanh ngực",
+        "required": True,
+    }
+    for product in (s.shirt, s.jacket):
+        row = await session.get(Product, uuid.UUID(product["id"]))
+        assert row is not None
+        row.tailor_measurements = [definition]
+    await session.commit()
+    campaign = await session.get(Campaign, uuid.UUID(s.cid))
+    assert campaign is not None
+    assert all(not item.tailor_enabled for item in campaign.items)
+    oid = await s.order(session)
+    item_line = {
+        "product_id": s.jacket["id"],
+        "qty": 2,
+        "is_tailor": True,
+        "measurements": {"chest": 82.5},
+        "note": "Nới rộng",
+    }
+    body = s.lines_body(item_lines=[item_line], submit=True)
+    body["kit_lines"][0]["qty"] = 2
+    body["kit_lines"][0]["slots"] = [
+        {
+            "slot_id": s.slots[0],
+            "is_tailor": True,
+            "measurements": {"chest": 75},
+            "note": "Áo bộ",
+        }
+    ]
+    response = await put(client, oid, body)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    tailor = [line for line in result["lines"] if line["is_tailor"]]
+    assert len(tailor) == 2
+    assert all(line["qty"] == 2 and line["size_label"] == "May đo" for line in tailor)
+    assert {line["note"] for line in tailor} == {"Nới rộng", "Áo bộ"}
+    assert all(line["product_tailor_measurements"] == [definition] for line in tailor)
+    assert tailor[0]["tailor_measurements"][0]["label"] == "Vòng ngực"
+    session.add(MeasurementType(key="chest", label="Vòng ngực", normalized_label="vòng ngực"))
+    await session.commit()
+    renamed = await client.patch("/api/measurement-types/chest", json={"label": "Chu vi ngực"})
+    assert renamed.status_code == 200
+    line_labels = await session.scalars(
+        text("SELECT tailor_measurements->0->>'label' FROM order_lines WHERE is_tailor")
+    )
+    assert set(line_labels) == {"Vòng ngực"}
+    product_labels = await session.scalars(
+        text(
+            "SELECT tailor_measurements->0->>'label' FROM products WHERE id = ANY(:ids)"
+        ).bindparams(ids=[uuid.UUID(s.shirt["id"]), uuid.UUID(s.jacket["id"])])
+    )
+    assert set(product_labels) == {"Chu vi ngực"}
+    response = await client.get(f"/api/export/campaign-orders.xlsx?campaign_id={s.cid}")
+    assert response.status_code == 200
+    workbook = load_workbook(io.BytesIO(response.content))
+    exported = list(workbook["May đo"].iter_rows(min_row=3, values_only=True))
+    assert len(exported) == 2
+    assert any("Vòng ngực: 82.5" in row[6] and row[7] == "Nới rộng" for row in exported)
+    pivot = (await client.get(f"/api/stats/campaign-pivot?campaign_id={s.cid}&group=kit")).json()
+    assert any(
+        row["size_label"] == "May đo" and row["total"] == 2
+        for block in pivot["blocks"]
+        for row in block["rows"]
+    )
+
+    jacket = await session.get(Product, uuid.UUID(s.jacket["id"]))
+    assert jacket is not None
+    jacket.tailor_measurements = []
+    await session.commit()
+    saved = next(line for line in tailor if line["product_id"] == s.jacket["id"])
+    item_line["line_id"] = saved["id"]
+    body["kit_lines"][0]["slots"][0]["line_id"] = next(
+        line["id"] for line in tailor if line["product_id"] == s.shirt["id"]
+    )
+    response = await put(client, oid, body)
+    assert response.status_code == 200, response.text
+    saved = next(line for line in response.json()["lines"] if line["product_id"] == s.jacket["id"])
+    assert saved["product_tailor_measurements"] == []
+    assert saved["tailor_measurements"] == [{**definition, "value": 82.5}]
+    item_line["line_id"] = saved["id"]
+    body["kit_lines"][0]["slots"][0]["line_id"] = next(
+        line["id"] for line in response.json()["lines"] if line["product_id"] == s.shirt["id"]
+    )
+    assert any(
+        h["after"] and any(line.get("tailor_measurements") for line in h["after"].get("lines", []))
+        for h in response.json()["history"]
+    )
+    item_line["measurements"] = {"chest": 0}
+    assert (await put(client, oid, body)).status_code == 422
+    item_line["measurements"] = {}
+    assert (await put(client, oid, body)).status_code == 422
+    item_line["measurements"] = {"chest": 82}
+    item_line.pop("line_id")
+    assert (await put(client, oid, body)).status_code == 422

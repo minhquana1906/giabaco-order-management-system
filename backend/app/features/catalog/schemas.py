@@ -30,6 +30,42 @@ class SizeGuideRow(BaseModel):
         return self
 
 
+class TailorMeasurement(BaseModel):
+    key: str = Field(pattern=CODE_PATTERN)
+    label: str = Field(min_length=1, max_length=100)
+    instruction: str = Field(default="", max_length=500)
+    required: bool = True
+
+    @field_validator("label")
+    @classmethod
+    def _label(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Nhãn không được để trống")
+        return value
+
+
+class MeasurementTypeRename(BaseModel):
+    label: str = Field(min_length=1, max_length=100)
+
+    @field_validator("label")
+    @classmethod
+    def _label(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("Nhãn không được để trống")
+        return value
+
+
+class MeasurementTypeCreate(MeasurementTypeRename):
+    confirm_similar: bool = False
+
+
+class MeasurementTypeOut(BaseModel):
+    key: str
+    label: str
+
+
 def _unique(values: list[str], message: str) -> list[str]:
     cleaned = [v.strip() for v in values]
     if any(not v for v in cleaned) or len(set(cleaned)) != len(cleaned):
@@ -42,8 +78,10 @@ class ProductBody(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     sizes: list[str] = Field(min_length=1, max_length=30)
     size_guide: list[SizeGuideRow] | None = None
+    tailor_measurements: list[TailorMeasurement] | None = Field(default=None, max_length=30)
     colours: list[str] = Field(min_length=1, max_length=20)
     gender_target: GenderTarget = "UNISEX"
+    master_product_id: uuid.UUID | None = None
 
     @field_validator("name")
     @classmethod
@@ -74,10 +112,14 @@ class ProductBody(BaseModel):
 
     @model_validator(mode="after")
     def _guide_labels(self) -> Self:
+        if self.tailor_measurements is not None:
+            keys = [field.key for field in self.tailor_measurements]
+            if len(set(keys)) != len(keys):
+                raise ValueError("Mã trường số đo không được trùng")
         if self.size_guide:
             labels = [row.size_label for row in self.size_guide]
             if len(set(labels)) != len(labels) or not set(labels) <= set(self.sizes):
-                raise ValueError("Bảng size có cỡ trùng hoặc không thuộc danh sách cỡ")
+                raise ValueError("Bảng cỡ có cỡ trùng hoặc không thuộc danh sách cỡ")
         return self
 
 
@@ -113,8 +155,10 @@ class ProductOut(BaseModel):
     description: str | None
     sizes: list[str]
     size_guide: list[SizeGuideRow] | None
+    tailor_measurements: list[TailorMeasurement]
     colours: list[str]
     gender_target: GenderTarget
+    master_product_id: uuid.UUID | None
     active: bool
     has_size_guide: bool
     school_image_counts: dict[str, int]
@@ -186,7 +230,7 @@ class ClassIn(BaseModel):
         if grade is not None and (prefix is None or int(prefix.group()) != grade):
             raise PydanticCustomError(
                 "class_grade_mismatch",
-                "Tên lớp phải bắt đầu bằng số khối (khối {grade} → {grade}A1)",
+                "Tên lớp phải bắt đầu bằng số khối {grade}, ví dụ {grade}A1.",
                 {"grade": grade},
             )
         return v

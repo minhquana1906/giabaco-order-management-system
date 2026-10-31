@@ -108,6 +108,8 @@ async def campaign_or_404(session: AsyncSession, campaign_id: uuid.UUID) -> Camp
 
 def _kit_size(order: Order, lines: list[OrderLine]) -> str:
     """Common size of a kit line: the size most of its lines default to, else the order default."""
+    if any(line.is_tailor for line in lines):
+        return "May đo"
     counts = Counter(line.size_label for line in lines)
     top = max(counts.values())
     leaders = [size for size, n in counts.items() if n == top]

@@ -58,12 +58,20 @@ async def test_exports_require_session(anon_client: Any, url: str) -> None:
     assert (await anon_client.get(url)).status_code == 401
 
 
-@pytest.mark.parametrize("url", URLS)
-async def test_exports_are_attachments(client: Any, seeded: None, url: str) -> None:
+@pytest.mark.parametrize(
+    ("url", "filename"),
+    [
+        ("/api/export/students.csv", "hoc-sinh.csv"),
+        ("/api/export/students.xlsx", "hoc-sinh.xlsx"),
+        ("/api/export/trials.csv", "lan-thu.csv"),
+        ("/api/export/trials.xlsx", "lan-thu.xlsx"),
+        ("/api/export/all.xlsx", "tat-ca.xlsx"),
+    ],
+)
+async def test_exports_are_attachments(client: Any, seeded: None, url: str, filename: str) -> None:
     response = await client.get(url)
 
     assert response.status_code == 200
-    filename = url.rsplit("/", 1)[1]
     assert response.headers["content-disposition"].startswith("attachment;")
     assert filename in response.headers["content-disposition"]
 
@@ -176,7 +184,7 @@ async def test_students_export_has_data_source_and_order_columns(
         ("Nguyễn Minh Khang", "ADMIN_MEASURED"),
         ("Lê Tự Khai", "PARENT_DECLARED"),
     ]:
-        assert by_name[name][header.index("data_source")] == source
+        assert by_name[name][header.index("Nguồn dữ liệu")] == source
     assert not [h for h in header if "phụ huynh chọn" in h or "thời điểm chọn" in h]
     blazer = header.index("Áo Blazer (Vest) - cỡ đặt")
     assert by_name["Nguyễn Minh Khang"][blazer : blazer + 2] == ["3", "1"]
@@ -306,7 +314,7 @@ async def test_students_exports_use_open_campaign_orders_and_drop_deleted_studen
     assert by_name["Lê Tự Khai"][blazer : blazer + 2] == ["5", "1"]
     assert by_name["Lê Tự Khai"][gile : gile + 2] == ["2", "1"]
     assert by_name["Lê Tự Khai"][total] == ""
-    assert by_name["Lê Tự Khai"][header.index("data_source")] == "PARENT_DECLARED"
+    assert by_name["Lê Tự Khai"][header.index("Nguồn dữ liệu")] == "PARENT_DECLARED"
     assert "Đã Xóa" not in {c for r in rows for c in r}
 
 
@@ -503,7 +511,7 @@ async def test_campaign_orders_total_is_blank_when_any_line_is_unpriced(
         "/api/export/campaign-orders.xlsx", params={"campaign_id": str(campaign.id)}
     )
 
-    headers, *rows = [
+    _title, headers, *rows = [
         list(x)
         for x in load_workbook(io.BytesIO(r.content))["Bảng kê đơn"].iter_rows(values_only=True)
     ]

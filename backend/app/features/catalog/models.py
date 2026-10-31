@@ -43,6 +43,14 @@ class SchoolClass(Base):
     name: Mapped[str] = mapped_column(Text)
 
 
+class MeasurementType(Base):
+    __tablename__ = "measurement_types"
+
+    key: Mapped[str] = mapped_column(Text, unique=True)
+    label: Mapped[str] = mapped_column(Text)
+    normalized_label: Mapped[str] = mapped_column(Text, unique=True)
+
+
 class Product(Base):
     __tablename__ = "products"
     __table_args__ = (
@@ -64,6 +72,9 @@ class Product(Base):
     name: Mapped[str] = mapped_column(Text)
     sizes: Mapped[list[str]] = mapped_column(JSONB)
     size_guide: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    tailor_measurements: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb"), default=list
+    )
     active: Mapped[bool] = mapped_column(server_default=text("true"), default=True)
     position: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"), default=0)
     description: Mapped[str | None] = mapped_column(Text)
@@ -71,6 +82,7 @@ class Product(Base):
         String(10), server_default=text("'UNISEX'"), default="UNISEX"
     )
     colours: Mapped[list[str]] = mapped_column(JSONB, server_default=text("""'["ghi"]'::jsonb"""))
+    master_product_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("master_records.id"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

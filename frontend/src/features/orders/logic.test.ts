@@ -30,7 +30,7 @@ const order = {
 describe('buildLinesPayload', () => {
   it('keeps kit qty and sends one slot pick per kit line with the edited size', () => {
     const payload = buildLinesPayload(order, { b: '5' })
-    expect(payload.kit_lines).toEqual([
+    expect(payload.kit_lines).toMatchObject([
       {
         kit_id: 'kit',
         qty: 2,
@@ -40,8 +40,15 @@ describe('buildLinesPayload', () => {
         ],
       },
     ])
-    expect(payload.item_lines).toEqual([{ product_id: 'jacket', size_label: '4', qty: 1, colour: 'ghi' }])
+    expect(payload.item_lines).toMatchObject([{ product_id: 'jacket', size_label: '4', qty: 1, colour: 'ghi' }])
     expect(payload.submit).toBe(false)
+  })
+
+  it('preserves tailor data and line identity when changing another line', () => {
+    const tailored = { ...order, lines: [line({ is_tailor: true, measurements: { chest: 72 }, note: 'Rộng' })] }
+    expect(buildLinesPayload(tailored, {}).item_lines[0]).toMatchObject({
+      line_id: 'l1', is_tailor: true, measurements: { chest: 72 }, note: 'Rộng',
+    })
   })
 
   it('reports dirty only when a size differs', () => {

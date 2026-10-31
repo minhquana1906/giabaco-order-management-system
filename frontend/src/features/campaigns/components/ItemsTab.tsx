@@ -73,8 +73,8 @@ export function ItemsTab({ campaign }: { campaign: Campaign }) {
                 key={row.product_id}
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3 gap-y-2 px-3 py-3 sm:px-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]"
               >
-                <p className="col-span-2 font-medium md:col-span-1 md:self-center">{name}</p>
-                <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+                <p className="col-span-2 min-w-0 break-words font-medium md:col-span-1 md:self-center">{name}</p>
+                <label className="flex min-w-0 flex-col gap-1 text-sm text-muted-foreground">
                   Màu
                   <NativeSelect
                     value={row.colour}
@@ -89,7 +89,7 @@ export function ItemsTab({ campaign }: { campaign: Campaign }) {
                     ))}
                   </NativeSelect>
                 </label>
-                <label className="col-start-1 flex flex-col gap-1 text-sm text-muted-foreground md:col-start-auto">
+                <label className="col-start-1 flex min-w-0 flex-col gap-1 text-sm text-muted-foreground md:col-start-auto">
                   Đơn giá (đ)
                   <Input
                     inputMode="numeric"
@@ -136,7 +136,7 @@ export function ItemsTab({ campaign }: { campaign: Campaign }) {
             ))}
           </NativeSelect>
         </label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">{rows.length} sản phẩm</span>
           <Button disabled={locked || !dirty || save.isPending} onClick={submit}>
             Lưu sản phẩm và giá

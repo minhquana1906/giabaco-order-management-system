@@ -18,7 +18,7 @@ export function ExportMenu({ schoolId }: { schoolId?: string }) {
   const download = useMutation({
     mutationFn: exportsApi.download,
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : 'Không tải được tệp xuất. Thử lại sau.'),
+      toast.error(error instanceof ApiError ? error.message : 'Chưa xuất được file. Vui lòng thử lại sau ít phút.'),
   })
   return (
     <DropdownMenu>

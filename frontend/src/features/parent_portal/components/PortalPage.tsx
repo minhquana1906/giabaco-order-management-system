@@ -14,7 +14,7 @@ import { ContactActions, PARENT_ACTION, PARENT_ACTION_PRIMARY, PARENT_BTN, Paren
 import { SizeLabel } from '@/components/SizeLabel'
 import { FIT_LABEL } from '@/lib/fit'
 import { formatCm, formatDate, formatDateTime, formatKg } from '@/lib/format'
-import { ApiError } from '@/lib/http'
+import { ApiError, GENERIC_ERROR_MESSAGE } from '@/lib/http'
 import { requestErrorMessage } from '@/lib/requestError'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -44,10 +44,10 @@ export interface NotFoundCopy {
 
 const LINK_NOT_FOUND: NotFoundCopy = {
   title: 'Liên kết không hợp lệ',
-  text: 'Liên kết này không đúng hoặc đã hết hiệu lực.',
+  text: 'Liên kết này không đúng hoặc đã hết hạn. Hỏi Giabaco để nhận liên kết mới.',
 }
 
-const SPLIT_NOTE = 'Đơn có nhiều cỡ cho một sản phẩm, liên hệ Giabaco để đổi'
+const SPLIT_NOTE = 'Đơn có nhiều cỡ cho cùng một sản phẩm. Để đổi, vui lòng liên hệ Giabaco.'
 
 const studentDetail = (s: PublicStudent) => `Lớp ${s.class_name} · ${s.school_name}`
 
@@ -62,7 +62,7 @@ function Problem({ error, notFound, onRetry }: { error: unknown; notFound: NotFo
       </Panel>
     )
   }
-  const text = requestErrorMessage(error, 'Có lỗi xảy ra, vui lòng thử lại.')
+  const text = requestErrorMessage(error, GENERIC_ERROR_MESSAGE)
   return (
     <Panel flush>
       <div role="alert" className="flex flex-col gap-4">
@@ -102,7 +102,7 @@ function MeasurementsPanel({ s, onEdit }: { s: PublicStudent; onEdit?: () => voi
         ) : null
       }
     >
-      <dl className="grid grid-cols-3 gap-4 lg:-my-3 lg:grid-cols-1 lg:gap-0 lg:divide-y lg:divide-hairline">
+      <dl className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-4 sm:grid-cols-3 lg:-my-3 lg:grid-cols-1 lg:gap-0 lg:divide-y lg:divide-hairline">
         <StatRow label="Chiều cao">{formatCm(s.height_cm)}</StatRow>
         <StatRow label="Cân nặng">{formatKg(s.weight_kg)}</StatRow>
         <StatRow label={s.data_source === 'PARENT_DECLARED' ? 'Ngày khai' : 'Ngày đo'}>
@@ -175,7 +175,7 @@ function Measurements({
             </p>
           </Panel>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-6">
             {byProduct.map(({ p, trials }) => (
               <Panel key={p.code} title={p.name}>
                 <ul className="-my-1 flex flex-col divide-y divide-hairline">
@@ -257,16 +257,11 @@ function Review({
         />
         Tôi đã kiểm tra thông tin
       </label>
-      {checked ? null : (
-        <p id="review-hint" className="text-[15px] text-muted-foreground">
-          Hãy tích “Tôi đã kiểm tra thông tin” để gửi đăng ký.
-        </p>
-      )}
       {error ? (
         <p role="alert" className="font-medium text-destructive">
           {error instanceof ApiError && error.code === 'campaign_locked'
-            ? 'Đợt đăng ký đã đóng, không thể gửi đơn.'
-            : requestErrorMessage(error, 'Chưa gửi được đăng ký. Vui lòng thử lại.')}
+            ? 'Đợt đăng ký đã đóng nên không gửi được đơn. Nếu cần thay đổi, vui lòng liên hệ Giabaco.'
+            : requestErrorMessage(error, 'Chưa gửi được đăng ký. Vui lòng thử lại sau ít phút.')}
         </p>
       ) : null}
       <ActionBar>
@@ -277,7 +272,6 @@ function Review({
           size="lg"
           className={PARENT_ACTION_PRIMARY}
           disabled={pending || !checked}
-          aria-describedby={checked ? undefined : 'review-hint'}
           onClick={onConfirm}
         >
           {pending ? 'Đang gửi…' : 'Gửi đăng ký'}

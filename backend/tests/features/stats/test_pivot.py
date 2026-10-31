@@ -288,12 +288,18 @@ async def test_campaign_orders_export(client: AsyncClient, session: AsyncSession
     assert r.status_code == 200
     workbook = load_workbook(io.BytesIO(r.content))
     assert workbook.sheetnames == ["Bảng kê đơn", "Ma trận"]
-    headers, *rows = [list(x) for x in workbook["Bảng kê đơn"].iter_rows(values_only=True)]
+    title, headers, *rows = [list(x) for x in workbook["Bảng kê đơn"].iter_rows(values_only=True)]
+    assert title[0] == "Tây Mỗ"
     assert headers[:6] == ["Mã đơn", "Người nhận", "Phụ huynh", "Giới tính", "Lớp", "Cỡ chung"]
     assert headers[-3:] == ["Số bộ", "Thành tiền", "Ghi chú"]
     assert len(rows) == 3
     assert sum(row_[-3] for row_ in rows) == 4
     pivot_rows = [list(x) for x in workbook["Ma trận"].iter_rows(values_only=True)]
+    assert pivot_rows[0][0] == "Tây Mỗ"
+    assert pivot_rows[1][5:7] == ["Chưa rõ", "Tổng"]
+    totals = [i for i, row_ in enumerate(pivot_rows) if row_[2] == "Tổng"]
+    assert len(totals) > 1
+    assert all(all(cell is None for cell in pivot_rows[i + 1]) for i in totals[:-1])
     kit_total = next(x for x in pivot_rows if x[0] == "Bộ" and x[2] == "Tổng")
     assert kit_total[3:] == [2, 1, 1, 4]
 
@@ -306,10 +312,23 @@ async def test_export_honours_submitted_until(client: AsyncClient, session: Asyn
     )
     assert r.status_code == 200
     workbook = load_workbook(io.BytesIO(r.content))
-    assert len(list(workbook["Bảng kê đơn"].iter_rows(values_only=True))) - 1 == 2
+    assert len(list(workbook["Bảng kê đơn"].iter_rows(values_only=True))) - 2 == 2
     pivot_rows = [list(x) for x in workbook["Ma trận"].iter_rows(values_only=True)]
     kit_total = next(x for x in pivot_rows if x[0] == "Bộ" and x[2] == "Tổng")
     assert kit_total[3:] == [2, 0, 1, 3]
+
+
+async def test_export_omits_unknown_only_when_all_blocks_are_zero(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    s = await Setup(client).build()
+    await submit(s, client, session, gender="MALE")
+    r = await client.get("/api/export/campaign-orders.xlsx", params={"campaign_id": s.cid})
+    assert r.status_code == 200
+    rows = [list(row) for row in load_workbook(io.BytesIO(r.content))["Ma trận"].values]
+    assert rows[1] == ["Nhóm", "Tên", "Cỡ", "Nam", "Nữ", "Tổng"]
+    kit_total = next(row for row in rows if row[0] == "Bộ" and row[2] == "Tổng")
+    assert kit_total[3:] == [1, 0, 1]
 
 
 async def test_class_group_rows_are_sizes_per_class(

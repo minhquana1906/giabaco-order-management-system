@@ -7,15 +7,17 @@ interface ZoomableImageProps {
   image: Img | null
   alt: string
   className?: string
+  eager?: boolean
 }
 
-export function ZoomableImage({ image, alt, className }: ZoomableImageProps) {
+export function ZoomableImage({ image, alt, className, eager }: ZoomableImageProps) {
   const thumb = (
     <ProductImageOrPlaceholder
       image={image}
       alt={alt}
       aspect={image ? image.width / image.height : undefined}
       className={cn('p-1 text-xs', className)}
+      eager={eager}
     />
   )
   if (!image) return <div className="self-start">{thumb}</div>
@@ -37,6 +39,7 @@ export function ZoomableImage({ image, alt, className }: ZoomableImageProps) {
           alt={alt}
           width={image.width}
           height={image.height}
+          decoding="async"
           className="max-h-[85vh] w-full rounded-md bg-white object-contain"
         />
       </DialogContent>

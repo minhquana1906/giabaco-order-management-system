@@ -1,11 +1,12 @@
 """Order creation and the single write path for order lines."""
 
+import logging
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import audit
 from app.core.errors import ApiError
 from app.core.events import bus
+from app.core.logging import mask_text
+from app.core.text import reject_control_chars
 from app.features.campaigns.models import OPEN, Campaign
 from app.features.campaigns.pricing import suggest_option
 from app.features.catalog.models import Product, School
@@ -25,10 +28,26 @@ from app.features.orders.models import (
     OrderLine,
 )
 
+logger = logging.getLogger("app.orders")
+
 TOPIC = "orders"
 
 
-class SlotPick(BaseModel):
+class TailorInput(BaseModel):
+    line_id: uuid.UUID | None = None
+    is_tailor: bool = False
+    measurements: dict[str, Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)]] = Field(
+        default_factory=dict
+    )
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, value: str | None) -> str | None:
+        return reject_control_chars(value.strip()) or None if value is not None else None
+
+
+class SlotPick(TailorInput):
     slot_id: uuid.UUID
     product_id: uuid.UUID | None = None
     size_label: str | None = Field(default=None, max_length=20)
@@ -41,9 +60,9 @@ class KitLineIn(BaseModel):
     slots: list[SlotPick] = Field(default_factory=list, max_length=20)
 
 
-class ItemLineIn(BaseModel):
+class ItemLineIn(TailorInput):
     product_id: uuid.UUID
-    size_label: str = Field(max_length=20)
+    size_label: str | None = Field(default=None, max_length=20)
     qty: int = Field(ge=1, le=20)
     colour: str | None = Field(default=None, max_length=40)
 
@@ -53,11 +72,11 @@ def _invalid(fields: dict[str, str]) -> ApiError:
 
 
 def _not_found() -> ApiError:
-    return ApiError(404, "not_found", "Không tìm thấy đơn hàng")
+    return ApiError(404, "not_found", "Đơn này không tồn tại hoặc đã bị xóa. Quay lại danh sách.")
 
 
 def _locked() -> ApiError:
-    return ApiError(409, "campaign_locked", "Đợt đã khóa, không thể sửa đơn")
+    return ApiError(409, "campaign_locked", "Đợt đã khóa nên không thể sửa đơn.")
 
 
 def order_info(order: Order) -> dict[str, Any]:
@@ -85,6 +104,9 @@ def _lines_snapshot(order: Order) -> dict[str, Any]:
                 "colour": line.colour,
                 "qty": line.qty,
                 "unit_price": line.unit_price,
+                "is_tailor": line.is_tailor,
+                "tailor_measurements": line.tailor_measurements,
+                "note": mask_text(line.note) if line.note else None,
                 "in_kit": line.kit_line_id is not None,
             }
             for line in order.lines
@@ -168,7 +190,9 @@ async def create_order(
         await session.rollback()
         if "uq_orders_student_per_campaign" not in str(exc.orig):
             raise
-        raise ApiError(409, "order_exists", "Học sinh đã có đơn trong đợt này") from None
+        raise ApiError(
+            409, "order_exists", "Học sinh này đã có đơn trong đợt. Mở đơn đó để chỉnh sửa."
+        ) from None
     await audit.record(session, actor, "order.create", "order", order.id, None, order_info(order))
     return order
 
@@ -188,6 +212,7 @@ async def replace_order_lines(
     require_open is for parents: they cannot touch an order once the campaign is not OPEN.
     """
     order = await get_order(session, order.id, lock=True)
+    created = not order.lines and not order.kit_lines
     campaign = await _share_lock_campaign(session, order.campaign_id)
     if require_open and campaign.status != OPEN:
         raise _locked()
@@ -204,22 +229,79 @@ async def replace_order_lines(
     gender_of = {p.id: p.gender_target for p in products.values()}
 
     fields: dict[str, str] = {}
-    planned: list[tuple[int | None, uuid.UUID | None, uuid.UUID, str, str, int]] = []
+    planned: list[
+        tuple[
+            int | None,
+            uuid.UUID | None,
+            uuid.UUID,
+            str,
+            str,
+            int,
+            TailorInput,
+            list[dict[str, Any]],
+            OrderLine | None,
+        ]
+    ] = []
+    existing = {line.id: line for line in order.lines}
+    used: set[uuid.UUID] = set()
 
     def plan(
-        key: str, kit_index: int | None, slot_id: uuid.UUID | None, product_id: uuid.UUID,
-        size: str | None, colour: str, qty: int,
-    ) -> None:  # fmt: skip
+        key: str,
+        kit_index: int | None,
+        slot_id: uuid.UUID | None,
+        product_id: uuid.UUID,
+        size: str | None,
+        colour: str,
+        qty: int,
+        choice: TailorInput,
+    ) -> None:
         product = products[product_id]
-        if not size:
-            fields[f"{key}.size_label"] = "Chưa chọn cỡ"
-        elif size not in product.sizes:
-            fields[f"{key}.size_label"] = "Cỡ không thuộc sản phẩm"
+        old = existing.get(choice.line_id) if choice.line_id else None
+        if choice.line_id:
+            old_kit = next((k for k in order.kit_lines if old and k.id == old.kit_line_id), None)
+            kit_id = kit_lines[kit_index].kit_id if kit_index is not None else None
+            if (
+                old is None
+                or choice.line_id in used
+                or old.product_id != product_id
+                or old.slot_id != slot_id
+                or (old_kit.kit_id if old_kit else None) != kit_id
+            ):
+                fields[f"{key}.line_id"] = "Dòng đơn không hợp lệ"
+                old = None
+            used.add(choice.line_id)
+        snapshot: list[dict[str, Any]] = []
+        if choice.is_tailor:
+            preserved = old is not None and old.is_tailor
+            definitions = (
+                old.tailor_measurements if preserved and old else product.tailor_measurements
+            )
+            if not definitions:
+                fields[f"{key}.is_tailor"] = "Sản phẩm chưa cấu hình số đo may"
+            known = {definition["key"] for definition in definitions}
+            if set(choice.measurements) - known:
+                fields[f"{key}.measurements"] = "Số đo không thuộc cấu hình"
+            for definition in definitions:
+                measurement_key = str(definition["key"])
+                value = choice.measurements.get(measurement_key)
+                if definition["required"] and value is None:
+                    fields[f"{key}.measurements.{measurement_key}"] = "Chưa nhập số đo"
+                snapshot.append({**definition, "value": value})
+            size = "May đo"
+        else:
+            if choice.measurements:
+                fields[f"{key}.measurements"] = "Số đo chỉ dành cho may đo"
+            if not size:
+                fields[f"{key}.size_label"] = "Chưa chọn cỡ"
+            elif size not in product.sizes:
+                fields[f"{key}.size_label"] = "Cỡ không thuộc sản phẩm"
         if colour not in product.colours:
             fields[f"{key}.colour"] = "Màu không thuộc sản phẩm"
         if not 1 <= qty <= 20:
             fields[f"{key}.qty"] = "Số lượng từ 1 đến 20"
-        planned.append((kit_index, slot_id, product_id, size or "", colour, qty))
+        planned.append(
+            (kit_index, slot_id, product_id, size or "", colour, qty, choice, snapshot, old)
+        )
 
     kit_ids = [k.kit_id for k in kit_lines]
     if len(set(kit_ids)) != len(kit_ids):
@@ -233,9 +315,9 @@ async def replace_order_lines(
         slot_ids = {s.id for s in kit.slots}
         for n, extra in enumerate(kit_line.slots):
             if extra.slot_id not in slot_ids:
-                fields[f"kit_lines.{k}.slots.{n}.slot_id"] = "Slot không thuộc bộ"
+                fields[f"kit_lines.{k}.slots.{n}.slot_id"] = "Món không thuộc bộ"
         if len(picks) != len(kit_line.slots):
-            fields[f"kit_lines.{k}.slots"] = "Slot bị trùng"
+            fields[f"kit_lines.{k}.slots"] = "Món bị trùng"
         for slot_index, slot in enumerate(kit.slots):
             pick = picks.get(slot.id)
             key = f"kit_lines.{k}.slots.{slot_index}"
@@ -243,7 +325,7 @@ async def replace_order_lines(
                 slot.product_ids, gender_of, order.gender
             )
             if product_id not in slot.product_ids:
-                fields[f"{key}.product_id"] = "Phương án không thuộc slot"
+                fields[f"{key}.product_id"] = "Phương án không thuộc món"
                 continue
             size = (pick.size_label if pick else None) or kit_line.size_label or order.default_size
             plan(
@@ -254,6 +336,7 @@ async def replace_order_lines(
                 size,
                 prices[product_id].colour,
                 slot.qty * kit_line.qty,
+                pick or TailorInput(),
             )
     for n, item in enumerate(item_lines):
         key = f"item_lines.{n}"
@@ -264,7 +347,7 @@ async def replace_order_lines(
         colour = item.colour or campaign_item.colour
         if require_open and colour != campaign_item.colour:
             fields[f"{key}.colour"] = "Màu không thuộc đợt"
-        plan(key, None, None, item.product_id, item.size_label, colour, item.qty)
+        plan(key, None, None, item.product_id, item.size_label, colour, item.qty, item)
     if fields:
         raise _invalid(fields)
     if not planned and (submit or order.status == SUBMITTED):
@@ -273,7 +356,7 @@ async def replace_order_lines(
     kept: dict[tuple[uuid.UUID, str], list[int]] = defaultdict(list)
     if order.status == SUBMITTED:
         for line in order.lines:
-            if line.unit_price is not None:
+            if line.unit_price is not None and line.id not in used:
                 kept[(line.product_id, line.colour)].append(line.unit_price)
     before = {**order_info(order), **_lines_snapshot(order)}
     order.lines.clear()
@@ -286,7 +369,7 @@ async def replace_order_lines(
     }
     order.kit_lines.extend(kit_rows.values())
     await session.flush()
-    for kit_index, slot_id, product_id, size, colour, qty in planned:
+    for kit_index, slot_id, product_id, size, colour, qty, choice, snapshot, previous in planned:
         old = kept.get((product_id, colour))
         order.lines.append(
             OrderLine(
@@ -296,7 +379,16 @@ async def replace_order_lines(
                 size_label=size,
                 colour=colour,
                 qty=qty,
-                unit_price=old.pop(0) if old else prices[product_id].unit_price,
+                unit_price=(
+                    previous.unit_price
+                    if previous and previous.colour == colour and order.status == SUBMITTED
+                    else old.pop(0)
+                    if old
+                    else prices[product_id].unit_price
+                ),
+                is_tailor=choice.is_tailor,
+                tailor_measurements=snapshot,
+                note=choice.note,
             )
         )
     if submit and order.status != SUBMITTED:
@@ -310,3 +402,7 @@ async def replace_order_lines(
     )  # fmt: skip
     await session.commit()
     bus.publish(TOPIC)
+    logger.info(
+        "orders.created" if created else "orders.updated",
+        extra={"ctx": {"order_id": str(order.id), "campaign_id": str(order.campaign_id)}},
+    )

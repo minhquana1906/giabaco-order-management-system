@@ -1,5 +1,6 @@
 """Parent portal use cases."""
 
+import logging
 import uuid
 from typing import Any
 
@@ -37,11 +38,17 @@ from app.features.parent_portal.schemas import (
 from app.features.students.models import FittingTrial, Student
 from app.features.students.size_guide import suggest
 
+logger = logging.getLogger("app.parent_portal")
+
 PARENT_ACTOR = "parent"
 
 
 def _not_found() -> ApiError:
-    return ApiError(404, "not_found", "Không tìm thấy học sinh")
+    return ApiError(
+        404,
+        "not_found",
+        "Liên kết này không đúng hoặc đã hết hạn. Hỏi Giabaco để nhận liên kết mới.",
+    )
 
 
 async def student_by_token(session: AsyncSession, token: str) -> Student:
@@ -146,6 +153,15 @@ def _order_view(order: Order) -> OrderView:
                         product_id=line.product_id,
                         size_label=line.size_label,
                         colour=line.colour,
+                        line_id=line.id,
+                        is_tailor=line.is_tailor,
+                        measurements={
+                            str(m["key"]): m["value"]
+                            for m in line.tailor_measurements
+                            if m.get("value") is not None
+                        },
+                        tailor_measurements=line.tailor_measurements,
+                        note=line.note,
                     )
                     for line in lines
                     if line.slot_id is not None
@@ -167,6 +183,15 @@ def _order_view(order: Order) -> OrderView:
                 size_label=line.size_label,
                 colour=line.colour,
                 qty=line.qty,
+                line_id=line.id,
+                is_tailor=line.is_tailor,
+                measurements={
+                    str(m["key"]): m["value"]
+                    for m in line.tailor_measurements
+                    if m.get("value") is not None
+                },
+                tailor_measurements=line.tailor_measurements,
+                note=line.note,
             )
             for line in order.lines
             if line.kit_line_id is None
@@ -190,6 +215,10 @@ async def get_ordering(session: AsyncSession, student: Student) -> Ordering:
         for p in (await session.scalars(select(Product).where(Product.id.in_(wanted)))).all()
     }
     campaign_items = {i.product_id: i for i in campaign.items}
+
+    def tailor_fields(product_id: uuid.UUID) -> list[dict[str, Any]]:
+        return products[product_id].tailor_measurements
+
     gender = student.gender.value
     gender_of = {pid: p.gender_target for pid, p in products.items()}
 
@@ -227,6 +256,7 @@ async def get_ordering(session: AsyncSession, student: Student) -> Ordering:
                             colours=colours(pid),
                             image=await image(pid),
                             suggested=pid == chosen,
+                            tailor_measurements=tailor_fields(pid),
                         )
                         for pid in slot.product_ids
                     ],
@@ -250,6 +280,7 @@ async def get_ordering(session: AsyncSession, student: Student) -> Ordering:
             sizes=products[i.product_id].sizes,
             colours=colours(i.product_id),
             image=await image(i.product_id),
+            tailor_measurements=tailor_fields(i.product_id),
         )
         for i in campaign.items
     ]
@@ -291,7 +322,12 @@ async def submit_order(
     """Create or replace the student's order in the OPEN campaign and submit it."""
     campaign = await open_campaign_for_school(session, student.school_id)
     if campaign is None or campaign.status != OPEN:
-        raise ApiError(409, "campaign_locked", "Đợt đăng ký đã đóng")
+        raise ApiError(
+            409,
+            "campaign_locked",
+            "Đợt đăng ký đã đóng nên không gửi được đơn. "
+            "Nếu cần thay đổi, vui lòng liên hệ Giabaco.",
+        )
     campaign_id, student_id = campaign.id, student.id
     order = await _order_of(session, campaign_id, student_id)
     if order is not None:
@@ -322,5 +358,15 @@ async def submit_order(
             await _refresh_snapshot(session, order, student, actor)
     await replace_order_lines(
         session, order, payload.kit_lines, payload.item_lines, actor, submit=True, require_open=True
+    )
+    logger.info(
+        "parent_portal.order_submitted",
+        extra={
+            "ctx": {
+                "campaign_id": str(campaign_id),
+                "student_id": str(student_id),
+                "lines": len(payload.kit_lines) + len(payload.item_lines),
+            }
+        },
     )
     return await get_ordering(session, student)

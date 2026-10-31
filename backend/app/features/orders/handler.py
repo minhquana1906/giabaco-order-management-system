@@ -1,5 +1,6 @@
 """Order use cases; every write to order lines goes through replace_order_lines."""
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -26,6 +27,8 @@ from app.features.orders.schemas import (
     OrderUpdate,
 )
 
+logger = logging.getLogger("app.orders")
+
 PAGE_SIZE = 50
 
 
@@ -40,6 +43,10 @@ async def update_order(
     await audit.record(session, actor, "order.update", "order", order.id, before, order_info(order))
     await session.commit()
     bus.publish(TOPIC)
+    logger.info(
+        "orders.updated",
+        extra={"ctx": {"order_id": str(order.id), "campaign_id": str(order.campaign_id)}},
+    )
     return await detail(session, order_id)
 
 
@@ -106,6 +113,15 @@ async def detail(session: AsyncSession, order_id: uuid.UUID) -> OrderDetail:
                 colour=line.colour,
                 qty=line.qty,
                 unit_price=line.unit_price,
+                is_tailor=line.is_tailor,
+                measurements={
+                    str(m["key"]): m["value"]
+                    for m in line.tailor_measurements
+                    if m.get("value") is not None
+                },
+                tailor_measurements=line.tailor_measurements,
+                product_tailor_measurements=products[line.product_id].tailor_measurements,
+                note=line.note,
             )
             for line in order.lines
         ],
@@ -125,7 +141,7 @@ async def list_orders(
     page: int,
 ) -> OrderPage:
     if await session.get(Campaign, campaign_id) is None:
-        raise ApiError(404, "not_found", "Không tìm thấy đợt đăng ký")
+        raise ApiError(404, "not_found", "Đợt này không tồn tại. Chọn đợt khác.")
     where = [Order.campaign_id == campaign_id, Order.deleted_at.is_(None)]
     if status:
         where.append(Order.status == status)

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { Colour, Img, Kit, KitOption, LooseItem, Ordering, PublicStudent } from '../api'
+import type { Colour, Img, Kit, KitOption, LooseItem, Ordering, PublicStudent, TailorLine, TailorMeasurement } from '../api'
 import {
   clampQty,
   draftProblems,
@@ -17,6 +17,7 @@ import {
   needsColourChoice,
   selectedOption,
   suggestionFor,
+  tailorConfig,
   type Draft,
   type ItemDraft,
   type KitDraft,
@@ -43,7 +44,7 @@ function SizeChartButton({ product, selected }: { product: { code: string; name:
         </Button>
       </DialogTrigger>
       <DialogContent className="gap-3 p-4 sm:p-6">
-        <DialogTitle className="px-8 text-center text-lg text-navy">Bảng thông số {product.name}</DialogTitle>
+        <DialogTitle className="px-10 text-center text-lg text-navy">Bảng thông số {product.name}</DialogTitle>
         <DialogDescription className="text-center">Đơn vị: cm</DialogDescription>
         <table className="w-full table-fixed border-collapse text-center text-[15px] tabular-nums">
           <colgroup>
@@ -196,9 +197,56 @@ function ColourField({
       <ColourSelect name={name} colours={colours} labelledBy={labelId} value={value} invalid={invalid} onChange={onChange} />
       {invalid ? (
         <p role="alert" className="text-[15px] font-medium text-destructive">
-          Chọn màu
+          Vui lòng chọn màu.
         </p>
       ) : null}
+    </div>
+  )
+}
+
+export function TailorFields({ name, draft, config, invalid, onChange }: {
+  name: string
+  draft: TailorLine
+  config: TailorMeasurement[]
+  invalid: boolean
+  onChange: (patch: Partial<TailorLine>) => void
+}) {
+  const fields = tailorConfig(draft, config)
+  return (
+    <div className="flex flex-col gap-3" data-problem={invalid || undefined}>
+      <label className="flex min-h-11 items-center gap-3">
+        <input type="checkbox" className="size-5" checked={draft.is_tailor ?? false}
+          disabled={!draft.is_tailor && fields.length === 0}
+          onChange={(e) => onChange({ is_tailor: e.target.checked })} />
+        Đặt may theo số đo
+      </label>
+      {fields.length === 0 ? <p className="text-sm text-muted-foreground">Sản phẩm này chưa có bảng số đo để đặt may. Hãy chọn cỡ thường hoặc liên hệ Giabaco.</p> : null}
+      {draft.is_tailor ? (
+        <>
+          <p className="text-sm text-muted-foreground">Các sản phẩm cùng số lượng dùng chung bộ số đo này. Số đo phải lớn hơn 0 và không quá 500 cm.</p>
+          {fields.map((field) => (
+            <label key={field.key} className="flex flex-col gap-1 text-sm">
+              <span>{field.label}{field.required ? ' *' : ''}</span>
+              {field.instruction ? <span className="text-muted-foreground">{field.instruction}</span> : null}
+              <input className="h-11 rounded-md border border-input px-3" type="number" min="0" max="500" step="any"
+                aria-label={`${field.label} ${name}`} required={field.required}
+                value={draft.measurements?.[field.key] ?? ''}
+                onChange={(e) => {
+                  const measurements = { ...draft.measurements }
+                  if (e.target.value === '') delete measurements[field.key]
+                  else measurements[field.key] = Number(e.target.value)
+                  onChange({ measurements })
+                }} />
+            </label>
+          ))}
+          {invalid ? <p role="alert" className="text-sm text-destructive">Vui lòng nhập đủ các số đo bắt buộc, lớn hơn 0 và không quá 500 cm.</p> : null}
+        </>
+      ) : null}
+      <label className="flex flex-col gap-1 text-sm">
+        Ghi chú cho {name}
+        <input className="h-11 rounded-md border border-input px-3" maxLength={500}
+          value={draft.note ?? ''} onChange={(e) => onChange({ note: e.target.value })} />
+      </label>
     </div>
   )
 }
@@ -209,18 +257,19 @@ interface CardProps {
   price: number | null
   qty: number
   onQty: (qty: number) => void
+  eager?: boolean
   children?: ReactNode
 }
 
-function Card({ title, image, price, qty, onQty, children }: CardProps) {
+function Card({ title, image, price, qty, onQty, eager, children }: CardProps) {
   const headingId = useId()
   return (
     <section
       aria-labelledby={headingId}
       className="flex flex-col gap-5 rounded-lg border border-hairline bg-white p-4 md:p-5 lg:p-6"
     >
-      <div className="grid grid-cols-[128px_minmax(0,1fr)] gap-x-4 md:grid-cols-[160px_minmax(0,1fr)] md:gap-x-6">
-        <ZoomableImage image={image} alt={title} />
+      <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 sm:grid-cols-[128px_minmax(0,1fr)] md:grid-cols-[160px_minmax(0,1fr)] md:gap-x-6">
+        <ZoomableImage image={image} alt={title} eager={eager} />
         <div className="flex min-w-0 flex-col justify-between gap-3">
           <div className="flex flex-col gap-1">
             <h3 id={headingId} className="text-lg font-semibold text-navy lg:text-xl">
@@ -258,7 +307,7 @@ function SlotFields({ kit, slot, kitDraft, student, attempted, problems, onChang
   const sizeId = `${key}-size`
   const invalidSize = attempted && problems.has(`slot:${slot.id}`)
   const pickOption = (o: KitOption) =>
-    onChange({ productId: o.product_id, colour: o.colours.length === 1 ? o.colours[0]!.code : null })
+    onChange({ productId: o.product_id, colour: o.colours.length === 1 ? o.colours[0]!.code : null, line_id: null, is_tailor: false, measurements: {}, tailor_measurements: undefined })
 
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-hairline p-3 md:p-4">
@@ -312,6 +361,10 @@ function SlotFields({ kit, slot, kitDraft, student, attempted, problems, onChang
             invalid={attempted && problems.has(`slot-colour:${slot.id}`)}
             onChange={(colour) => onChange({ colour })}
           />
+          <TailorFields name={option.name} draft={draft ?? {}} config={option.tailor_measurements ?? []}
+            invalid={invalidSize && !!draft?.is_tailor} onChange={onChange} />
+          {!draft?.is_tailor ? (
+            <>
           <label className={cn('flex min-h-11 cursor-pointer items-center gap-3 text-[15px]', OPTION_FOCUS)}>
             <input
               type="checkbox"
@@ -336,16 +389,21 @@ function SlotFields({ kit, slot, kitDraft, student, attempted, problems, onChang
             </div>
           ) : (
             <p className="text-[15px] text-muted-foreground">
-              {size ? `Dùng cỡ chung: ${size}` : 'Chọn cỡ chung ở trên'}
-              {size && !option.sizes.includes(size) ? ' — phương án này không có cỡ đó' : ''}
+              {size && !option.sizes.includes(size)
+                ? `Phương án này không có cỡ ${size}. Hãy chọn cỡ khác.`
+                : size
+                  ? `Dùng cỡ chung: ${size}`
+                  : 'Chọn cỡ chung ở trên'}
             </p>
           )}
           {invalidSize ? (
             <p role="alert" className="text-[15px] font-medium text-destructive">
-              Chọn cỡ cho {slot.label}
+              Vui lòng chọn cỡ cho {slot.label}.
             </p>
           ) : null}
           <SizeChartButton product={option} selected={size} />
+            </>
+          ) : null}
         </>
       ) : null}
     </fieldset>
@@ -386,13 +444,13 @@ export function ChooseStep({ s, ordering, draft, onDraft, onBack, onNext }: Choo
     onNext()
   }
 
-  const kitCards = ordering.kits.filter((k) => k.slots.length > 0).map((kit) => {
+  const kitCards = ordering.kits.filter((k) => k.slots.length > 0).map((kit, index) => {
     const d = draft.kits[kit.id]!
     const sizeId = `kit-${kit.id}-size`
     const sizes = selectedOption(kit.slots[0]!, d.slots[kit.slots[0]!.id])?.sizes ?? kit.slots[0]?.options[0]?.sizes ?? []
     const first = selectedOption(kit.slots[0]!, d.slots[kit.slots[0]!.id])
     return (
-      <Card key={kit.id} title={kit.name} image={kit.image} price={kit.price} qty={d.qty} onQty={(qty) => setKit(kit.id, { qty })}>
+      <Card key={kit.id} title={kit.name} image={kit.image} price={kit.price} qty={d.qty} onQty={(qty) => setKit(kit.id, { qty })} eager={index < 2}>
         <div className="flex flex-col gap-2">
           <FieldLabel id={sizeId}>Cỡ chung của bộ</FieldLabel>
           <SizePicker
@@ -406,7 +464,7 @@ export function ChooseStep({ s, ordering, draft, onDraft, onBack, onNext }: Choo
           />
           {attempted && problems.has(`kit:${kit.id}`) ? (
             <p role="alert" className="text-[15px] font-medium text-destructive">
-              Chọn cỡ
+              Vui lòng chọn cỡ.
             </p>
           ) : null}
         </div>
@@ -426,7 +484,7 @@ export function ChooseStep({ s, ordering, draft, onDraft, onBack, onNext }: Choo
     )
   })
 
-  const itemCard = (item: LooseItem) => {
+  const itemCard = (item: LooseItem, index: number) => {
     const d = draft.items[item.product_id]!
     const sizeId = `item-${item.product_id}-size`
     const invalidSize = attempted && problems.has(`item:${item.product_id}`)
@@ -438,8 +496,9 @@ export function ChooseStep({ s, ordering, draft, onDraft, onBack, onNext }: Choo
         price={item.price}
         qty={d.qty}
         onQty={(qty) => setItem(item.product_id, { qty })}
+        eager={kitCards.length + index < 2}
       >
-        <div className="flex flex-col gap-2">
+        {!d.is_tailor ? <div className="flex flex-col gap-2">
           <FieldLabel id={sizeId}>Cỡ</FieldLabel>
           <SizePicker
             name={sizeId}
@@ -452,10 +511,12 @@ export function ChooseStep({ s, ordering, draft, onDraft, onBack, onNext }: Choo
           />
           {invalidSize ? (
             <p role="alert" className="text-[15px] font-medium text-destructive">
-              Chọn cỡ
+              Vui lòng chọn cỡ.
             </p>
           ) : null}
-        </div>
+        </div> : null}
+        <TailorFields name={item.name} draft={d} config={item.tailor_measurements ?? []}
+          invalid={invalidSize && !!d.is_tailor} onChange={(patch) => setItem(item.product_id, patch)} />
         <ColourField
           name={`item-${item.product_id}-colour`}
           colours={item.colours}

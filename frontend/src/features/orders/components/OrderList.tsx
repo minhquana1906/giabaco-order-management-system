@@ -196,7 +196,7 @@ export function OrderList({ search, onSearchChange }: OrderListProps) {
     <div className="flex flex-col gap-4">
       <PageHeader title="Đơn hàng" />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <Field id="order-campaign" label="Đợt đăng ký" className="col-span-2 md:col-span-3 md:max-w-md">
+        <Field id="order-campaign" label="Đợt đăng ký" className="col-span-2">
           {(control) => (
             <NativeSelect
               {...control}
@@ -211,7 +211,7 @@ export function OrderList({ search, onSearchChange }: OrderListProps) {
             </NativeSelect>
           )}
         </Field>
-        <div className="relative col-span-2 md:col-span-1">
+        <div className="relative col-span-2 md:col-span-1 md:col-start-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             type="search"

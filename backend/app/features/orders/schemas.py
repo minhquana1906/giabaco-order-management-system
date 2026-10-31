@@ -69,6 +69,11 @@ class LineOut(BaseModel):
     colour: str
     qty: int
     unit_price: int | None
+    is_tailor: bool
+    measurements: dict[str, float]
+    tailor_measurements: list[dict[str, Any]]
+    product_tailor_measurements: list[dict[str, Any]]
+    note: str | None
 
 
 class KitLineOut(BaseModel):

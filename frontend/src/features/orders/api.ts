@@ -1,4 +1,5 @@
 import { http } from '@/lib/http'
+import type { TailorLine, TailorMeasurement } from '@/features/parent_portal/api'
 
 export type OrderStatus = 'DRAFT' | 'SUBMITTED'
 export type OrderGender = 'MALE' | 'FEMALE'
@@ -34,7 +35,7 @@ export interface OrderPage {
   page_size: number
 }
 
-export interface OrderLine {
+export interface OrderLine extends TailorLine {
   id: string
   kit_line_id: string | null
   slot_id: string | null
@@ -47,6 +48,7 @@ export interface OrderLine {
   colour: string
   qty: number
   unit_price: number | null
+  product_tailor_measurements?: TailorMeasurement[]
 }
 
 export interface OrderKitLine {
@@ -81,9 +83,9 @@ export interface LinesPayload {
   kit_lines: {
     kit_id: string
     qty: number
-    slots: { slot_id: string; product_id: string; size_label: string }[]
+    slots: ({ slot_id: string; product_id: string; size_label: string; colour?: string } & TailorLine)[]
   }[]
-  item_lines: { product_id: string; size_label: string; qty: number; colour: string }[]
+  item_lines: ({ product_id: string; size_label: string; qty: number; colour: string } & TailorLine)[]
   submit: boolean
 }
 

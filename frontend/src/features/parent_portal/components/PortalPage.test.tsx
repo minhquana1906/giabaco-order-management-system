@@ -120,6 +120,8 @@ describe('PortalPage', () => {
     expect(await screen.findByText('Tạm tính, chưa thanh toán')).toBeInTheDocument()
     expect(screen.getByText('Một số sản phẩm chưa có giá')).toBeInTheDocument()
     expect(screen.getByText('Áo Blazer')).toBeInTheDocument()
+    const card = screen.getByText('Áo Blazer').closest('li')!
+    expect(within(card).getAllByText(/400\.000/)).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Đổi lựa chọn' })).not.toBeInTheDocument()
   })
 
@@ -152,25 +154,24 @@ describe('PortalPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Tôi đã kiểm tra thông tin' }))
     await user.click(send)
 
-    expect(saveOrder).toHaveBeenCalledWith({
+    expect(saveOrder).toHaveBeenCalledWith(expect.objectContaining({
       kit_lines: [],
-      item_lines: [{ product_id: 'p-blazer', size_label: '2', colour: 'ghi', qty: 1 }],
-    })
+      item_lines: [expect.objectContaining({ product_id: 'p-blazer', size_label: '2', colour: 'ghi', qty: 1 })],
+    }))
     expect(await screen.findByRole('heading', { name: 'Đăng ký thành công' })).toBeInTheDocument()
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xem thông tin đăng ký' }))
     expect(screen.getByRole('button', { name: 'Đổi lựa chọn' })).toBeInTheDocument()
   })
 
-  it('explains why submit is disabled until the review checkbox is ticked', async () => {
+  it('keeps submit disabled until the review checkbox is ticked', async () => {
     const user = userEvent.setup()
     renderPage(stubSource(async () => student()), { skipIdentity: true })
     await user.click(await screen.findByRole('button', { name: 'Tiếp tục' }))
     await user.click(screen.getByRole('button', { name: 'Tăng số lượng Áo Blazer' }))
     await user.click(screen.getByRole('radio', { name: 'Cỡ 2' }))
     await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
-    expect(screen.getByRole('button', { name: 'Gửi đăng ký' })).toHaveAccessibleDescription(/tích/)
+    expect(screen.getByRole('button', { name: 'Gửi đăng ký' })).toBeDisabled()
     await user.click(screen.getByRole('checkbox', { name: 'Tôi đã kiểm tra thông tin' }))
-    expect(screen.queryByText(/Hãy tích/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Gửi đăng ký' })).toBeEnabled()
   })
 
@@ -199,7 +200,7 @@ describe('PortalPage', () => {
       ],
     }
     renderPage(stubSource(async () => student(), async () => ordering({ order })), { skipIdentity: true })
-    expect(await screen.findByText('Đơn có nhiều cỡ cho một sản phẩm, liên hệ Giabaco để đổi')).toBeInTheDocument()
+    expect(await screen.findByText('Đơn có nhiều cỡ cho cùng một sản phẩm. Để đổi, vui lòng liên hệ Giabaco.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Đổi lựa chọn' })).not.toBeInTheDocument()
   })
 

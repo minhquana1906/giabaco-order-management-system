@@ -10,6 +10,9 @@ import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { campaignErrorMessage } from '@/features/campaigns/errors'
+import type { TailorLine } from '@/features/parent_portal/api'
+import { tailorConfig } from '@/features/parent_portal/choices'
+import { TailorFields } from '@/features/parent_portal/components/ChooseStep'
 import { formatDateTime, formatNumber, formatVnd } from '@/lib/format'
 import type { OrderDetail, OrderGender, OrderLine } from '../api'
 import { usePatchOrder, useReplaceLines, useOrder } from '../hooks'
@@ -29,20 +32,26 @@ function LineRow({
   line,
   size,
   onSize,
+  tailor,
+  onTailor,
 }: {
   line: OrderLine
   size: string
   onSize: (size: string) => void
+  tailor: TailorLine
+  onTailor: (patch: Partial<TailorLine>) => void
 }) {
   const id = `size-${line.id}`
   const changed = size !== line.size_label
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-3 py-3 sm:px-4 md:grid-cols-[minmax(0,1fr)_3rem_6.5rem_6.5rem_8rem]">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-3 py-3 sm:px-4 md:grid-cols-[minmax(0,1fr)_5rem_6.5rem_6.5rem_8rem]">
       <div className="min-w-0">
         <p className="font-medium">{line.product_name}</p>
         <p className="text-sm text-muted-foreground">
           {line.slot_label ? `${line.slot_label} · ` : ''}Màu {line.colour}
         </p>
+        <TailorFields name={line.product_name} draft={tailor} config={line.product_tailor_measurements ?? []}
+          invalid={false} onChange={onTailor} />
       </div>
       <p className="hidden text-right text-sm tabular-nums md:block">{line.qty}</p>
       <p className="hidden whitespace-nowrap text-right text-sm tabular-nums md:block">
@@ -55,21 +64,21 @@ function LineRow({
         <label htmlFor={id} className="sr-only">
           Cỡ {line.product_name}
         </label>
-        <NativeSelect
-          id={id}
-          value={size}
-          onChange={(e) => onSize(e.target.value)}
-          className={changed ? 'border-brass' : undefined}
-        >
-          {line.sizes.map((s) => (
-            <option key={s} value={s}>
-              Cỡ {s}
-            </option>
-          ))}
-        </NativeSelect>
+        {tailor.is_tailor ? <span>May đo</span> : (
+          <NativeSelect
+            id={id}
+            value={size}
+            onChange={(e) => onSize(e.target.value)}
+            className={changed ? 'border-brass' : undefined}
+          >
+            {line.sizes.map((s) => (
+              <option key={s} value={s}>Cỡ {s}</option>
+            ))}
+          </NativeSelect>
+        )}
       </div>
       <p className="col-span-2 text-sm tabular-nums text-muted-foreground md:hidden">
-        SL {line.qty} ·{' '}
+        Số lượng {line.qty} ·{' '}
         {line.unit_price == null ? 'Chưa có giá' : `${formatVnd(line.unit_price)} · ${formatVnd(line.unit_price * line.qty)}`}
       </p>
     </li>
@@ -79,7 +88,17 @@ function LineRow({
 function LinesSection({ order }: { order: OrderDetail }) {
   const save = useReplaceLines(order.id)
   const [edits, setEdits] = useState<SizeEdits>({})
-  const dirty = isDirty(order, edits)
+  const [tailorEdits, setTailorEdits] = useState<Record<string, TailorLine>>({})
+  const dirty = isDirty(order, edits) || Object.keys(tailorEdits).length > 0
+  const invalid = order.lines.some((line) => {
+    const draft = tailorEdits[line.id] ?? { ...line, line_id: line.id }
+    if (!draft.is_tailor) return false
+    const fields = tailorConfig(draft, line.product_tailor_measurements ?? [])
+    return fields.length === 0 || fields.some((field) => {
+      const value = draft.measurements?.[field.key]
+      return (field.required && value == null) || (value != null && (!Number.isFinite(value) || value <= 0 || value > 500))
+    })
+  })
   const groups = [
     ...order.kit_lines.map((k) => ({
       key: k.id,
@@ -90,9 +109,10 @@ function LinesSection({ order }: { order: OrderDetail }) {
   ].filter((g) => g.lines.length > 0)
 
   const run = (submit: boolean) =>
-    save.mutate(buildLinesPayload(order, edits, submit), {
+    save.mutate(buildLinesPayload(order, edits, submit, tailorEdits), {
       onSuccess: () => {
         setEdits({})
+        setTailorEdits({})
         toast.success(submit ? 'Đã gửi đơn' : 'Đã lưu cỡ')
       },
       onError: (error) => toast.error(campaignErrorMessage(error)),
@@ -110,9 +130,9 @@ function LinesSection({ order }: { order: OrderDetail }) {
       ) : (
         groups.map((group) => (
           <div key={group.key} className="overflow-hidden rounded-md border border-hairline bg-card">
-            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-x-4 border-b border-hairline bg-muted px-3 py-2 text-sm sm:px-4 md:grid-cols-[minmax(0,1fr)_3rem_6.5rem_6.5rem_8rem]">
+            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-x-4 border-b border-hairline bg-muted px-3 py-2 text-sm sm:px-4 md:grid-cols-[minmax(0,1fr)_5rem_6.5rem_6.5rem_8rem]">
               <h3 className="font-semibold">{group.title}</h3>
-              <span className="hidden text-right text-muted-foreground md:block">SL</span>
+              <span className="hidden text-right text-muted-foreground md:block">Số lượng</span>
               <span className="hidden text-right text-muted-foreground md:block">Đơn giá</span>
               <span className="hidden text-right text-muted-foreground md:block">Thành tiền</span>
               <span className="hidden text-right text-muted-foreground md:block">Cỡ</span>
@@ -124,6 +144,11 @@ function LinesSection({ order }: { order: OrderDetail }) {
                   line={line}
                   size={effectiveSize(line, edits)}
                   onSize={(size) => setEdits((current) => ({ ...current, [line.id]: size }))}
+                  tailor={tailorEdits[line.id] ?? { ...line, line_id: line.id }}
+                  onTailor={(patch) => setTailorEdits((current) => ({
+                    ...current,
+                    [line.id]: { ...line, line_id: line.id, ...current[line.id], ...patch },
+                  }))}
                 />
               ))}
             </ul>
@@ -140,15 +165,15 @@ function LinesSection({ order }: { order: OrderDetail }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {dirty ? (
-            <Button variant="outline" className="h-11 md:h-9" onClick={() => setEdits({})} disabled={save.isPending}>
+            <Button variant="outline" className="h-11 md:h-9" onClick={() => { setEdits({}); setTailorEdits({}) }} disabled={save.isPending}>
               Hoàn tác
             </Button>
           ) : null}
-          <Button className="h-11 md:h-9" onClick={() => run(false)} disabled={!dirty || save.isPending}>
+          <Button className="h-11 md:h-9" onClick={() => run(false)} disabled={!dirty || invalid || save.isPending}>
             Lưu cỡ
           </Button>
           {order.status === 'DRAFT' && order.lines.length > 0 ? (
-            <Button variant="secondary" className="h-11 md:h-9" onClick={() => run(true)} disabled={save.isPending}>
+            <Button variant="secondary" className="h-11 md:h-9" onClick={() => run(true)} disabled={invalid || save.isPending}>
               Gửi đơn
             </Button>
           ) : null}

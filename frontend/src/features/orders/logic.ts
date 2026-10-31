@@ -1,10 +1,11 @@
 import type { LinesPayload, OrderDetail, OrderGender, OrderHistory, OrderLine, OrderSource, OrderStatus } from './api'
+import type { TailorLine } from '@/features/parent_portal/api'
 
 export const STATUS_LABEL: Record<OrderStatus, string> = { DRAFT: 'Nháp', SUBMITTED: 'Đã gửi' }
 export const SOURCE_LABEL: Record<OrderSource, string> = {
   PARENT: 'Phụ huynh',
   STAFF: 'Nhân viên',
-  LEGACY_IMPORT: 'Nhập từ file cũ',
+  LEGACY_IMPORT: 'Dữ liệu cũ',
 }
 export const GENDER_LABEL: Record<OrderGender, string> = { MALE: 'Nam', FEMALE: 'Nữ' }
 export const genderText = (gender: OrderGender | null) => (gender ? GENDER_LABEL[gender] : 'Chưa rõ')
@@ -26,7 +27,7 @@ export function isDirty(order: OrderDetail, edits: SizeEdits): boolean {
   return order.lines.some((line) => effectiveSize(line, edits) !== line.size_label)
 }
 
-export function buildLinesPayload(order: OrderDetail, edits: SizeEdits, submit = false): LinesPayload {
+export function buildLinesPayload(order: OrderDetail, edits: SizeEdits, submit = false, tailorEdits: Record<string, TailorLine> = {}): LinesPayload {
   return {
     kit_lines: order.kit_lines.map((kitLine) => ({
       kit_id: kitLine.kit_id,
@@ -37,6 +38,11 @@ export function buildLinesPayload(order: OrderDetail, edits: SizeEdits, submit =
           slot_id: line.slot_id as string,
           product_id: line.product_id,
           size_label: effectiveSize(line, edits),
+          colour: line.colour,
+          line_id: line.id,
+          is_tailor: tailorEdits[line.id]?.is_tailor ?? line.is_tailor ?? false,
+          measurements: (tailorEdits[line.id]?.is_tailor ?? line.is_tailor) ? (tailorEdits[line.id]?.measurements ?? line.measurements ?? {}) : {},
+          note: tailorEdits[line.id]?.note ?? (tailorEdits[line.id] ? null : (line.note ?? null)),
         })),
     })),
     item_lines: order.lines
@@ -46,6 +52,10 @@ export function buildLinesPayload(order: OrderDetail, edits: SizeEdits, submit =
         size_label: effectiveSize(line, edits),
         qty: line.qty,
         colour: line.colour,
+        line_id: line.id,
+        is_tailor: tailorEdits[line.id]?.is_tailor ?? line.is_tailor ?? false,
+        measurements: (tailorEdits[line.id]?.is_tailor ?? line.is_tailor) ? (tailorEdits[line.id]?.measurements ?? line.measurements ?? {}) : {},
+        note: tailorEdits[line.id]?.note ?? (tailorEdits[line.id] ? null : (line.note ?? null)),
       })),
     submit,
   }
@@ -76,7 +86,7 @@ export function describeHistory(entry: OrderHistory, productNames: Record<string
     if (was.product_id !== now.product_id) changes.push('Đổi sản phẩm')
     else {
       if (was.size_label !== now.size_label) changes.push(`${name}: cỡ ${was.size_label} → ${now.size_label}`)
-      if (was.qty !== now.qty) changes.push(`${name}: SL ${was.qty} → ${now.qty}`)
+      if (was.qty !== now.qty) changes.push(`${name}: số lượng ${was.qty} → ${now.qty}`)
     }
   })
   return changes

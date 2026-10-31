@@ -77,6 +77,7 @@ class CampaignItem(Base):
     product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id"))
     unit_price: Mapped[int | None] = mapped_column(Integer)
     colour: Mapped[str] = mapped_column(Text)
+    tailor_enabled: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
     sort: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"), default=0)
 
 

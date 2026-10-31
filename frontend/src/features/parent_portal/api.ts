@@ -42,6 +42,22 @@ export interface Colour {
   hex: string
 }
 
+export interface TailorMeasurement {
+  key: string
+  label: string
+  instruction: string
+  required: boolean
+  value?: number | null
+}
+
+export interface TailorLine {
+  line_id?: string | null
+  is_tailor?: boolean
+  measurements?: Record<string, number>
+  tailor_measurements?: TailorMeasurement[]
+  note?: string | null
+}
+
 export interface KitOption {
   product_id: string
   code: string
@@ -50,6 +66,7 @@ export interface KitOption {
   colours: Colour[]
   image: Img | null
   suggested: boolean
+  tailor_measurements?: TailorMeasurement[]
 }
 
 export interface KitSlot {
@@ -75,9 +92,10 @@ export interface LooseItem {
   sizes: string[]
   colours: Colour[]
   image: Img | null
+  tailor_measurements?: TailorMeasurement[]
 }
 
-export interface SlotLine {
+export interface SlotLine extends TailorLine {
   slot_id: string
   product_id: string
   size_label: string
@@ -91,7 +109,7 @@ export interface KitLine {
   slots: SlotLine[]
 }
 
-export interface ItemLine {
+export interface ItemLine extends TailorLine {
   product_id: string
   size_label: string
   colour: string | null

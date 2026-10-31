@@ -16,6 +16,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -122,4 +123,9 @@ class OrderLine(Base):
     size_label: Mapped[str] = mapped_column(Text)
     colour: Mapped[str] = mapped_column(Text)
     qty: Mapped[int] = mapped_column(SmallInteger)
+    is_tailor: Mapped[bool] = mapped_column(server_default=text("false"), default=False)
+    tailor_measurements: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb"), default=list
+    )
+    note: Mapped[str | None] = mapped_column(Text)
     unit_price: Mapped[int | None] = mapped_column(Integer)

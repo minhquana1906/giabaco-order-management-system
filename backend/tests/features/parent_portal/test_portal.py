@@ -153,6 +153,11 @@ async def test_put_order_creates_submits_and_replaces_one_order(
             "size_label": "2",
             "colour": "ghi",
             "qty": 2,
+            "line_id": order["item_lines"][0]["line_id"],
+            "is_tailor": False,
+            "measurements": {},
+            "tailor_measurements": [],
+            "note": None,
         }
     ]
     kit_line = order["kit_lines"][0]
@@ -369,3 +374,107 @@ async def test_resubmit_refreshes_the_order_snapshot_from_the_student(
         await session.scalars(select(AuditLog).where(AuditLog.action == "order.update"))
     ).all()
     assert len(updates) == 1 and updates[0].after["gender"] == "FEMALE"
+
+
+async def test_parent_tailor_order_preserves_snapshot(
+    client: AsyncClient,
+    student_payload: Payload,
+    school_class: dict[str, Any],
+    products: dict[str, Any],
+    open_campaign: OpenCampaign,
+    session: AsyncSession,
+) -> None:
+    kind = await client.post("/api/measurement-types", json={"label": "Vòng eo"})
+    assert kind.status_code == 201, kind.text
+    measurement_key = kind.json()["key"]
+    definition = {
+        "key": measurement_key,
+        "label": "Vòng eo",
+        "instruction": "Đo quanh eo",
+        "required": True,
+    }
+    product_id = str(products["blazer"].id)
+    product = (await client.get(f"/api/products/{product_id}")).json()
+    product_body = {
+        key: product[key]
+        for key in ("name", "description", "sizes", "size_guide", "colours", "gender_target", "active")
+    }
+    product_body["tailor_measurements"] = [definition]
+    updated = await client.patch(f"/api/products/{product_id}", json=product_body)
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["tailor_measurements"] == [definition]
+    campaign = await open_campaign(school_class["school_id"])
+    student = await make_student(client, student_payload)
+    base = f"/api/public/students/{student['portal_token']}"
+    campaign_data = (await client.get(f"/api/campaigns/{campaign.id}")).json()
+    assert all("tailor_enabled" not in item for item in campaign_data["items"])
+    assert all(not item.tailor_enabled for item in campaign.items)
+    ordering = (await client.get(f"{base}/ordering")).json()
+    assert next(i for i in ordering["items"] if i["product_id"] == product_id)[
+        "tailor_measurements"
+    ] == [definition]
+    body = lines(
+        products,
+        campaign,
+        kit_lines=[],
+        item_lines=[
+            {
+                "product_id": product_id,
+                "qty": 3,
+                "is_tailor": True,
+                "measurements": {measurement_key: 65},
+                "note": "Thoải mái",
+            }
+        ],
+    )
+    assert any(
+        option["tailor_measurements"] == [definition]
+        for kit in ordering["kits"]
+        for slot in kit["slots"]
+        for option in slot["options"]
+        if option["product_id"] == product_id
+    )
+    body["kit_lines"] = [
+        {
+            "kit_id": str(campaign.kits[0].id),
+            "qty": 1,
+            "size_label": "2",
+            "slots": [{
+                "slot_id": str(campaign.kits[0].slots[0].id),
+                "product_id": product_id,
+                "is_tailor": True,
+                "measurements": {measurement_key: 66},
+            }],
+        }
+    ]
+    body["item_lines"][0]["measurements"] = {}
+    assert (await client.put(f"{base}/order", json=body)).status_code == 422
+    body["item_lines"][0]["measurements"] = {measurement_key: 65}
+    response = await client.put(f"{base}/order", json=body)
+    assert response.status_code == 200, response.text
+    saved = response.json()["order"]["item_lines"][0]
+    assert saved["qty"] == 3 and saved["tailor_measurements"] == [{**definition, "value": 65.0}]
+    saved_slot = next(
+        slot for slot in response.json()["order"]["kit_lines"][0]["slots"]
+        if slot["product_id"] == product_id
+    )
+    assert saved_slot["tailor_measurements"] == [{**definition, "value": 66.0}]
+    blazer_item = next(i for i in campaign.items if str(i.product_id) == product_id)
+    await session.refresh(blazer_item)
+    await session.refresh(products["blazer"])
+    blazer_item.tailor_enabled = False
+    products["blazer"].tailor_measurements = []
+    await session.commit()
+    body["item_lines"][0]["line_id"] = saved["line_id"]
+    body["kit_lines"][0]["slots"][0]["line_id"] = saved_slot["line_id"]
+    response = await client.put(f"{base}/order", json=body)
+    assert response.status_code == 200, response.text
+    assert (
+        response.json()["order"]["item_lines"][0]["tailor_measurements"]
+        == saved["tailor_measurements"]
+    )
+    preserved_slot = next(
+        slot for slot in response.json()["order"]["kit_lines"][0]["slots"]
+        if slot["product_id"] == product_id
+    )
+    assert preserved_slot["tailor_measurements"] == saved_slot["tailor_measurements"]

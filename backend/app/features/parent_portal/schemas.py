@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -64,6 +64,7 @@ class OrderingOption(BaseModel):
     colours: list[Colour]
     image: Img | None
     suggested: bool
+    tailor_measurements: list[dict[str, Any]]
 
 
 class OrderingSlot(BaseModel):
@@ -89,6 +90,7 @@ class OrderingItem(BaseModel):
     sizes: list[str]
     colours: list[Colour]
     image: Img | None
+    tailor_measurements: list[dict[str, Any]]
 
 
 class ViewSlotPick(BaseModel):
@@ -96,6 +98,11 @@ class ViewSlotPick(BaseModel):
     product_id: uuid.UUID
     size_label: str
     colour: str
+    line_id: uuid.UUID
+    is_tailor: bool
+    measurements: dict[str, float]
+    tailor_measurements: list[dict[str, Any]]
+    note: str | None
 
 
 class ViewKitLine(BaseModel):
@@ -110,6 +117,11 @@ class ViewItemLine(BaseModel):
     size_label: str
     colour: str
     qty: int
+    line_id: uuid.UUID
+    is_tailor: bool
+    measurements: dict[str, float]
+    tailor_measurements: list[dict[str, Any]]
+    note: str | None
 
 
 class OrderView(BaseModel):

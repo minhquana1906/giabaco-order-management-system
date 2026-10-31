@@ -16,7 +16,7 @@ from app.core.errors import ApiError
 from app.core.names import name_key
 from app.features.campaigns.models import OPEN, Campaign, school_products
 from app.features.catalog.models import Product, School, SchoolClass
-from app.features.orders.models import SUBMITTED, Order
+from app.features.orders.models import SUBMITTED, Order, OrderLine
 from app.features.students.models import DataSource, FittingTrial, Student
 from app.features.surveys.models import SurveyResponse
 
@@ -39,7 +39,7 @@ STUDENT_HEADERS = [
     "Họ tên phụ huynh",
     "SĐT phụ huynh",
     "Email phụ huynh",
-    "data_source",
+    "Nguồn dữ liệu",
 ]
 TRIAL_HEADERS = [
     "Giới tính",
@@ -188,7 +188,9 @@ async def student_datasets(
     if school_id is not None:
         schools = [s for s in schools if s.id == school_id]
         if not schools:
-            raise ApiError(404, "not_found", "Không tìm thấy trường")
+            raise ApiError(
+                404, "not_found", "Trường này không còn trong hệ thống. Chọn trường khác."
+            )
     students = list(
         await session.scalars(
             select(Student).where(Student.deleted_at.is_(None)).order_by(Student.created_at)
@@ -384,6 +386,48 @@ async def campaign_orders_dataset(
     return headers, rows
 
 
+async def campaign_tailor_dataset(
+    session: AsyncSession, campaign_id: uuid.UUID, submitted_until: date | None = None
+) -> Dataset:
+    """Export each tailored product with its saved body measurements."""
+    orders = pivot.submitted_orders(campaign_id, submitted_until).with_only_columns(Order.id)
+    result = await session.execute(
+        select(Order, OrderLine, Product.name)
+        .join(OrderLine, OrderLine.order_id == Order.id)
+        .join(Product, Product.id == OrderLine.product_id)
+        .where(Order.id.in_(orders), OrderLine.is_tailor.is_(True))
+        .order_by(Order.code, OrderLine.created_at, OrderLine.id)
+    )
+    headers = [
+        "Mã đơn",
+        "Người nhận",
+        "Lớp",
+        "Sản phẩm",
+        "Màu",
+        "Số lượng",
+        "Số đo (cm)",
+        "Ghi chú",
+    ]
+    rows = [
+        [
+            order.code,
+            order.recipient_name,
+            order.class_label,
+            name,
+            line.colour,
+            line.qty,
+            "; ".join(
+                f"{item['label']}: {item['value']}"
+                for item in line.tailor_measurements
+                if item.get("value") is not None
+            ),
+            line.note,
+        ]
+        for order, line, name in result
+    ]
+    return headers, rows
+
+
 async def campaign_pivot_dataset(
     session: AsyncSession, campaign_id: uuid.UUID, submitted_until: date | None = None
 ) -> Dataset:
@@ -395,12 +439,18 @@ async def campaign_pivot_dataset(
             session, campaign_id, "qty", group, submitted_until=submitted_until
         )
         for block in result.blocks:
+            if rows:
+                rows.append([])
             rows += [
                 [label, block.name, r.size_label, r.male, r.female, r.unknown, r.total]
                 for r in block.rows
             ]
             t = block.totals
             rows.append([label, block.name, "Tổng", t.male, t.female, t.unknown, t.total])
+    if not any(row[5] for row in rows if row):
+        return [header for header in PIVOT_HEADERS if header != "Chưa rõ"], [
+            row[:5] + row[6:] if row else row for row in rows
+        ]
     return PIVOT_HEADERS, rows
 
 
@@ -424,13 +474,15 @@ def to_csv(headers: Sequence[str], rows: Sequence[Row]) -> bytes:
     return buffer.getvalue().encode("utf-8-sig")
 
 
-def to_xlsx(sheets: dict[str, Dataset]) -> bytes:
+def to_xlsx(sheets: dict[str, Dataset], *, titles: dict[str, str] | None = None) -> bytes:
     """Encode datasets as one workbook, one sheet each."""
     workbook = Workbook()
     if sheets:
         workbook.remove(workbook.active)
     for title, (headers, rows) in sheets.items():
         sheet = workbook.create_sheet(title)
+        if titles and title in titles:
+            sheet.append(_safe([titles[title]]))
         sheet.append(_safe(headers))
         for row in rows:
             sheet.append(_safe(row))

@@ -10,6 +10,8 @@ import type {
   OrderLines,
   PublicStudent,
   PublicTrial,
+  TailorLine,
+  TailorMeasurement,
 } from './api'
 
 export const MAX_QTY = 10
@@ -52,7 +54,7 @@ export function suggestionFor(
   return chart && product.sizes.includes(chart) ? { size: chart, source: 'chart' } : null
 }
 
-export interface SlotDraft {
+export interface SlotDraft extends TailorLine {
   productId: string | null
   size: string | null
   colour: string | null
@@ -64,7 +66,7 @@ export interface KitDraft {
   slots: Record<string, SlotDraft>
 }
 
-export interface ItemDraft {
+export interface ItemDraft extends TailorLine {
   qty: number
   size: string | null
   colour: string | null
@@ -75,6 +77,32 @@ export interface Draft {
   items: Record<string, ItemDraft>
 }
 
+
+const tailorFields = (line: TailorLine | undefined): TailorLine => ({
+  line_id: line?.line_id ?? null,
+  is_tailor: line?.is_tailor ?? false,
+  measurements: line?.measurements ?? {},
+  tailor_measurements: line?.tailor_measurements,
+  note: line?.note ?? null,
+})
+
+export const tailorConfig = (draft: TailorLine, config: TailorMeasurement[]) =>
+  draft.line_id && draft.is_tailor && draft.tailor_measurements?.length ? draft.tailor_measurements : config
+
+const tailorInvalid = (draft: TailorLine, config: TailorMeasurement[]) => {
+  const fields = tailorConfig(draft, config)
+  return fields.length === 0 || fields.some((field) => {
+    const value = draft.measurements?.[field.key]
+    return (field.required && value == null) || (value != null && (!Number.isFinite(value) || value <= 0 || value > 500))
+  })
+}
+
+const tailorPayload = (draft: TailorLine) => ({
+  line_id: draft.line_id ?? null,
+  is_tailor: draft.is_tailor ?? false,
+  measurements: draft.is_tailor ? (draft.measurements ?? {}) : {},
+  note: draft.note?.trim() || null,
+})
 export const needsColourChoice = (colours: Colour[]) => colours.length > 1
 
 const autoColour = (colours: Colour[]) => (colours.length === 1 ? colours[0]!.code : null)
@@ -113,6 +141,7 @@ export function initialDraft(ordering: Ordering, student: PublicStudent): Draft 
       const savedSlot = line?.slots.find((s) => s.slot_id === slot.id)
       const option = slot.options.find((o) => o.product_id === savedSlot?.product_id) ?? defaultOption(slot.options)
       slots[slot.id] = {
+        ...tailorFields(savedSlot),
         productId: option?.product_id ?? null,
         size: savedSlot && savedSlot.size_label !== line?.size_label ? savedSlot.size_label : null,
         colour: savedSlot?.colour ?? (option ? autoColour(option.colours) : null),
@@ -128,6 +157,7 @@ export function initialDraft(ordering: Ordering, student: PublicStudent): Draft 
   for (const item of ordering.items) {
     const line = saved?.item_lines.find((l) => l.product_id === item.product_id)
     items[item.product_id] = {
+      ...tailorFields(line),
       qty: line?.qty ?? 0,
       size: line?.size_label ?? suggestedFor(item, student),
       colour: line?.colour ?? autoColour(item.colours),
@@ -140,21 +170,21 @@ export function buildPayload(ordering: Pick<Ordering, 'kits' | 'items'>, draft: 
   const kit_lines: KitLine[] = []
   for (const kit of ordering.kits) {
     const d = draft.kits[kit.id]
-    if (!d || d.qty <= 0 || !d.size) continue
+    if (!d || d.qty <= 0) continue
     const slots = kit.slots.flatMap((slot) => {
       const sd = d.slots[slot.id]
       const size = effectiveSlotSize(d, sd)
-      return sd?.productId && size
-        ? [{ slot_id: slot.id, product_id: sd.productId, size_label: size, colour: sd.colour }]
+      return sd?.productId && (size || sd.is_tailor)
+        ? [{ slot_id: slot.id, product_id: sd.productId, size_label: size ?? '', colour: sd.colour, ...tailorPayload(sd), tailor_measurements: tailorConfig(sd, selectedOption(slot, sd)?.tailor_measurements ?? []) }]
         : []
     })
-    kit_lines.push({ kit_id: kit.id, qty: d.qty, size_label: d.size, slots })
+    kit_lines.push({ kit_id: kit.id, qty: d.qty, size_label: d.size ?? '', slots })
   }
   const item_lines: ItemLine[] = []
   for (const item of ordering.items) {
     const d = draft.items[item.product_id]
-    if (!d || d.qty <= 0 || !d.size) continue
-    item_lines.push({ product_id: item.product_id, size_label: d.size, colour: d.colour, qty: d.qty })
+    if (!d || d.qty <= 0 || (!d.size && !d.is_tailor)) continue
+    item_lines.push({ product_id: item.product_id, size_label: d.size ?? '', colour: d.colour, qty: d.qty, ...tailorPayload(d), tailor_measurements: tailorConfig(d, item.tailor_measurements ?? []) })
   }
   return { kit_lines, item_lines }
 }
@@ -166,20 +196,20 @@ export function draftProblems(ordering: Pick<Ordering, 'kits' | 'items'>, draft:
     const d = draft.kits[kit.id]
     if (!d || d.qty <= 0) continue
     any = true
-    if (!d.size) problems.push(`kit:${kit.id}`)
+    if (!d.size && kit.slots.some((slot) => !d.slots[slot.id]?.is_tailor && !d.slots[slot.id]?.size)) problems.push(`kit:${kit.id}`)
     for (const slot of kit.slots) {
       const sd = d.slots[slot.id]
       const option = selectedOption(slot, sd)
       const size = effectiveSlotSize(d, sd)
-      if (!option || !size || !option.sizes.includes(size)) problems.push(`slot:${slot.id}`)
-      else if (needsColourChoice(option.colours) && !sd?.colour) problems.push(`slot-colour:${slot.id}`)
+      if (!option || !sd || (sd.is_tailor ? tailorInvalid(sd, option.tailor_measurements ?? []) : !size || !option.sizes.includes(size))) problems.push(`slot:${slot.id}`)
+      else if (needsColourChoice(option.colours) && !sd.colour) problems.push(`slot-colour:${slot.id}`)
     }
   }
   for (const item of ordering.items) {
     const d = draft.items[item.product_id]
     if (!d || d.qty <= 0) continue
     any = true
-    if (!d.size || !item.sizes.includes(d.size)) problems.push(`item:${item.product_id}`)
+    if (d.is_tailor ? tailorInvalid(d, item.tailor_measurements ?? []) : !d.size || !item.sizes.includes(d.size)) problems.push(`item:${item.product_id}`)
     else if (needsColourChoice(item.colours) && !d.colour) problems.push(`item-colour:${item.product_id}`)
   }
   if (!any) problems.push('empty')
@@ -212,7 +242,8 @@ export interface ReviewRow {
   colour: Colour | null
   unitPrice: number | null
   amount: number | null
-  parts: { label: string; name: string; size: string; colour: Colour | null }[]
+  tailor?: TailorLine
+  parts: { label: string; name: string; size: string; colour: Colour | null; tailor: TailorLine }[]
 }
 
 export function reviewRows(ordering: Pick<Ordering, 'kits' | 'items'>, lines: OrderLines): ReviewRow[] {
@@ -224,7 +255,7 @@ export function reviewRows(ordering: Pick<Ordering, 'kits' | 'items'>, lines: Or
       const slot = kit.slots.find((s) => s.id === sl.slot_id)
       const option = slot?.options.find((o) => o.product_id === sl.product_id)
       return slot && option
-        ? [{ label: slot.label, name: option.name, size: sl.size_label, colour: colourOf(option.colours, sl.colour) }]
+        ? [{ label: slot.label, name: option.name, size: sl.is_tailor ? 'May đo' : sl.size_label, colour: colourOf(option.colours, sl.colour), tailor: sl }]
         : []
     })
     rows.push({
@@ -247,8 +278,9 @@ export function reviewRows(ordering: Pick<Ordering, 'kits' | 'items'>, lines: Or
       name: item.name,
       image: item.image,
       qty: line.qty,
-      size: line.size_label,
+      size: line.is_tailor ? 'May đo' : line.size_label,
       colour: colourOf(item.colours, line.colour),
+      tailor: line,
       unitPrice: item.price,
       amount: item.price == null ? null : item.price * line.qty,
       parts: [],
