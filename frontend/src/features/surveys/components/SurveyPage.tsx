@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { focusFirstInvalid } from '@/lib/formFocus'
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import { cn } from '@/lib/utils'
 import { NativeSelect } from '@/components/NativeSelect'
 import { surveyApi } from '../api'
@@ -28,6 +29,7 @@ import {
   saveDraft,
   surveyErrorsFromApi,
   toSurveyBody,
+  unmappedApiFields,
   validateSurvey,
   type SurveyErrors,
   type SurveyValues,
@@ -112,6 +114,12 @@ export function SurveyPage() {
   const submit = useMutation({
     mutationFn: surveyApi.submit,
     onSuccess: () => saveDraft(null),
+    onError: (error) => {
+      const status = error instanceof ApiError ? error.status : 0
+      const unmapped = status === 422 ? unmappedApiFields((error as ApiError).fields) : []
+      if (unmapped.length) console.warn('survey_unmapped_fields', { fields: unmapped })
+      else console.warn('survey_submit_failed', { status })
+    },
   })
 
   useEffect(() => {
@@ -145,10 +153,13 @@ export function SurveyPage() {
   const apiError = submit.error instanceof ApiError ? submit.error : null
   const errors: SurveyErrors = { ...surveyErrorsFromApi(apiError?.status === 422 ? apiError.fields : undefined), ...clientErrors }
   const warnings = measurementWarnings(values)
-  const formError =
-    submit.error && !(apiError?.status === 422 && apiError.fields)
-      ? (apiError?.message ?? 'Chưa gửi được phiếu. Vui lòng thử lại.')
-      : null
+  const formError = !submit.error
+    ? null
+    : apiError?.status === 422 && apiError.fields
+      ? unmappedApiFields(apiError.fields).length
+        ? 'Có mục chưa hợp lệ. Vui lòng kiểm tra lại các phần được đánh dấu rồi gửi lại.'
+        : null
+      : requestErrorMessage(submit.error, 'Chưa gửi được phiếu. Vui lòng thử lại sau ít phút.')
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -200,7 +211,7 @@ export function SurveyPage() {
               />
             )}
           </Field>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid items-start gap-5 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
             <Field id="province" label="Tỉnh/Thành phố" error={errors.province}>
               {(control) => (
                 <NativeSelect
@@ -265,7 +276,7 @@ export function SurveyPage() {
               )}
             </Field>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid items-start gap-5 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
             <DobSelects
               value={values.dob}
               error={errors.dob}
@@ -325,15 +336,15 @@ export function SurveyPage() {
             onToggle={(v) => set('measure_method', v)}
             error={errors.measure_method}
           />
-          <div className="grid grid-cols-2 items-start gap-x-4 gap-y-5 sm:grid-cols-3">
-            <Field id="measured_on" label="Ngày đo" error={errors.measured_on} className="col-span-2 sm:col-span-1">
+          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] items-start gap-x-4 gap-y-5 sm:grid-cols-[repeat(3,minmax(0,1fr))]">
+            <Field id="measured_on" label="Ngày đo" error={errors.measured_on} className="col-span-2 min-w-0 sm:col-span-1">
               {(control) => (
                 <Input
                   {...control}
                   type="date"
                   min={isoDaysBefore(today, MAX_MEASUREMENT_AGE_DAYS)}
                   max={today}
-                  className={PARENT_CONTROL}
+                  className={`${PARENT_CONTROL} max-w-full`}
                   value={values.measured_on}
                   onChange={(e) => set('measured_on', e.target.value)}
                 />
@@ -350,14 +361,14 @@ export function SurveyPage() {
             <p id="girths-title" className="text-base font-semibold text-navy">
               Ba vòng đo <span className="font-normal text-muted-foreground">(không bắt buộc)</span>
             </p>
-            <div className="grid grid-cols-3 items-start gap-x-3 gap-y-5 sm:gap-x-4">
+            <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] items-start gap-x-3 gap-y-5 sm:grid-cols-[repeat(3,minmax(0,1fr))] sm:gap-x-4">
               {measure('chest', 'Vòng ngực', 'cm')}
               {measure('waist', 'Vòng eo', 'cm')}
               {measure('hip', 'Vòng mông', 'cm')}
             </div>
           </div>
           {warnings.length ? (
-            <div role="status" className="rounded-md border border-brass/60 bg-brass/10 px-4 py-3 text-[15px]">
+            <div role="status" className="rounded-md border border-warning bg-warning-soft px-4 py-3 text-[15px] text-warning-ink">
               {warnings.map((w) => (
                 <p key={w}>{w}</p>
               ))}
@@ -373,6 +384,7 @@ export function SurveyPage() {
             options={BODY_TRAITS}
             selected={values.body_traits}
             onToggle={(v) => set('body_traits', toggle(values.body_traits, v))}
+            error={errors.body_traits}
           />
           <Choice
             name="fit_preference"
@@ -381,6 +393,7 @@ export function SurveyPage() {
             options={FIT_PREFERENCES}
             selected={values.fit_preference ? [values.fit_preference] : []}
             onToggle={(v) => set('fit_preference', v)}
+            error={errors.fit_preference}
           />
         </Panel>
 
@@ -392,6 +405,7 @@ export function SurveyPage() {
             options={PAST_ISSUES}
             selected={values.past_issues}
             onToggle={(v) => set('past_issues', toggle(values.past_issues, v))}
+            error={errors.past_issues}
           />
         </Panel>
 

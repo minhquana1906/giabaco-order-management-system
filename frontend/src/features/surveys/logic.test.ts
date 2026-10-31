@@ -5,6 +5,8 @@ import {
   measurementWarnings,
   saveDraft,
   toSurveyBody,
+  surveyErrorsFromApi,
+  unmappedApiFields,
   validateSurvey,
   type SurveyValues,
 } from './logic'
@@ -97,5 +99,14 @@ describe('draft', () => {
     expect(loadDraft(TODAY)).toEqual(emptySurvey(TODAY))
     saveDraft(null)
     expect(loadDraft(TODAY)).toEqual(emptySurvey(TODAY))
+  })
+})
+
+describe('unmappedApiFields', () => {
+  it('reports server fields that no input shows', () => {
+    expect(unmappedApiFields({ height_cm: 'x', 'body_traits.0': 'y', '': 'z', mystery: 'w' })).toEqual(['', 'mystery'])
+    expect(surveyErrorsFromApi({ 'past_issues.1': 'dup' })).toEqual({ past_issues: 'dup' })
+    expect(unmappedApiFields({ height_cm: 'x' })).toEqual([])
+    expect(unmappedApiFields(undefined)).toEqual([])
   })
 })

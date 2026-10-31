@@ -14,6 +14,7 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
+from pydantic_core import PydanticCustomError
 
 from app.core.phone import normalize_phone
 from app.core.text import reject_control_chars
@@ -41,7 +42,7 @@ MAX_MEASUREMENT_AGE_DAYS = 180
 def _name(value: str) -> str:
     value = unicodedata.normalize("NFC", " ".join(reject_control_chars(value).split()))
     if not value:
-        raise ValueError("Không được để trống")
+        raise PydanticCustomError("blank", "Vui lòng nhập thông tin này.")
     return value
 
 
@@ -84,7 +85,9 @@ class SurveyIn(BaseModel):
     def _dob(cls, v: date) -> date:
         today = _vn_today()
         if v >= today or v.year < today.year - 25:
-            raise ValueError("Ngày sinh không hợp lệ")
+            raise PydanticCustomError(
+                "invalid_dob", "Ngày sinh chưa hợp lệ. Vui lòng chọn lại ngày, tháng, năm sinh."
+            )
         return v
 
     @field_validator("measured_on")
@@ -92,19 +95,25 @@ class SurveyIn(BaseModel):
     def _measured_on(cls, v: date, info: ValidationInfo) -> date:
         today = _vn_today()
         if v > today:
-            raise ValueError("Ngày đo không được ở tương lai")
+            raise PydanticCustomError(
+                "future_measured_on", "Ngày đo không được sau hôm nay. Vui lòng chọn lại."
+            )
         if v < today - timedelta(days=MAX_MEASUREMENT_AGE_DAYS):
-            raise ValueError("Số đo đã cũ hơn 6 tháng, vui lòng đo lại")
+            raise PydanticCustomError(
+                "stale_measurement", "Số đo đã cũ hơn 6 tháng, vui lòng đo lại cho học sinh."
+            )
         dob = info.data.get("dob")
         if dob is not None and v <= dob:
-            raise ValueError("Ngày đo phải sau ngày sinh")
+            raise PydanticCustomError("measured_before_dob", "Ngày đo phải sau ngày sinh.")
         return v
 
     @field_validator("body_traits", "past_issues")
     @classmethod
     def _unique(cls, v: list[str]) -> list[str]:
         if len(set(v)) != len(v):
-            raise ValueError("Lựa chọn bị trùng")
+            raise PydanticCustomError(
+                "duplicate_choice", "Mỗi lựa chọn chỉ chọn một lần. Vui lòng bỏ mục bị trùng."
+            )
         return v
 
 

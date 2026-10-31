@@ -31,13 +31,13 @@ export const PAST_ISSUES: { value: PastIssue; label: string }[] = [
   { value: 'ITCHY_FABRIC', label: 'Vải cứng, cọ cổ/nách gây ngứa' },
   { value: 'HOT_WRINKLE_PILLING', label: 'Vải bí, dễ nhăn, nhanh xù lông' },
   { value: 'CROTCH_FIT', label: 'Đũng quần quá dài hoặc quá ngắn' },
-  { value: 'NO_FITTING_SIZE', label: 'Bảng size may sẵn không có cỡ vừa cho con' },
+  { value: 'NO_FITTING_SIZE', label: 'Bảng cỡ may sẵn không có cỡ vừa cho con' },
 ]
 
 export const SUPPLY_OPTIONS: { value: SupplyOption; label: string; hint: string }[] = [
   {
     value: 'STANDARD',
-    label: 'Nhận đồ theo bảng size chuẩn hóa của Giabaco',
+    label: 'Nhận đồ theo bảng cỡ chuẩn hóa của Giabaco',
     hint: 'Kèm bảo hành đổi trả miễn phí tận tay.',
   },
   {
@@ -125,14 +125,20 @@ export function isoDaysBefore(today: string, days: number): string {
 
 const PHONE_RE = /^(?:\+?84|0)\d{9}$/
 
-function rangeError(text: string, label: string, range: { min: number; max: number }, required: boolean) {
+function rangeError(
+  text: string,
+  label: string,
+  range: { min: number; max: number },
+  unit: string,
+  required: boolean,
+) {
   if (!text.trim()) return required ? `Vui lòng nhập ${label}.` : undefined
   const value = parseMeasure(text)
   if (value === null) return `${label[0]!.toUpperCase()}${label.slice(1)} chỉ gồm số, ví dụ ${range.min + 20}.`
   // Parents often type metres (1.35) instead of centimetres.
   if (value < 3 && range.min > 3) return `Nhập theo cm, ví dụ 1m35 thì nhập 135.`
   if (value < range.min || value > range.max) {
-    return `${label[0]!.toUpperCase()}${label.slice(1)} cần từ ${range.min} đến ${range.max}.`
+    return `${label[0]!.toUpperCase()}${label.slice(1)} phải từ ${range.min} đến ${range.max} ${unit}.`
   }
   return undefined
 }
@@ -148,7 +154,7 @@ export function validateSurvey(values: SurveyValues, today: string): SurveyError
   set('class_name', values.class_name.trim() ? undefined : 'Vui lòng nhập lớp của học sinh.')
   set('child_full_name', values.child_full_name.trim() ? undefined : 'Vui lòng nhập họ và tên học sinh.')
   const dob = dobToIso(values.dob)
-  set('dob', dob ? undefined : 'Chọn ngày, tháng, năm sinh hợp lệ.')
+  set('dob', dob ? undefined : 'Vui lòng chọn ngày, tháng, năm sinh hợp lệ.')
   set('gender', values.gender ? undefined : 'Vui lòng chọn giới tính.')
   set(
     'parent_phone',
@@ -159,11 +165,11 @@ export function validateSurvey(values: SurveyValues, today: string): SurveyError
     set('measured_on', 'Số đo đã cũ hơn 6 tháng, vui lòng đo lại cho học sinh.')
   } else if (dob && values.measured_on <= dob) set('measured_on', 'Ngày đo phải sau ngày sinh.')
   set('measure_method', values.measure_method ? undefined : 'Vui lòng cho biết cách lấy số đo.')
-  set('height', rangeError(values.height, 'chiều cao', HEIGHT_RANGE, true))
-  set('weight', rangeError(values.weight, 'cân nặng', WEIGHT_RANGE, true))
-  set('chest', rangeError(values.chest, 'vòng ngực', CHEST_RANGE, false))
-  set('waist', rangeError(values.waist, 'vòng eo', WAIST_RANGE, false))
-  set('hip', rangeError(values.hip, 'vòng mông', HIP_RANGE, false))
+  set('height', rangeError(values.height, 'chiều cao', HEIGHT_RANGE, 'cm', true))
+  set('weight', rangeError(values.weight, 'cân nặng', WEIGHT_RANGE, 'kg', true))
+  set('chest', rangeError(values.chest, 'vòng ngực', CHEST_RANGE, 'cm', false))
+  set('waist', rangeError(values.waist, 'vòng eo', WAIST_RANGE, 'cm', false))
+  set('hip', rangeError(values.hip, 'vòng mông', HIP_RANGE, 'cm', false))
   set('supply_option', values.supply_option ? undefined : 'Vui lòng chọn hình thức nhận đồ.')
   return errors
 }
@@ -228,14 +234,25 @@ const API_FIELDS: Record<string, keyof SurveyValues> = {
   chest_cm: 'chest',
   waist_cm: 'waist',
   hip_cm: 'hip',
+  body_traits: 'body_traits',
+  fit_preference: 'fit_preference',
+  past_issues: 'past_issues',
   supply_option: 'supply_option',
 }
+
+/** Server keys are pydantic paths: a bad list item arrives as `body_traits.0`. */
+const fieldOf = (key: string): keyof SurveyValues | undefined => API_FIELDS[key.replace(/\.\d+$/, '')]
 
 export function surveyErrorsFromApi(fields: Record<string, string> | undefined): SurveyErrors {
   const errors: SurveyErrors = {}
   for (const [key, message] of Object.entries(fields ?? {})) {
-    const field = API_FIELDS[key]
+    const field = fieldOf(key)
     if (field) errors[field] = message
   }
   return errors
+}
+
+/** Server field names that no visible input shows, so their errors would otherwise go unseen. */
+export function unmappedApiFields(fields: Record<string, string> | undefined): string[] {
+  return Object.keys(fields ?? {}).filter((key) => !fieldOf(key))
 }

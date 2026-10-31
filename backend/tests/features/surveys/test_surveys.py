@@ -85,6 +85,15 @@ async def test_rejects_invalid_input(
     assert field in r.json()["error"]["fields"]
 
 
+async def test_validation_messages_reach_the_parent_verbatim(anon_client: AsyncClient) -> None:
+    r = await anon_client.post(
+        URL, json=survey_body(school_name="  ", body_traits=["NORMAL", "NORMAL"])
+    )
+    fields = r.json()["error"]["fields"]
+    assert fields["school_name"] == "Vui lòng nhập thông tin này."
+    assert fields["body_traits"] == "Mỗi lựa chọn chỉ chọn một lần. Vui lòng bỏ mục bị trùng."
+
+
 async def test_responses_are_immutable_but_deletable(
     anon_client: AsyncClient, session: AsyncSession
 ) -> None:
