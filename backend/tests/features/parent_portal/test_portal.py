@@ -397,7 +397,15 @@ async def test_parent_tailor_order_preserves_snapshot(
     product = (await client.get(f"/api/products/{product_id}")).json()
     product_body = {
         key: product[key]
-        for key in ("name", "description", "sizes", "size_guide", "colours", "gender_target", "active")
+        for key in (
+            "name",
+            "description",
+            "sizes",
+            "size_guide",
+            "colours",
+            "gender_target",
+            "active",
+        )
     }
     product_body["tailor_measurements"] = [definition]
     updated = await client.patch(f"/api/products/{product_id}", json=product_body)
@@ -439,12 +447,14 @@ async def test_parent_tailor_order_preserves_snapshot(
             "kit_id": str(campaign.kits[0].id),
             "qty": 1,
             "size_label": "2",
-            "slots": [{
-                "slot_id": str(campaign.kits[0].slots[0].id),
-                "product_id": product_id,
-                "is_tailor": True,
-                "measurements": {measurement_key: 66},
-            }],
+            "slots": [
+                {
+                    "slot_id": str(campaign.kits[0].slots[0].id),
+                    "product_id": product_id,
+                    "is_tailor": True,
+                    "measurements": {measurement_key: 66},
+                }
+            ],
         }
     ]
     body["item_lines"][0]["measurements"] = {}
@@ -455,7 +465,8 @@ async def test_parent_tailor_order_preserves_snapshot(
     saved = response.json()["order"]["item_lines"][0]
     assert saved["qty"] == 3 and saved["tailor_measurements"] == [{**definition, "value": 65.0}]
     saved_slot = next(
-        slot for slot in response.json()["order"]["kit_lines"][0]["slots"]
+        slot
+        for slot in response.json()["order"]["kit_lines"][0]["slots"]
         if slot["product_id"] == product_id
     )
     assert saved_slot["tailor_measurements"] == [{**definition, "value": 66.0}]
@@ -474,7 +485,8 @@ async def test_parent_tailor_order_preserves_snapshot(
         == saved["tailor_measurements"]
     )
     preserved_slot = next(
-        slot for slot in response.json()["order"]["kit_lines"][0]["slots"]
+        slot
+        for slot in response.json()["order"]["kit_lines"][0]["slots"]
         if slot["product_id"] == product_id
     )
     assert preserved_slot["tailor_measurements"] == saved_slot["tailor_measurements"]
