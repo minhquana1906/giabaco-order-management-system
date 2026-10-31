@@ -19,7 +19,7 @@ export function QrCard({ portalUrl, fileName, size = 240, showOpen = false }: Qr
       await navigator.clipboard.writeText(portalUrl)
       toast.success('Đã sao chép liên kết')
     } catch {
-      toast.error('Không sao chép được. Hãy chọn và sao chép thủ công.')
+      toast.error('Không tự sao chép được. Chọn liên kết rồi sao chép thủ công.')
     }
   }
 

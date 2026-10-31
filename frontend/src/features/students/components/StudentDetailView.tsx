@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useSchoolProducts } from '@/features/catalog/hooks'
 import { formatCm, formatDate, formatDateTime, formatKg } from '@/lib/format'
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import type { LinkedParent, StudentDetail } from '../api'
 import { useDeleteStudent, useStudent, useUnlinkParent } from '../hooks'
 import { DataSourceBadge } from './DataSourceBadge'
@@ -22,9 +23,9 @@ import { detailProducts } from './scope'
 
 function Info({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-[15px]">{children || '—'}</dd>
+      <dd className="break-words text-[15px]">{children || '—'}</dd>
     </div>
   )
 }
@@ -43,7 +44,7 @@ function DeleteDialog({ student, open, onOpenChange }: { student: StudentDetail;
         </DialogHeader>
         {remove.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {remove.error instanceof ApiError ? remove.error.message : 'Không xoá được, thử lại.'}
+            {requestErrorMessage(remove.error, remove.error instanceof ApiError ? remove.error.message : 'Chưa xóa được hồ sơ. Vui lòng thử lại sau ít phút.')}
           </p>
         ) : null}
         <DialogFooter>
@@ -101,7 +102,7 @@ function UnlinkDialog({
         </DialogHeader>
         {unlink.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {unlink.error instanceof ApiError ? unlink.error.message : 'Không gỡ được, thử lại.'}
+            {requestErrorMessage(unlink.error, unlink.error instanceof ApiError ? unlink.error.message : 'Chưa gỡ được liên kết. Vui lòng thử lại sau ít phút.')}
           </p>
         ) : null}
         <DialogFooter>
@@ -162,7 +163,7 @@ function Profile({ student }: { student: StudentDetail }) {
                 </p>
               </div>
               {trials.length === 0 ? (
-                <p className="text-muted-foreground">Chưa có lần thử</p>
+                <p className="text-muted-foreground">Chưa có lần thử nào cho học sinh này.</p>
               ) : (
                 <ul className="divide-y divide-hairline">
                   {trials.map((t) => (
@@ -190,7 +191,7 @@ function Profile({ student }: { student: StudentDetail }) {
         <Card className="gap-3 p-4">
           <h2 className="text-base font-semibold">Tài khoản phụ huynh liên kết</h2>
           {student.linked_parents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Chưa có tài khoản nào liên kết</p>
+            <p className="text-sm text-muted-foreground">Chưa có phụ huynh nào liên kết. Gửi mã QR để phụ huynh nhận hồ sơ.</p>
           ) : (
             <ul className="divide-y divide-hairline">
               {student.linked_parents.map((p) => (

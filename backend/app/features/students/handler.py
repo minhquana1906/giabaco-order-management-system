@@ -1,5 +1,6 @@
 """Student and fitting-trial use cases."""
 
+import logging
 import re
 import secrets
 import unicodedata
@@ -42,6 +43,8 @@ from app.features.students.schemas import (
 )
 from app.features.students.size_guide import suggest
 
+logger = logging.getLogger("app.students")
+
 
 def new_portal_token() -> str:
     """128-bit URL-safe token."""
@@ -49,7 +52,9 @@ def new_portal_token() -> str:
 
 
 def _not_found() -> ApiError:
-    return ApiError(404, "not_found", "Không tìm thấy học sinh")
+    return ApiError(
+        404, "not_found", "Học sinh này không tồn tại hoặc đã bị xóa. Quay lại danh sách."
+    )
 
 
 def _trial_snapshot(trial: FittingTrial, code: str) -> dict[str, Any]:
@@ -91,12 +96,8 @@ async def _check_class(session: AsyncSession, payload: StudentIn) -> None:
         )
     )
     if found is None:
-        raise ApiError(
-            422,
-            "validation_error",
-            "Lớp không thuộc trường đã chọn",
-            {"class_id": "Lớp không thuộc trường đã chọn"},
-        )
+        message = "Lớp này không thuộc trường đã chọn. Chọn lại lớp."
+        raise ApiError(422, "validation_error", message, {"class_id": message})
 
 
 async def _check_duplicate(
@@ -115,7 +116,7 @@ async def _check_duplicate(
         if include_declared
         else same_class_measured
     )
-    query = select(Student.class_id).where(
+    query = select(Student.id, Student.class_id).where(
         Student.school_id == payload.school_id,
         name_key(Student.full_name) == name_key(payload.full_name),
         Student.dob == payload.dob,
@@ -124,14 +125,19 @@ async def _check_duplicate(
     )
     if exclude_id is not None:
         query = query.where(Student.id != exclude_id)
-    clash_class_id = await session.scalar(query.limit(1))
-    if clash_class_id is not None:
+    clash_row = (await session.execute(query.limit(1))).first()
+    if clash_row is not None:
+        clash_student_id, clash_class_id = clash_row
         school_class = await session.get(SchoolClass, clash_class_id)
         class_name = school_class.name if school_class else ""
+        logger.warning(
+            "students.duplicate_rejected",
+            extra={"ctx": {"student_id": str(clash_student_id), "class_id": str(clash_class_id)}},
+        )
         raise ApiError(
             409,
             "duplicate_student",
-            f"Học sinh {payload.full_name} đã có trong lớp {class_name}",
+            f"Học sinh này đã có trong lớp {class_name}. Mở hồ sơ đó để chỉnh sửa.",
         )
 
 
@@ -154,12 +160,18 @@ def _validate_trials(
             raise ApiError(
                 409,
                 "duplicate_trial",
-                f"Cỡ {trial.size_label} của {product.name} đã được thử",
+                f"Cỡ {trial.size_label} của {product.name} đã có trong lần thử. "
+                "Xóa dòng trùng rồi lưu lại.",
             )
         seen.add(key)
         resolved.append((trial, product))
     if fields:
-        raise ApiError(422, "validation_error", "Lần thử không hợp lệ", fields)
+        raise ApiError(
+            422,
+            "validation_error",
+            "Có lần thử chưa đủ thông tin. Kiểm tra các dòng được đánh dấu.",
+            fields,
+        )
     return resolved
 
 
@@ -189,7 +201,13 @@ async def _commit(session: AsyncSession) -> None:
     except IntegrityError as exc:
         await session.rollback()
         if "uq_fitting_trials_active" in str(exc.orig):
-            raise ApiError(409, "duplicate_trial", "Cỡ này đã được thử") from None
+            logger.warning(
+                "students.duplicate_trial_race",
+                extra={"ctx": {"constraint": "uq_fitting_trials_active"}},
+            )
+            raise ApiError(
+                409, "duplicate_trial", "Cỡ này đã được thử cho học sinh. Chọn cỡ khác."
+            ) from None
         raise
 
 
@@ -258,6 +276,14 @@ async def create_student(session: AsyncSession, payload: StudentIn, actor: str) 
         )  # fmt: skip
     await _commit(session)
     bus.publish("students")
+    logger.info(
+        "students.created",
+        extra={"ctx": {"student_id": str(student.id), "adopted": adopted is not None}},
+    )
+    logger.info(
+        "students.trials_saved",
+        extra={"ctx": {"student_id": str(student.id), "count": len(trials)}},
+    )
     return student.id
 
 
@@ -281,10 +307,14 @@ async def update_student(
     existing = {t.id: t for t in await _active_trials(session, student.id)}
     for i, (trial_in, _) in enumerate(resolved):
         if trial_in.id is not None and trial_in.id not in existing:
+            logger.warning(
+                "students.trial_mismatch",
+                extra={"ctx": {"trial_id": str(trial_in.id), "student_id": str(student.id)}},
+            )
             raise ApiError(
                 422,
                 "validation_error",
-                "Lần thử không thuộc học sinh",
+                "Lần thử này không còn thuộc hồ sơ. Tải lại trang rồi thử lại.",
                 {f"trials.{i}.id": "Lần thử không tồn tại"},
             )
     before = student_snapshot(student)
@@ -334,6 +364,11 @@ async def update_student(
     )
     await _commit(session)
     bus.publish("students")
+    logger.info("students.updated", extra={"ctx": {"student_id": str(student.id)}})
+    logger.info(
+        "students.trials_saved",
+        extra={"ctx": {"student_id": str(student.id), "count": len(resolved)}},
+    )
 
 
 async def delete_student(session: AsyncSession, student_id: uuid.UUID, actor: str) -> None:
@@ -346,6 +381,7 @@ async def delete_student(session: AsyncSession, student_id: uuid.UUID, actor: st
     )
     await _commit(session)
     bus.publish("students")
+    logger.info("students.deleted", extra={"ctx": {"student_id": str(student.id)}})
 
 
 async def _derived_for(

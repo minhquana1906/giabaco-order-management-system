@@ -110,8 +110,8 @@ describe('StudentForm validation', () => {
     await user.type(screen.getByLabelText('Chiều cao (cm)'), '80')
     await user.type(screen.getByLabelText('Cân nặng (kg)'), '95')
     await user.tab()
-    expect(screen.getByText('Chiều cao từ 90 đến 190 cm')).toBeInTheDocument()
-    expect(screen.getByText('Cân nặng từ 10 đến 90 kg')).toBeInTheDocument()
+    expect(screen.getByText('Nhập chiều cao từ 90 đến 190 cm.')).toBeInTheDocument()
+    expect(screen.getByText('Nhập cân nặng từ 10 đến 90 kg.')).toBeInTheDocument()
   })
 
   it('blocks saving a hand-picked size without a fit and ignores untouched suggestions', async () => {
@@ -127,8 +127,8 @@ describe('StudentForm validation', () => {
     expect(sizeSelect(blazer)).toHaveValue('4')
     await user.selectOptions(sizeSelect(blazer), '5')
     await user.click(screen.getByRole('button', { name: 'Lưu học sinh' }))
-    expect(await screen.findAllByText('Chọn Chật / Vừa / Rộng cho cỡ 5')).toHaveLength(1)
-    expect(screen.queryByText('Chọn Chật / Vừa / Rộng cho cỡ 4')).not.toBeInTheDocument()
+    expect(await screen.findAllByText('Chọn Chật, Vừa hoặc Rộng cho cỡ 5.')).toHaveLength(1)
+    expect(screen.queryByText('Chọn Chật, Vừa hoặc Rộng cho cỡ 4.')).not.toBeInTheDocument()
     expect(posted).toHaveLength(0)
     expect(onSaved).not.toHaveBeenCalled()
   })

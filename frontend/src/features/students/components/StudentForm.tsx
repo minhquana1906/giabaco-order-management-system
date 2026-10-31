@@ -3,7 +3,6 @@ import { useRef, useState, type FormEvent } from 'react'
 import { DobSelects } from '@/components/DobSelects'
 import { FormSection } from '@/components/FormSection'
 import { GenderToggle } from '@/components/GenderToggle'
-import { UnitInput } from '@/components/UnitInput'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -141,7 +140,7 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
         <ContextStrip schoolId={ctx.schoolId} classId={ctx.classId} onChange={changeContext} errors={shown} />
 
         <FormSection title="Học sinh">
@@ -167,9 +166,10 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Chiều cao (cm)" htmlFor="height_cm" error={shown.height_cm}>
-              <UnitInput
+              <Input
                 id="height_cm"
-                unit="cm"
+                inputMode="decimal"
+                autoComplete="off"
                 className="h-11 md:h-10"
                 value={values.height}
                 aria-invalid={Boolean(shown.height_cm)}
@@ -178,9 +178,10 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
               />
             </Field>
             <Field label="Cân nặng (kg)" htmlFor="weight_kg" error={shown.weight_kg}>
-              <UnitInput
+              <Input
                 id="weight_kg"
-                unit="kg"
+                inputMode="decimal"
+                autoComplete="off"
                 className="h-11 md:h-10"
                 value={values.weight}
                 aria-invalid={Boolean(shown.weight_kg)}
@@ -191,19 +192,19 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
           </div>
         </FormSection>
 
-        <section className="rounded-md border border-hairline bg-card">
+        <section className="rounded-lg border border-hairline bg-card px-4 py-1 sm:px-5">
           <button
             type="button"
             aria-expanded={parentOpen}
             aria-controls="parent-fields"
             onClick={() => setParentOpen((o) => !o)}
-            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md text-left text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Phụ huynh (không bắt buộc)
             {parentOpen ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
           </button>
           {parentOpen || shown.parent_phone || shown.parent_email || shown.parent_name ? (
-            <div id="parent-fields" className="flex flex-col gap-3 px-3 pb-3 sm:px-4 sm:pb-4">
+            <div id="parent-fields" className="flex flex-col gap-3 pb-4 pt-1">
               <Field label="Họ tên phụ huynh" htmlFor="parent_name" error={shown.parent_name}>
                 <Input id="parent_name" className="h-11 md:h-10" value={values.parentName} onChange={(e) => edit({ parentName: e.target.value }, 'parent_name')} />
               </Field>
@@ -218,13 +219,13 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
         </section>
       </div>
 
-      <div className="flex flex-col gap-4 lg:self-stretch">
+      <div className="flex min-w-0 flex-col gap-4 lg:self-stretch">
         {!ctx.schoolId ? (
           <p className="text-muted-foreground">Chọn trường để thấy sản phẩm thử.</p>
         ) : profile.isPending || allProducts.isPending ? (
           <p role="status" className="text-muted-foreground">Đang tải danh sách sản phẩm…</p>
         ) : profile.isError || allProducts.isError ? (
-          <p role="alert" className="text-destructive">Không tải được danh sách sản phẩm.</p>
+          <p role="alert" className="text-destructive">Chưa tải được danh sách sản phẩm. Bấm Thử lại hoặc quay lại sau ít phút.</p>
         ) : shownProducts.length === 0 ? (
           <EmptyProfile />
         ) : (
@@ -248,7 +249,7 @@ export function StudentForm({ initial, initialContext, onContextChange, onSaved,
         <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col gap-2 border-t border-hairline bg-background/95 px-4 py-3 backdrop-blur md:-mx-7 md:px-7 lg:static lg:mx-0 lg:mt-0 lg:items-end lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
           {submitted && errorCount > 0 ? (
-            <p role="status" className="text-sm text-destructive">Còn {errorCount} mục cần kiểm tra.</p>
+            <p role="status" className="text-sm text-destructive">Còn {errorCount} mục chưa hợp lệ. Sửa các ô được đánh dấu đỏ.</p>
           ) : null}
           <div className="flex gap-2">
             {onCancel ? (

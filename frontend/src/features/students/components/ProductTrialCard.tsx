@@ -23,9 +23,9 @@ export function ProductTrialCard({ product, rows, suggestion, errors, onAdd, onR
   const [noteOpen, setNoteOpen] = useState<Record<string, boolean>>({})
   const derived = derivedSize(rows, product)
   return (
-    <Card className="gap-3 p-4" role="group" aria-label={product.name}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="text-base font-semibold">{product.name}</h3>
+    <Card className="gap-3 p-4 sm:p-5" role="group" aria-label={product.name}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-hairline pb-3">
+        <h3 className="text-base font-semibold text-navy">{product.name}</h3>
         {suggestion.ready && product.has_size_guide ? (
           suggestion.size ? (
             <p className="flex items-center gap-2 text-sm">
@@ -35,7 +35,7 @@ export function ProductTrialCard({ product, rows, suggestion, errors, onAdd, onR
             <p className="text-sm text-muted-foreground">Chưa có gợi ý cho số đo này</p>
           )
         ) : product.has_size_guide ? (
-          <p className="text-sm text-muted-foreground">Nhập chiều cao và cân nặng để xem gợi ý cỡ</p>
+          <p className="text-sm text-muted-foreground">Nhập số đo để xem gợi ý</p>
         ) : null}
       </div>
 

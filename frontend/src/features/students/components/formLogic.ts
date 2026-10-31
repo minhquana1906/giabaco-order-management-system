@@ -92,22 +92,22 @@ export const trialErrorKey = (rowKey: string) => `trial:${rowKey}`
 
 export function validate(v: FormValues, ctx: { schoolId: string; classId: string }): Record<string, string> {
   const e: Record<string, string> = {}
-  if (!ctx.schoolId) e.school_id = 'Chọn trường'
-  if (!ctx.classId) e.class_id = 'Chọn lớp'
-  if (!v.fullName.trim()) e.full_name = 'Nhập họ tên học sinh'
-  if (!dobToIso(v)) e.dob = 'Chọn ngày, tháng, năm sinh hợp lệ'
-  if (!v.gender) e.gender = 'Chọn giới tính'
+  if (!ctx.schoolId) e.school_id = 'Chọn trường cho học sinh.'
+  if (!ctx.classId) e.class_id = 'Chọn lớp cho học sinh.'
+  if (!v.fullName.trim()) e.full_name = 'Nhập họ và tên học sinh.'
+  if (!dobToIso(v)) e.dob = 'Ngày sinh chưa hợp lệ, chọn lại ngày, tháng, năm sinh.'
+  if (!v.gender) e.gender = 'Chọn giới tính của học sinh.'
   if (parseMeasure(v.height, HEIGHT_RANGE) === null)
-    e.height_cm = `Chiều cao từ ${HEIGHT_RANGE.min} đến ${HEIGHT_RANGE.max} cm`
+    e.height_cm = `Nhập chiều cao từ ${HEIGHT_RANGE.min} đến ${HEIGHT_RANGE.max} cm.`
   if (parseMeasure(v.weight, WEIGHT_RANGE) === null)
-    e.weight_kg = `Cân nặng từ ${WEIGHT_RANGE.min} đến ${WEIGHT_RANGE.max} kg`
+    e.weight_kg = `Nhập cân nặng từ ${WEIGHT_RANGE.min} đến ${WEIGHT_RANGE.max} kg.`
   for (const rows of Object.values(v.trials)) {
     for (const r of rows) {
       if (!r.size && !r.fit) continue
       if (!r.manual && !r.fit && !r.note.trim()) continue
-      if (!r.size) e[trialErrorKey(r.key)] = 'Chọn cỡ đã thử'
-      else if (!r.fit) e[trialErrorKey(r.key)] = `Chọn Chật / Vừa / Rộng cho cỡ ${r.size}`
-      else if (r.note.length > NOTE_MAX) e[trialErrorKey(r.key)] = `Ghi chú tối đa ${NOTE_MAX} ký tự`
+      if (!r.size) e[trialErrorKey(r.key)] = 'Chọn cỡ cho dòng thử này hoặc xóa dòng.'
+      else if (!r.fit) e[trialErrorKey(r.key)] = `Chọn Chật, Vừa hoặc Rộng cho cỡ ${r.size}.`
+      else if (r.note.length > NOTE_MAX) e[trialErrorKey(r.key)] = `Ghi chú dài tối đa ${NOTE_MAX} ký tự. Rút gọn rồi lưu lại.`
     }
   }
   return e

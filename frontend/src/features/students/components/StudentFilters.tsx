@@ -57,7 +57,7 @@ export function StudentFilters({ search, schoolId, onChange, onClear }: StudentF
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <NativeSelect
           aria-label="Trường"
           value={schoolId ?? ALL_SCHOOLS}
@@ -108,7 +108,7 @@ export function StudentFilters({ search, schoolId, onChange, onClear }: StudentF
               type="button"
               aria-label={`Bỏ lọc ${c.label}`}
               onClick={() => onChange({ ...c.clear, ...reset })}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-piping bg-card px-3 text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-input bg-card px-3 text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:min-h-9"
             >
               {c.label}
               <X className="size-3.5" aria-hidden="true" />
@@ -116,7 +116,7 @@ export function StudentFilters({ search, schoolId, onChange, onClear }: StudentF
           ))}
           <Button
             variant="ghost"
-            className="h-9"
+            className="h-11 md:h-9"
             onClick={() => {
               clearTimeout(timer.current)
               setQ('')

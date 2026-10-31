@@ -11,6 +11,7 @@ import { useSchools } from '@/features/catalog/hooks'
 import { defaultSchool } from '@/features/catalog/schoolLogic'
 import { ExportMenu } from '@/features/exports/components/ExportMenu'
 import { formatNumber } from '@/lib/format'
+import { ApiError } from '@/lib/http'
 import { ALL_SCHOOLS, STUDENTS_PAGE_SIZE, type StudentListItem, type StudentListParams } from '../api'
 import { useStudents } from '../hooks'
 import { DataSourceBadge } from './DataSourceBadge'
@@ -25,7 +26,7 @@ interface StudentListProps {
 const genderText = (g: StudentListItem['gender']) => (g === 'MALE' ? 'Nam' : 'Nữ')
 
 function OrderStatus({ placed }: { placed: boolean }) {
-  return placed ? <Badge variant="secondary">Đã đặt</Badge> : <span className="text-muted-foreground">Chưa</span>
+  return placed ? <Badge variant="success">Đã đặt</Badge> : <span className="text-muted-foreground">Chưa</span>
 }
 
 export function StudentList({ search, onSearchChange, onClear }: StudentListProps) {
@@ -43,7 +44,18 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
 
   const body = () => {
     if (query.isPending) return <LoadingRows rows={8} />
-    if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+    if (query.isError)
+      return (
+        <ErrorState
+          error={query.error}
+          message={
+            query.error instanceof ApiError
+              ? undefined
+              : 'Chưa tải được danh sách học sinh. Bấm Thử lại hoặc quay lại sau ít phút.'
+          }
+          onRetry={() => void query.refetch()}
+        />
+      )
     const { items, total } = query.data
     if (items.length === 0) {
       return filtered ? (
@@ -138,7 +150,7 @@ export function StudentList({ search, onSearchChange, onClear }: StudentListProp
           ))}
         </ul>
 
-        <nav aria-label="Phân trang" className="flex items-center justify-between gap-3 pt-3">
+        <nav aria-label="Phân trang" className="flex flex-wrap items-center justify-between gap-3 pt-3">
           <p className="text-sm text-muted-foreground">
             {from}–{to} / {formatNumber(total)}
           </p>

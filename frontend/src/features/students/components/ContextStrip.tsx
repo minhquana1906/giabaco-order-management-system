@@ -13,9 +13,11 @@ import {
   useUpdateSchool,
 } from '@/features/catalog/hooks'
 import { ApiError } from '@/lib/http'
+import { requestErrorMessage } from '@/lib/requestError'
 import { gradeFromName, GRADES, withGrade } from './className'
 import { Field } from './Field'
 import { NativeSelect } from '@/components/NativeSelect'
+import { FormSection } from '@/components/FormSection'
 
 interface ContextStripProps {
   schoolId: string
@@ -24,12 +26,14 @@ interface ContextStripProps {
   errors: { school_id?: string; class_id?: string }
 }
 
+const SAVE_ERROR = 'Chưa lưu được thay đổi. Vui lòng thử lại sau ít phút.'
+
 function errorText(e: unknown) {
-  if (!(e instanceof ApiError)) return 'Không lưu được, thử lại.'
-  return Object.values(e.fields ?? {})[0] ?? e.message
+  const fallback = e instanceof ApiError ? (Object.values(e.fields ?? {})[0] ?? e.message) : SAVE_ERROR
+  return requestErrorMessage(e, fallback)
 }
 
-function SchoolPopover({ school, onSaved }: { school?: School; onSaved?: (id: string) => void }) {
+export function SchoolPopover({ school, onSaved }: { school?: School; onSaved?: (id: string) => void }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -69,7 +73,7 @@ function SchoolPopover({ school, onSaved }: { school?: School; onSaved?: (id: st
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80">
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Tên trường" htmlFor="school-name">
             <Input id="school-name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -93,10 +97,10 @@ interface ClassPopoverProps {
   schoolId: string
   grade: string
   cls?: SchoolClass
-  onSaved: (c: { id: string; grade: number }) => void
+  onSaved?: (c: { id: string; grade: number }) => void
 }
 
-function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
+export function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
   const [open, setOpen] = useState(false)
   const [g, setG] = useState(grade)
   const [name, setName] = useState('')
@@ -109,7 +113,7 @@ function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
     const body = { grade: Number(g), name: name.trim() }
     const saved = await (cls ? update.mutateAsync(body) : create.mutateAsync(body)).catch(() => null)
     if (!saved) return
-    onSaved(saved)
+    onSaved?.(saved)
     setOpen(false)
   }
   return (
@@ -126,7 +130,7 @@ function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
     >
       <PopoverTrigger asChild>
         {cls ? (
-          <Button type="button" variant="outline" size="icon" className="size-11 shrink-0 md:size-10" aria-label="Sửa lớp">
+          <Button type="button" variant="outline" size="icon" className="size-11 shrink-0 md:size-10" aria-label={`Sửa lớp ${cls.name}`}>
             <Pencil />
           </Button>
         ) : (
@@ -135,7 +139,7 @@ function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80">
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Khối" htmlFor="class-grade">
             <NativeSelect
@@ -158,7 +162,7 @@ function ClassPopover({ schoolId, grade, cls, onSaved }: ClassPopoverProps) {
           <Field
             label="Tên lớp"
             htmlFor="class-name"
-            error={mismatch ? `Tên lớp phải bắt đầu bằng số khối (khối ${g} → ${g}A1)` : undefined}
+            error={mismatch ? `Tên lớp phải bắt đầu bằng số khối ${g}, ví dụ ${g}A1.` : undefined}
           >
             <Input
               id="class-name"
@@ -195,7 +199,7 @@ export function ContextStrip({ schoolId, classId, onChange, errors }: ContextStr
 
   if (school && cls && !expanded) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-card px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-hairline bg-card px-4 py-2 sm:px-5">
         <p className="min-w-0 text-[15px]">
           <span className="font-semibold">{school.name}</span>
           <span className="text-muted-foreground"> · </span>
@@ -209,10 +213,9 @@ export function ContextStrip({ schoolId, classId, onChange, errors }: ContextStr
   }
 
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-hairline bg-card p-3">
-      <legend className="px-1 text-sm font-semibold">Lớp đo</legend>
-      <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr_1fr]">
-        <Field label="Trường" htmlFor="ctx-school" error={errors.school_id}>
+    <FormSection title="Lớp đo">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Trường" htmlFor="ctx-school" error={errors.school_id} className="sm:col-span-2">
           <div className="flex gap-2">
             <NativeSelect
               id="ctx-school"
@@ -291,6 +294,6 @@ export function ContextStrip({ schoolId, classId, onChange, errors }: ContextStr
           }}
         />
       </div>
-    </fieldset>
+    </FormSection>
   )
 }
