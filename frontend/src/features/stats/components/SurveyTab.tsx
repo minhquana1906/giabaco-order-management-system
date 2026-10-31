@@ -13,8 +13,8 @@ import { ApiError } from '@/lib/http'
 import { useSurveyOverview } from '../hooks'
 
 const SURVEY_EXPORTS: ExportItem[] = [
-  { label: 'Tải CSV', path: '/export/surveys.csv', fileName: 'surveys.csv' },
-  { label: 'Tải Excel', path: '/export/surveys.xlsx', fileName: 'surveys.xlsx' },
+  { label: 'Tải CSV', path: '/export/surveys.csv', fileName: 'khao-sat.csv' },
+  { label: 'Tải XLSX', path: '/export/surveys.xlsx', fileName: 'khao-sat.xlsx' },
 ]
 
 const AREA_LABEL: Record<string, string> = { URBAN: 'Thành thị', RURAL: 'Nông thôn' }
@@ -24,7 +24,7 @@ const METHOD_LABEL: Record<string, string> = {
   RECENT_RECORD: 'Số đo gần đây',
   ESTIMATE: 'Ước lượng',
 }
-const SUPPLY_LABEL: Record<string, string> = { STANDARD: 'Size chuẩn', TAILOR: 'May đo' }
+const SUPPLY_LABEL: Record<string, string> = { STANDARD: 'Cỡ chuẩn', TAILOR: 'May đo' }
 
 function breakdown(counts: Record<string, number>, labels: Record<string, string>, total: number) {
   const parts = Object.entries(counts)
@@ -38,7 +38,7 @@ export function SurveyTab() {
   const download = useMutation({
     mutationFn: (item: ExportItem) => exportsApi.download({ item }),
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : 'Không tải được tệp xuất. Thử lại sau.'),
+      toast.error(error instanceof ApiError ? error.message : 'Chưa xuất được file. Vui lòng thử lại sau ít phút.'),
   })
 
   if (overview.isPending) return <LoadingRows rows={6} />
@@ -48,7 +48,7 @@ export function SurveyTab() {
     return (
       <EmptyState
         title="Chưa có phiếu khảo sát"
-        description="Gửi phụ huynh link /survey trên trang phụ huynh. Phiếu gửi về sẽ hiện ở đây."
+        description="Gửi phụ huynh đường dẫn /survey trên trang phụ huynh. Phiếu gửi về sẽ hiện ở đây."
       />
     )
   }
@@ -57,7 +57,7 @@ export function SurveyTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Dữ liệu phục vụ clustering và dự trù sản xuất.</p>
+        <p className="text-sm text-muted-foreground">Dữ liệu phục vụ phân nhóm học sinh và dự trù sản xuất.</p>
         <div className="flex gap-2">
           {SURVEY_EXPORTS.map((item) => (
             <Button

@@ -36,12 +36,12 @@ interface PivotMatrixProps {
 
 export function PivotMatrix({ matrix, group, measure, subject }: PivotMatrixProps) {
   return (
-    <div className="-mr-5 overflow-x-auto pr-5 max-md:[mask-image:linear-gradient(to_right,#000_calc(100%_-_20px),transparent)]">
+    <div role="region" aria-label={`Bảng ${subject}`} tabIndex={0} className="-mr-5 max-h-[32rem] overflow-auto pr-5 focus-visible:outline-2 focus-visible:outline-ring">
       <table className="w-full border-collapse text-[13px]">
         <caption className="pb-2 text-left text-xs text-muted-foreground">
           {`${subject}: ${MEASURE_LABEL[measure]} theo cỡ`}
         </caption>
-        <thead>
+        <thead className="sticky top-0 z-20 bg-card">
           <tr className="border-b">
             <th scope="col" className={cn(stickyHead, 'min-w-[132px] py-2 pr-3 text-left text-xs font-normal text-muted-foreground')}>
               {ROW_LABEL[group]}

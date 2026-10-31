@@ -39,7 +39,7 @@ import { ViewSwitch } from './ViewSwitch'
 const SOURCE_LABEL: Record<string, string> = {
   PARENT: 'Phụ huynh',
   STAFF: 'Nhân viên',
-  LEGACY_IMPORT: 'Nhập từ Excel',
+  LEGACY_IMPORT: 'Dữ liệu cũ',
 }
 
 export type SearchPatch = Partial<Record<keyof DashboardSearch, string | undefined>>
@@ -63,8 +63,8 @@ function OrdersKpis({ overview }: { overview: CampaignOverview }) {
     <div
       className={
         hasProgress
-          ? 'grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.3fr)] lg:gap-4'
-          : 'grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4'
+          ? 'grid grid-cols-2 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.3fr)] xl:gap-4'
+          : 'grid grid-cols-2 gap-3 xl:grid-cols-3 xl:gap-4'
       }
     >
       <StatBlock label="Số đơn" value={overview.orders} sub={sources || undefined} className="max-sm:px-4" />
@@ -182,7 +182,7 @@ export function OrdersTab({ schoolId, params, products, onChange }: OrdersTabPro
   const download = useMutation({
     mutationFn: statsApi.exportCampaignOrders,
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : 'Không tải được bảng kê. Thử lại sau.'),
+      toast.error(error instanceof ApiError ? error.message : 'Chưa tải được bảng kê. Vui lòng thử lại sau ít phút.'),
   })
 
   if (campaigns.isPending) return <LoadingRows rows={4} />
@@ -247,7 +247,7 @@ export function OrdersTab({ schoolId, params, products, onChange }: OrdersTabPro
         />
         <Button
           variant="outline"
-          className="h-11 md:h-9 sm:ml-auto"
+          className="h-11 md:h-9"
           disabled={download.isPending}
           onClick={() => download.mutate({ campaignId, submittedUntil: params.until })}
         >

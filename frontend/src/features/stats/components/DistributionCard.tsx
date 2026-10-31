@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Bar, BarChart, Cell, LabelList, Pie, PieChart, Tooltip, XAxis } from 'recharts'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
+import { ApiError } from '@/lib/http'
 import { SizeLabel } from '@/components/SizeLabel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UnknownHatchPattern } from '@/components/UnknownHatchPattern'
@@ -46,11 +47,11 @@ function DistributionTooltip({
   if (!d) return null
   const label = d.label !== null ? `Cỡ ${d.label}` : 'Chưa xác định'
   return (
-    <div className="rounded-md border border-hairline bg-popover px-3 py-1.5 text-xs shadow-md">
+    <div className="rounded-md border border-hairline bg-popover px-3 py-1.5 text-xs">
       <span className="font-semibold">{label}</span>
       <span className="text-muted-foreground">: </span>
       <span className="font-medium tabular-nums">
-        {formatNumber(d.count)} HS ({formatPercent(d.percent)})
+        {formatNumber(d.count)} học sinh ({formatPercent(d.percent)})
       </span>
     </div>
   )
@@ -90,7 +91,7 @@ export function DistributionCard({
             <span
               className={cn(
                 UNKNOWN_HATCH_CLASS,
-                'inline-flex flex-col items-center justify-center rounded-[2px] border border-[#a9b2c3] px-1 py-0.5 text-[10px] font-medium leading-none text-[#16203a]',
+                'inline-flex flex-col items-center justify-center rounded-[2px] border border-[#a9b2c3] px-1 py-0.5 text-[11px] font-medium leading-none text-[#16203a]',
               )}
             >
               <span className="rounded-[1px] bg-[#eef0f4] px-0.5 pb-0.5">Chưa</span>
@@ -107,7 +108,7 @@ export function DistributionCard({
 
   return (
     <Card className="min-w-0 gap-3">
-      <div className="flex items-start justify-between gap-3 px-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold">Phân bố cỡ · toàn trường · {productName}</h2>
           <p className="text-xs text-muted-foreground">
@@ -120,17 +121,22 @@ export function DistributionCard({
         {query.isPending ? (
           <Skeleton className="h-[260px] w-full" />
         ) : query.isError ? (
-          <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+          <ErrorState
+            error={query.error}
+            message={query.error instanceof ApiError ? undefined : 'Chưa tải được thống kê phân bố. Bấm Thử lại hoặc quay lại sau ít phút.'}
+            onRetry={() => void query.refetch()}
+          />
         ) : query.data.total === 0 ? (
           <EmptyState
             title="Chưa có học sinh nào"
             description="Biểu đồ sẽ hiện khi có học sinh được thêm vào trường này."
           />
         ) : view === 'bar' ? (
-          <div className="overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_85%,transparent)]">
+          <div role="region" aria-label={`Biểu đồ phân bố cỡ ${productName}`} tabIndex={0} className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">
             <ChartContainer
               config={{ count: { label: 'Học sinh' } }}
-              className="aspect-auto h-[270px] w-full min-w-0"
+              className="aspect-auto h-[270px] w-full"
+              style={{ minWidth: data.length * 68 + 40 }}
               role="img"
               aria-label={`Phân bố cỡ ${productName}: ${data
                 .map((d) => `${d.label === null ? 'chưa xác định' : `cỡ ${d.label}`} ${d.count}`)

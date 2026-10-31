@@ -21,7 +21,7 @@ export function ViewSwitch<T extends string>({ value, onChange, options, label }
         <ToggleGroupItem
           key={o.value}
           value={o.value}
-          className="h-9 min-h-9 px-3.5 data-[state=on]:bg-navy data-[state=on]:text-white max-sm:h-11"
+          className="h-9 min-h-9 px-3.5 text-foreground/80 data-[state=on]:bg-muted data-[state=on]:font-semibold data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_-3px_0_0_var(--brass)] max-sm:h-11"
         >
           {o.label}
         </ToggleGroupItem>

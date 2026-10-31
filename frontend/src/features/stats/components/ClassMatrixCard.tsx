@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from 'recharts'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorState } from '@/components/ErrorState'
+import { ApiError } from '@/lib/http'
 import { SizeLabel } from '@/components/SizeLabel'
 import { UnknownHatchPattern } from '@/components/UnknownHatchPattern'
 import { Card } from '@/components/ui/card'
@@ -62,11 +63,11 @@ function ClassMatrixTooltip({
     const count = Number(first.value ?? 0)
     const share = total > 0 ? (count / total) * 100 : 0
     return (
-      <div className="rounded-md border border-hairline bg-popover px-3 py-1.5 text-xs shadow-md">
+      <div className="rounded-md border border-hairline bg-popover px-3 py-1.5 text-xs">
         <span className="font-semibold">{className} · {size}</span>
         <span className="text-muted-foreground">: </span>
         <span className="font-medium tabular-nums">
-          {formatNumber(count)} HS ({formatPercent(share)})
+          {formatNumber(count)} học sinh ({formatPercent(share)})
         </span>
       </div>
     )
@@ -74,7 +75,7 @@ function ClassMatrixTooltip({
 
   const nonZero = payload.filter((entry) => Number(entry.value ?? 0) > 0)
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-hairline bg-popover px-3 py-2 text-xs shadow-md">
+    <div className="flex flex-col gap-1 rounded-md border border-hairline bg-popover px-3 py-2 text-xs">
       <span className="font-semibold">{className}</span>
       {nonZero.map((entry) => {
         const rawKey = String(entry.dataKey ?? '')
@@ -121,7 +122,7 @@ export function ClassMatrixCard({
 
   return (
     <Card className="min-w-0 gap-3">
-      <div className="flex items-start justify-between gap-3 px-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold">Lớp × cỡ · {productName}</h2>
           <p className="text-xs text-muted-foreground">Số học sinh theo cỡ vừa suy ra</p>
@@ -134,15 +135,19 @@ export function ClassMatrixCard({
         ) : query.isPending ? (
           <Skeleton className="h-[220px] w-full" />
         ) : query.isError ? (
-          <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+          <ErrorState
+            error={query.error}
+            message={query.error instanceof ApiError ? undefined : 'Chưa tải được thống kê lớp. Bấm Thử lại hoặc quay lại sau ít phút.'}
+            onRetry={() => void query.refetch()}
+          />
         ) : query.data.rows.length === 0 ? (
           <EmptyState title="Trường này chưa có lớp" description="Lớp được tạo khi thêm học sinh." />
         ) : view === 'table' ? (
-          <div className="-mx-5 overflow-x-auto px-5 max-md:[mask-image:linear-gradient(to_right,#000_85%,transparent)] max-md:scroll-pr-8">
+          <div role="region" aria-label={`Bảng lớp theo cỡ ${productName}`} tabIndex={0} className="-mx-5 max-h-[32rem] overflow-auto px-5 focus-visible:outline-2 focus-visible:outline-ring">
             <table className="w-full min-w-[640px] border-collapse text-[13px]">
-              <thead>
+              <thead className="sticky top-0 z-20 bg-card">
                 <tr>
-                  <th scope="col" className="sticky left-0 bg-card py-1.5 pr-3 text-left font-normal text-muted-foreground">
+                  <th scope="col" className="sticky left-0 z-10 bg-card py-1.5 pr-3 text-left font-normal text-muted-foreground">
                     Lớp
                   </th>
                   {query.data.sizes.map((s) => (
@@ -196,7 +201,7 @@ export function ClassMatrixCard({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_85%,transparent)]">
+            <div role="region" aria-label={`Biểu đồ lớp theo cỡ ${productName}`} tabIndex={0} className="max-h-[32rem] overflow-auto focus-visible:outline-2 focus-visible:outline-ring">
               <ChartContainer
                 config={{}}
                 className="aspect-auto min-w-[420px]"

@@ -16,7 +16,7 @@ import { NoProfileState } from './NoProfileState'
 import { OrdersTab, type SearchPatch } from './OrdersTab'
 import { SurveyTab } from './SurveyTab'
 import { ProductSelect } from './ProductSelect'
-import { ViewSwitch } from './ViewSwitch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const DASHBOARD_VIEWS = [
   { value: 'measure', label: 'Số đo' },
@@ -45,13 +45,13 @@ export function DashboardPage({ params, onChange, onSchoolChange }: DashboardPag
   const profile = useSchoolProducts(school?.id)
 
   const header = (
-    <PageHeader
-      title="Thống kê"
-      actions={
-        <>
-          {params.view !== 'survey' && schools.data && schools.data.length > 0 ? (
+    <>
+      <PageHeader
+        title="Thống kê"
+        actions={
+          params.view !== 'survey' && schools.data && schools.data.length > 0 ? (
             <Select value={school?.id} onValueChange={onSchoolChange}>
-              <SelectTrigger aria-label="Trường" className="w-full min-w-0 sm:w-[290px] max-sm:h-11">
+              <SelectTrigger aria-label="Trường" className="w-full min-w-0 sm:w-[290px] max-sm:data-[size=default]:h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -62,16 +62,19 @@ export function DashboardPage({ params, onChange, onSchoolChange }: DashboardPag
                 ))}
               </SelectContent>
             </Select>
-          ) : null}
-          <ViewSwitch
-            value={params.view}
-            onChange={(view) => onChange({ view })}
-            options={DASHBOARD_VIEWS}
-            label="Loại thống kê"
-          />
-        </>
-      }
-    />
+          ) : undefined
+        }
+      />
+      <Tabs value={params.view} onValueChange={(view) => onChange({ view })}>
+        <TabsList aria-label="Loại thống kê">
+          {DASHBOARD_VIEWS.map((v) => (
+            <TabsTrigger key={v.value} value={v.value} aria-controls={undefined}>
+              {v.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </>
   )
 
   if (params.view === 'survey') {
@@ -153,7 +156,7 @@ function MeasureView({ schoolId, products, product, onProductChange }: MeasureVi
         <KpiRow overview={overview.data} />
       )}
       {products.length > 1 ? <ProductSelect products={products} value={product.code} onChange={onProductChange} /> : null}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
         <DistributionCard product={product.code} productName={product.name} schoolId={schoolId} />
         {overview.data ? <AccuracyCard productName={product.name} accuracy={accuracy} /> : null}
       </div>

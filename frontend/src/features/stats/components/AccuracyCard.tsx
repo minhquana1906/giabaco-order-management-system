@@ -8,14 +8,14 @@ export function AccuracyCard({ productName, accuracy }: { productName: string; a
 
   return (
     <Card className="gap-0 px-5">
-      <h2 className="text-[15px] font-semibold">Độ chính xác bảng size tạm</h2>
+      <h2 className="text-[15px] font-semibold">Độ chính xác bảng cỡ tạm</h2>
       <p className="text-xs text-muted-foreground">{productName} · cỡ gợi ý so với cỡ vừa suy ra</p>
       {accuracy && evaluated > 0 && accuracy.exact_rate !== null ? (
         <>
           <div className="mt-3.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 tabular-nums">
             <span className="text-[40px] font-semibold leading-none">{formatRate(accuracy.exact_rate)}</span>
             <span className="text-xs text-muted-foreground">
-              trùng cỡ vừa suy ra · {formatNumber(accuracy.exact)}/{formatNumber(evaluated)} HS đủ dữ liệu
+              trùng cỡ vừa suy ra · {formatNumber(accuracy.exact)}/{formatNumber(evaluated)} học sinh đủ dữ liệu
             </span>
           </div>
           <ButtonMeter
