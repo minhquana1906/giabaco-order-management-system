@@ -88,8 +88,8 @@ check("staff me", json.load(resp).get("username"), "smoke")
 tag = f"{int(time.time()):x}"
 status, resp = call(authed, "POST", "/api/schools", {"name": f"Smoke {tag}", "code": f"S{tag}"[:12]})
 school = json.load(resp)
-status, resp = call(authed, "POST", f"/api/schools/{school['id']}/classes", {"grade": 2, "name": "2A1"})
-klass = json.load(resp)
+status, resp = call(authed, "GET", f"/api/schools/{school['id']}/classes")
+klass = next(c for c in json.load(resp) if c["grade"] == 2)
 check("create admin student", call(authed, "POST", "/api/students", {
     "school_id": school["id"], "class_id": klass["id"], "full_name": "Nguyễn Văn An",
     "dob": "2018-03-14", "gender": "MALE", "height_cm": 130, "weight_kg": 26, "trials": [],
