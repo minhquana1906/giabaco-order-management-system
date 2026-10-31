@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/http'
 
 export interface SessionExpiryDeps {
   queryClient: QueryClient
-  redirectToLogin: (area: 'parent' | 'admin') => void
+  redirectToLogin: (area: 'parent' | 'admin' | 'facility') => void
 }
 
 export function handleQueryError(error: unknown, query: Query<unknown, unknown, unknown, readonly unknown[]>, { queryClient, redirectToLogin }: SessionExpiryDeps) {
@@ -16,6 +16,11 @@ export function handleQueryError(error: unknown, query: Query<unknown, unknown, 
   if (query.queryKey[0] === parentKeys.all[0]) {
     queryClient.removeQueries({ queryKey: parentKeys.all })
     if (query.queryKey[1] !== parentKeys.me()[1]) redirectToLogin('parent')
+    return
+  }
+  if (query.queryKey[0] === 'production' && window.location.pathname.startsWith('/facility')) {
+    queryClient.removeQueries({ queryKey: ['production'] })
+    redirectToLogin('facility')
     return
   }
   queryClient.removeQueries({ queryKey: authKeys.me() })

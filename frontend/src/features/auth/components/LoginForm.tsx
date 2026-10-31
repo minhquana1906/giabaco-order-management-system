@@ -1,22 +1,18 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ApiError } from '@/lib/http'
-import { useLogin } from '../hooks'
+import { requestErrorMessage } from '@/lib/requestError'
+import { SESSION_NOT_STORED_MESSAGE, useLogin } from '../hooks'
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === 'session_not_stored')
-      return 'Trình duyệt không lưu được phiên đăng nhập. Hãy mở trang bằng địa chỉ https://.'
-    if (error.code === 'invalid_credentials') return 'Tên đăng nhập hoặc mật khẩu không đúng.'
-    if (error.code === 'rate_limited' || error.status === 429)
-      return 'Đăng nhập sai quá nhiều lần. Thử lại sau 1 phút.'
-    if (error.status === 0) return error.message
+    if (error.code === 'session_not_stored') return SESSION_NOT_STORED_MESSAGE
+    if (error.code === 'invalid_credentials') return 'Tên đăng nhập hoặc mật khẩu chưa đúng. Kiểm tra lại rồi thử lại.'
   }
-  return 'Không đăng nhập được. Vui lòng thử lại.'
+  return requestErrorMessage(error, 'Chưa đăng nhập được. Vui lòng thử lại sau ít phút.')
 }
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
@@ -35,18 +31,18 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-4">
           <span className="rounded-md bg-white p-1.5">
-            <img src="/brand/logo-giabaco.png" alt="Giabaco" className="h-8 w-auto" />
+            <img src="/brand/logo-giabaco.png" alt="Giabaco" width={360} height={129} className="h-8 w-auto" />
           </span>
           <div>
             <p className="text-2xl font-bold tracking-[0.5px] text-white">
               G<span className="text-brass">-</span>UNIFORM
             </p>
-            <p className="text-[10px] font-medium tracking-[1.4px] text-white/70">by GIABACO · EDUCHIC</p>
+            <p className="text-[11px] font-medium tracking-[1.2px] text-white/70">by GIABACO · EDUCHIC</p>
           </div>
         </div>
         <form
           onSubmit={submit}
-          className="flex flex-col gap-5 rounded-lg border-t-[3px] border-piping bg-card p-6 text-card-foreground"
+          className="flex flex-col gap-5 rounded-lg bg-card p-6 text-card-foreground"
         >
           <h1 className="text-2xl font-semibold text-navy">Đăng nhập</h1>
           <div className="flex flex-col gap-2">
@@ -97,12 +93,12 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           </Button>
         </form>
         <p className="mt-4 text-center">
-          <Link
-            to="/parent/login"
+          <a
+            href="/parent/login"
             className="inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-brass"
           >
             Phụ huynh đăng nhập tại đây
-          </Link>
+          </a>
         </p>
       </div>
     </main>

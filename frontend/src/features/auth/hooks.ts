@@ -3,6 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { ApiError } from '@/lib/http'
 import { authApi } from './api'
 
+export const SESSION_NOT_STORED_MESSAGE =
+  'Trình duyệt đang chặn lưu đăng nhập. Mở lại trang bằng địa chỉ bắt đầu bằng https:// (không mở trong ứng dụng khác) rồi thử lại.'
+
 export const authKeys = {
   me: () => ['auth', 'me'] as const,
 }
@@ -23,7 +26,7 @@ export function useLogin() {
         return await queryClient.fetchQuery({ ...meQueryOptions(), staleTime: 0 })
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          throw new ApiError(401, 'session_not_stored', error.message)
+          throw new ApiError(401, 'session_not_stored', SESSION_NOT_STORED_MESSAGE)
         }
         throw error
       }

@@ -21,6 +21,9 @@ def client(admin_host: str | None, host: str) -> AsyncClient:
 
 
 ADMIN_API = [
+    "/api/production/me",
+    "/api/production/login",
+    "/api/production/assignments",
     "/api/auth/me",
     "/api/auth/login",
     "/api/students",
@@ -90,6 +93,11 @@ async def test_admin_host_redirects_parent_pages(path: str) -> None:
     async with client(ADMIN, "admin.test") as c:
         r = await c.get(path + "?a=1")
     assert r.status_code == 302 and r.headers["location"] == f"{PUBLIC}{path}?a=1"
+
+
+async def test_admin_host_serves_production_api() -> None:
+    async with client(ADMIN, "admin.test") as c:
+        assert (await c.get("/api/production/me")).json()["error"]["code"] == "unauthorized"
 
 
 async def test_admin_host_serves_admin_side() -> None:

@@ -2,6 +2,8 @@
 
 import getpass
 import ipaddress
+import logging
+import math
 import secrets
 import sys
 import time
@@ -19,11 +21,14 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import get_settings
 from app.core.errors import ApiError
+from app.core.logging import mask_path
 
 ADMIN_ACTOR = "admin"
 SESSION_KEY = "username"
 PARENT_SESSION_KEY = "parent_id"
 PARENT_SESSION_AT_KEY = "parent_at"
+SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại."
+logger = logging.getLogger("app.security")
 _hasher = PasswordHasher()
 
 
@@ -75,7 +80,7 @@ async def require_admin(request: Request) -> str:
             )
         if active:
             return staff_actor(username)
-    raise ApiError(401, "unauthorized", "Cần đăng nhập")
+    raise ApiError(401, "unauthorized", SESSION_EXPIRED_MESSAGE)
 
 
 async def require_parent(request: Request) -> uuid.UUID:
@@ -88,7 +93,7 @@ async def require_parent(request: Request) -> uuid.UUID:
     try:
         parent_id = uuid.UUID(request.session.get(PARENT_SESSION_KEY))
     except (TypeError, ValueError):
-        raise ApiError(401, "unauthorized", "Cần đăng nhập") from None
+        raise ApiError(401, "unauthorized", SESSION_EXPIRED_MESSAGE) from None
     async with SessionLocal() as session:
         row = (
             await session.execute(
@@ -97,11 +102,11 @@ async def require_parent(request: Request) -> uuid.UUID:
             )
         ).first()
     if row is None:
-        raise ApiError(401, "unauthorized", "Cần đăng nhập")
+        raise ApiError(401, "unauthorized", SESSION_EXPIRED_MESSAGE)
     changed_at = row[0]
     signed_in_at = float(request.session.get(PARENT_SESSION_AT_KEY, 0.0))
     if changed_at is not None and signed_in_at < changed_at.timestamp():
-        raise ApiError(401, "unauthorized", "Cần đăng nhập")
+        raise ApiError(401, "unauthorized", SESSION_EXPIRED_MESSAGE)
     return parent_id
 
 
@@ -152,6 +157,13 @@ class RateLimiter:
         hits.append(now)
         return True
 
+    def retry_after(self, key: str) -> int:
+        """Whole seconds until the oldest hit leaves the window (at least 1)."""
+        hits = self._hits.get(key)
+        if not hits:
+            return 1
+        return max(1, math.ceil(self.window_s - (self._clock() - hits[0])))
+
     def _sweep(self, now: float) -> None:
         """Once per window drop keys with no hit left in it, so idle clients do not pile up."""
         if now < self._next_sweep:
@@ -175,20 +187,29 @@ parent_match_limiter = RateLimiter(10)
 survey_limiter = RateLimiter(60)
 
 
-def _limit(limiter: RateLimiter) -> Callable[[Request], None]:
+def _limit(limiter: RateLimiter, name: str) -> Callable[[Request], None]:
     def dependency(request: Request) -> None:
-        if not limiter.allow(client_ip(request)):
-            raise ApiError(429, "rate_limited", "Quá nhiều yêu cầu, vui lòng thử lại sau")
+        key = client_ip(request)
+        if not limiter.allow(key):
+            wait = limiter.retry_after(key)
+            # The client address is the limiter key, so it is deliberately not logged.
+            logger.warning("rate_limited", extra={"ctx": {"limiter": name, "retry_after_s": wait}})
+            raise ApiError(
+                429,
+                "rate_limited",
+                "Bạn thao tác quá nhanh. Vui lòng đợi vài phút rồi thử lại.",
+                headers={"Retry-After": str(wait)},
+            )
 
     return dependency
 
 
-limit_login = _limit(login_limiter)
-limit_public = _limit(public_limiter)
-limit_parent_auth = _limit(parent_auth_limiter)
-limit_forgot = _limit(forgot_limiter)
-limit_parent_match = _limit(parent_match_limiter)
-limit_survey = _limit(survey_limiter)
+limit_login = _limit(login_limiter, "login")
+limit_public = _limit(public_limiter, "public")
+limit_parent_auth = _limit(parent_auth_limiter, "parent_auth")
+limit_forgot = _limit(forgot_limiter, "forgot_password")
+limit_parent_match = _limit(parent_match_limiter, "parent_match")
+limit_survey = _limit(survey_limiter, "survey")
 
 _BASE_HEADERS = [
     (b"x-content-type-options", b"nosniff"),
@@ -242,7 +263,19 @@ def _under(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix + "/")
 
 
-ADMIN_PAGES = ("/", "/login", "/students", "/dashboard", "/catalog", "/campaigns", "/orders")
+ADMIN_PAGES = (
+    "/",
+    "/login",
+    "/students",
+    "/dashboard",
+    "/catalog",
+    "/campaigns",
+    "/orders",
+    "/settings",
+    "/master-data",
+    "/production",
+    "/facility",
+)
 PARENT_PAGES = ("/parent", "/p", "/survey")
 PARENT_APIS = ("/api/parent", "/api/public")
 
@@ -272,13 +305,13 @@ class HostSplitMiddleware:
         response: Response | None = None
         if on_admin:
             if any(_under(path, p) for p in PARENT_APIS):
-                response = _not_found()
+                response = _not_found(host, path)
             elif any(_under(path, p) for p in PARENT_PAGES):
                 query = scope["query_string"].decode()
                 url = f"{self.public_base_url}{path}{'?' + query if query else ''}"
                 response = RedirectResponse(url, status_code=302)
         elif self.is_admin_api(path):
-            response = _not_found()
+            response = _not_found(host, path)
         elif path == "/" or any(_under(path, p) for p in ADMIN_PAGES[1:]):
             response = RedirectResponse("/parent", status_code=302)
         if response is None:
@@ -287,8 +320,11 @@ class HostSplitMiddleware:
             await response(scope, receive, send)
 
 
-def _not_found() -> Response:
-    return JSONResponse({"error": {"code": "not_found", "message": "Not found"}}, status_code=404)
+def _not_found(host: str, path: str) -> Response:
+    logger.info("cross_host_api_call", extra={"ctx": {"host": host, "path": mask_path(path)}})
+    return JSONResponse(
+        {"error": {"code": "not_found", "message": "Không tìm thấy nội dung này."}}, status_code=404
+    )
 
 
 def main(argv: list[str]) -> int:

@@ -17,6 +17,15 @@ def test_limiter_blocks_after_limit_and_recovers() -> None:
     assert limiter.allow("ip")
 
 
+def test_retry_after_is_the_time_until_the_oldest_hit_expires() -> None:
+    now = [0.0]
+    limiter = RateLimiter(1, 900, clock=lambda: now[0])
+    assert limiter.retry_after("ip") == 1
+    limiter.allow("ip")
+    now[0] = 300.5
+    assert limiter.retry_after("ip") == 600
+
+
 def test_limiter_forgets_keys_whose_hits_have_all_expired() -> None:
     now = [0.0]
     limiter = RateLimiter(2, 60, clock=lambda: now[0])
