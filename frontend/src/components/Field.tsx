@@ -19,7 +19,7 @@ interface FieldProps {
 export function Field({ id, label, error, className, children }: FieldProps) {
   const describedBy = error ? `${id}-error` : undefined
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex min-w-0 flex-col gap-2', className)}>
       <Label htmlFor={id} className="text-base">
         {label}
       </Label>

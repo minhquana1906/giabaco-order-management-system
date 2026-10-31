@@ -74,7 +74,7 @@ function ParentFooter() {
         <img src="/brand/logo-giabaco.png" alt="Giabaco" width={360} height={129} className="h-9 w-auto self-start" />
         <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6">
           <a href={`tel:${HOTLINE}`} className={link}>
-            <Phone className="size-4 text-muted-foreground" aria-hidden="true" /> Hotline {HOTLINE}
+            <Phone className="size-4 text-muted-foreground" aria-hidden="true" /> Đường dây nóng {HOTLINE}
           </a>
           <a href={`mailto:${SUPPORT_EMAIL}`} className={link}>
             <Mail className="size-4 text-muted-foreground" aria-hidden="true" /> {SUPPORT_EMAIL}

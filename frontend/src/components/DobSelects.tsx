@@ -33,7 +33,7 @@ export function DobSelects({ value, onChange, error, legendClassName, selectClas
     </NativeSelect>
   )
   return (
-    <fieldset className="flex flex-col gap-1.5">
+    <fieldset className="flex min-w-0 flex-col gap-1.5">
       <legend className={cn('mb-1.5 text-sm font-medium', legendClassName)}>Ngày sinh</legend>
       <div className="grid grid-cols-3 gap-2">
         {field('day', 'Ngày', DAYS)}

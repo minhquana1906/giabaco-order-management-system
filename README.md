@@ -26,6 +26,8 @@ Phụ huynh có hai đường vào: quét QR `/p/<token>` hoặc đăng ký tạ
 
 Trang chọn cỡ có ảnh sản phẩm theo trường, giới tính và màu: admin tải ảnh lên qua trang Sản phẩm (`/catalog`), ảnh lưu ở volume `uploads` và phục vụ qua `/media/*`. Không có ảnh thì trang hiện "Chưa có thông tin ảnh sản phẩm".
 
+Admin cấu hình trường/lớp tại `/settings/schools`, danh mục gốc (cơ sở sản xuất, nguyên phụ liệu, nhà cung cấp NPL, sản phẩm gốc) tại `/master-data`, và theo dõi tiến độ sản xuất tại `/production`: tiến độ 10 bước theo đợt, phân công theo đối tác (mỗi đối tác có thể nhận bất kỳ bước nào, theo từng sản phẩm hoặc cả đợt) hoặc làm nội bộ Giabaco (bước đặt chế độ `internal`: một bản ghi, người phụ trách nhập tay, không đối tác/sản phẩm/số lượng), hạn hai cấp. Dữ liệu danh mục gốc nằm trong `backend/config/master.seed.yaml` (chép đúng cột các file Excel trong `docs/references/master_data/`, ô placeholder như "Cần bổ sung", "Chờ xác nhận" để trống), nạp bằng migration `master_seed_20261029` khi chạy `alembic upgrade head` (dev và production cùng một nguồn, không ghi đè bản ghi đã có); admin bấm vào một dòng để xem, sửa hoặc xóa hồ sơ, trường bắt buộc còn trống hiện "Cần bổ sung". Cơ sở sản xuất (mã `GUF-*`) là một bảng `production_facilities` duy nhất: hồ sơ, tài khoản đăng nhập và lệnh sản xuất cùng trỏ vào đó; tài khoản của cơ sở có "Trạng thái hợp tác" bắt đầu bằng "Tạm dừng" hoặc "Ngưng" không đăng nhập và không nhận lệnh được. Hồ sơ đang có tài khoản, lệnh, hoặc sản phẩm gốc đang được sản phẩm bán hàng trỏ tới (ô "Mã sản phẩm gốc" trong form sản phẩm) thì không xóa được. Nhân sự cơ sở có tài khoản riêng do admin tạo trong hồ sơ cơ sở ở `/master-data`, đăng nhập tại `/facility/login` (phiên riêng, chỉ thấy lệnh của cơ sở mình). May đo riêng bật theo từng sản phẩm của đợt (`ItemsTab`) sau khi admin cấu hình bộ số đo ở trang sản phẩm; số đo đi kèm đơn, trang admin và sheet "May đo" của file Excel đơn hàng.
+
 Giới hạn đã biết của demo: xác minh nhận con yếu (ai biết trường, tên, ngày sinh đều nhận được), nên dữ liệu thật phải chuyển sang `portal_token` hoặc OTP.
 
 `make seed-demo` nạp 2 trường (mỗi trường chưa có đợt thì được một đợt đang mở gồm các sản phẩm đang bán), 9 lớp, 59 học sinh (148 lần thử, 1 xóa mềm) và các ca biên (ngoài bảng size, chưa thử áo, nhiều cỡ vừa...). Học sinh bị bỏ qua nếu DB đã có học sinh. Script từ chối chạy trên DB không phải `127.0.0.1`/`localhost`. Muốn nạp lại từ đầu (xóa toàn bộ dữ liệu dev):
@@ -67,5 +69,3 @@ frontend/src/features/<slice> api.ts, hooks.ts, components/
 frontend/src/routes/         TanStack Router file-based
 scripts/smoke.py             smoke chạy trong container
 ```
-
-Quy ước: UI tiếng Việt, code và commit tiếng Anh; trường, lớp, sản phẩm, bộ cỡ nằm trong DB; mọi thay đổi `students`, `fitting_trials`, `orders`, `order_lines`, `parent_student_links` ghi `audit_logs`; không hard delete; không ghi PII vào log.

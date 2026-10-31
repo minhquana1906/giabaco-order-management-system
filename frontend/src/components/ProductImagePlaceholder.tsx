@@ -31,9 +31,11 @@ export function ProductImagePlaceholder({ aspect = DEFAULT_ASPECT, className }: 
 interface ImageProps extends FrameProps {
   image: ProductImageRef | null
   alt: string
+  /** Above-the-fold (LCP) image: loaded eagerly with high priority instead of lazily. */
+  eager?: boolean
 }
 
-export function ProductImageOrPlaceholder({ image, alt, aspect = DEFAULT_ASPECT, className }: ImageProps) {
+export function ProductImageOrPlaceholder({ image, alt, aspect = DEFAULT_ASPECT, className, eager = false }: ImageProps) {
   if (!image) return <ProductImagePlaceholder aspect={aspect} className={className} />
   return (
     <img
@@ -41,6 +43,9 @@ export function ProductImageOrPlaceholder({ image, alt, aspect = DEFAULT_ASPECT,
       alt={alt}
       width={image.width}
       height={image.height}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={eager ? 'high' : undefined}
+      decoding="async"
       style={{ aspectRatio: aspect }}
       className={cn('w-full rounded-md border border-hairline bg-white object-contain', className)}
     />

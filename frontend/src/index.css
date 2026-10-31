@@ -23,6 +23,19 @@
   --unknown-ground: #eef0f4;
   --unknown-stripe: #a9b2c3;
 
+  --success: #2f8a5b;
+  --success-soft: #e6f3ec;
+  --success-ink: #1f6b43;
+  --warning: #c47f00;
+  --warning-soft: #fdf1d8;
+  --warning-ink: #7a4b00;
+  --danger: var(--piping);
+  --danger-soft: #fbe9eb;
+  --danger-ink: #9a2430;
+  --info: #3a6fbf;
+  --info-soft: #e8f0fb;
+  --info-ink: #1f4e8c;
+
   --radius: 0.5rem;
   --background: var(--ground);
   --foreground: var(--ink);
@@ -93,6 +106,18 @@
   --color-navy: var(--navy);
   --color-piping: var(--piping);
   --color-brass: var(--brass);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-ink: var(--success-ink);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
   --color-lining: var(--lining);
   --color-hairline: var(--hairline);
   --radius-sm: calc(var(--radius) - 4px);

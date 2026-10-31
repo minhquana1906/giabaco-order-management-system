@@ -127,7 +127,7 @@ export function StatusPill({ done, children }: { done: boolean; children: ReactN
     <p
       className={cn(
         'inline-flex w-fit items-center gap-2 rounded-full border px-4 py-1.5 text-[15px] font-semibold',
-        done ? 'border-navy bg-navy text-white' : 'border-input bg-white text-muted-foreground',
+        done ? 'border-success bg-success-soft text-success-ink' : 'border-input bg-white text-muted-foreground',
       )}
     >
       {done ? <Check className="size-4" strokeWidth={3} aria-hidden="true" /> : null}
@@ -178,7 +178,7 @@ export function ActionBar({
       )}
     >
       {start}
-      <div className={cn('flex gap-3 lg:ml-auto', stack && 'max-sm:flex-col-reverse max-sm:[&>*]:flex-none')}>{children}</div>
+      <div className={cn('flex gap-3 max-[360px]:flex-col-reverse max-[360px]:[&>*]:flex-none lg:ml-auto', stack && 'max-sm:flex-col-reverse max-sm:[&>*]:flex-none')}>{children}</div>
     </div>
   )
 }
