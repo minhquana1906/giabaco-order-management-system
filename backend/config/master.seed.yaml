@@ -1,0 +1,1293 @@
+# Master data loaded by migration master_seed_20261029. Empty cells are omitted.
+materials:
+- Mã NPL: NPL-FAB-BL-C168-29
+  Nhóm NPL: Vải chính dệt thoi
+  Tên NPL: Vải Blazer C168 màu 29
+  Mã/Nhãn NCC: C168-29
+  NCC: SAN A / Mr Trần
+  Dự án/Phân khúc: C1LQD / TH1 / Blazer
+  Sản phẩm áp dụng: Blazer nam/nữ
+  Màu: C168-29
+  Xuất xứ: Trung Quốc
+  ĐVT: m
+  Hồ sơ hiện có: Có mẫu/ảnh và trao đổi NCC
+  Hồ sơ còn thiếu: TDS; thành phần xơ; định lượng; khổ; formaldehyt; amin thơm azo; COA/CQ; mã lô
+  Tiêu chí kiểm soát: Khớp mẫu chuẩn; đủ hồ sơ nguồn gốc; test đạt; kiểm soát màu/lô
+  Trạng thái phê duyệt: Chờ NCC
+  Ghi chú: Ưu tiên khóa vật liệu chuẩn Blazer
+- Mã NPL: NPL-FAB-BL-C168-24
+  Nhóm NPL: Vải chính dệt thoi
+  Tên NPL: Vải Blazer C168 màu 24
+  Mã/Nhãn NCC: C168-24
+  NCC: SAN A / Mr Trần
+  Dự án/Phân khúc: C1LQD / TH1
+  Sản phẩm áp dụng: Blazer; Gilê
+  Màu: C168-24
+  Xuất xứ: Trung Quốc
+  ĐVT: m
+  Hồ sơ hiện có: Có mẫu/trao đổi NCC
+  Hồ sơ còn thiếu: TDS; thành phần xơ; định lượng; khổ; test; mã lô
+  Tiêu chí kiểm soát: Đối chiếu cấu trúc với C168-29; màu/lô; test
+  Trạng thái phê duyệt: Chờ NCC
+  Ghi chú: Màu bổ sung
+- Mã NPL: NPL-FAB-BL-C168-19
+  Nhóm NPL: Vải chính dệt thoi
+  Tên NPL: Vải Blazer C168 màu 19
+  Mã/Nhãn NCC: C168-19
+  NCC: SAN A / Mr Trần
+  Dự án/Phân khúc: C1LQD / TH1
+  Sản phẩm áp dụng: Blazer; Gilê
+  Màu: C168-19
+  Xuất xứ: Trung Quốc
+  ĐVT: m
+  Hồ sơ hiện có: Có mẫu/trao đổi NCC
+  Hồ sơ còn thiếu: TDS; thành phần xơ; định lượng; khổ; test; mã lô
+  Tiêu chí kiểm soát: Đối chiếu cấu trúc C168; màu/lô; test
+  Trạng thái phê duyệt: Chờ NCC
+  Ghi chú: Màu bổ sung
+- Mã NPL: NPL-FAB-SHIRT-01
+  Nhóm NPL: Vải chính dệt thoi
+  Tên NPL: Vải sơ mi học sinh
+  Mã/Nhãn NCC: Vải sơ mi
+  NCC: Tổng Công ty CP Dệt May Nam Định
+  Dự án/Phân khúc: THTM / TH1 / TH2 / TH3 / DH / CV
+  Sản phẩm áp dụng: Sơ mi
+  Thành phần: 70% PE + 30% Cotton
+  Màu: Trắng / theo đơn
+  Xuất xứ: Việt Nam
+  ĐVT: m
+  Lead time: ~20 ngày nếu thiếu vải
+  Hồ sơ hiện có: Có ghi chú kỹ thuật từ nhà máy
+  Hồ sơ còn thiếu: TDS; mã vải; định lượng; khổ; test formaldehyt/azo; thành phần xơ; mã lô
+  Tiêu chí kiểm soát: Thành phần; khổ; định lượng; độ co; bền màu; ngoại quan
+  Trạng thái phê duyệt: Đang bổ sung
+  Ghi chú: Vải chuẩn đại diện sơ mi
+- Mã NPL: NPL-FAB-KAKI-8688PC
+  Nhóm NPL: Vải chính dệt thoi
+  Tên NPL: Kaki chéo 2/2 Navy
+  Mã/Nhãn NCC: 8688PC Navy
+  NCC: Tổng Công ty CP Dệt May Nam Định
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Quần kaki; quần sooc; juyp
+  Thành phần: PC 83/17 theo ghi chú kỹ thuật sợi
+  Khổ/Bản: Khổ 150 A
+  Màu: Navy
+  Xuất xứ: Việt Nam
+  ĐVT: m
+  Hồ sơ hiện có: Có hóa đơn + ghi chú kỹ thuật
+  Hồ sơ còn thiếu: TDS; định lượng; test formaldehyt/azo; thành phần xơ; mã lô; độ co; bền màu
+  Tiêu chí kiểm soát: Cạp/độ co/bền màu; ngoại quan; thông số
+  Trạng thái phê duyệt: Đang bổ sung
+  Ghi chú: Vải đại diện quần kaki THTM
+- Mã NPL: NPL-KNIT-POLO-USA-01
+  Nhóm NPL: Vải dệt kim
+  Tên NPL: Cá sấu USA mắt chim
+  Mã/Nhãn NCC: GU-POLO-PT-USA-01
+  NCC: Phương Tiên / hồ sơ Song King
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Polo
+  Thành phần: 55% Cotton + 40% Poly + 5% Spandex
+  Khổ/Bản: Khổ 2,2 m
+  Định lượng: 220 gsm
+  Màu: Theo màu trường
+  ĐVT: kg/m
+  Hồ sơ hiện có: Thông tin NCC do Giabaco cung cấp
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; NSX; xuất xứ; test formaldehyt/azo; thành phần xơ
+  Tiêu chí kiểm soát: Co rút; bền màu; xù lông; độ giãn/phục hồi; ngoại quan
+  Trạng thái phê duyệt: Chờ NCC
+  Ghi chú: Mã riêng
+- Mã NPL: NPL-KNIT-POLO-TICI30
+  Nhóm NPL: Vải dệt kim
+  Tên NPL: Tici 30 4C
+  Mã/Nhãn NCC: GU-POLO-PT-TICI30-01
+  NCC: Phương Tiên / hồ sơ Song King
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Polo
+  Thành phần: 35% Cotton + 60% PE + 5% Spandex
+  Khổ/Bản: Khổ 1,7 m
+  Định lượng: 210 gsm
+  Màu: Theo màu trường
+  ĐVT: kg/m
+  Hồ sơ hiện có: Có báo giá Song King
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; NSX; xuất xứ; test formaldehyt/azo; thành phần xơ
+  Tiêu chí kiểm soát: Co rút; bền màu; xù lông; độ giãn/phục hồi
+  Trạng thái phê duyệt: Chờ NCC
+- Mã NPL: NPL-KNIT-POLO-TC4C
+  Nhóm NPL: Vải dệt kim
+  Tên NPL: Cá sấu TC 4C
+  Mã/Nhãn NCC: GU-POLO-SK-CS4C-01
+  NCC: Song King
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Polo; áo thể dục
+  Thành phần: 35% Cotton + 60% PE + 5% Spandex
+  Khổ/Bản: Khổ 2,2 m
+  Định lượng: 250 gsm
+  Màu: Theo màu trường
+  Xuất xứ: Việt Nam
+  ĐVT: kg/m
+  Hồ sơ hiện có: Có báo giá Song King
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; test formaldehyt/azo; thành phần xơ
+  Tiêu chí kiểm soát: Co rút; bền màu; xù lông; giãn/phục hồi
+  Trạng thái phê duyệt: Chờ NCC
+- Mã NPL: NPL-KNIT-POLY2DA
+  Nhóm NPL: Vải dệt kim
+  Tên NPL: Poly 2 da
+  Mã/Nhãn NCC: GU-POLY2DA-01
+  NCC: Song King
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Áo thể dục; áo khoác
+  Thành phần: 100% Polyester
+  Khổ/Bản: Khổ 1,65 m
+  Định lượng: 180 gsm
+  Màu: Theo màu trường
+  Xuất xứ: Việt Nam
+  ĐVT: kg/m
+  Hồ sơ hiện có: Có báo giá Song King
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; test formaldehyt/azo; thành phần xơ
+  Tiêu chí kiểm soát: Co rút; bền màu; xù lông; ngoại quan
+  Trạng thái phê duyệt: Chờ NCC
+  Ghi chú: Dùng khi thực tế áp dụng
+- Mã NPL: NPL-RIB-POLO-COLLAR
+  Nhóm NPL: Bo cổ
+  Tên NPL: Bo dệt sọc đen-cam-trắng
+  Mã/Nhãn NCC: GU-POLO-PT-BOCO-01
+  NCC: Phương Tiên
+  Dự án/Phân khúc: THTM / TH1
+  Sản phẩm áp dụng: Polo
+  Định lượng: N/A
+  Màu: Đen-Cam-Trắng
+  ĐVT: cái/m
+  Hồ sơ hiện có: Có ảnh đo bo cổ
+  Hồ sơ còn thiếu: Thành phần xơ; khổ bo; độ co giãn; mã màu; mã lô; test
+  Tiêu chí kiểm soát: Độ giãn; phục hồi; bền màu; kích thước; sọc/màu
+  Trạng thái phê duyệt: Chờ NCC
+- Mã NPL: NPL-RIB-POLO-CUFF
+  Nhóm NPL: Bo tay
+  Tên NPL: Bo dệt sọc đen-cam-trắng
+  Mã/Nhãn NCC: GU-POLO-PT-BOTAY-01
+  NCC: Phương Tiên
+  Dự án/Phân khúc: THTM / TH1
+  Sản phẩm áp dụng: Polo
+  Định lượng: N/A
+  Màu: Đen-Cam-Trắng
+  ĐVT: cái/m
+  Hồ sơ hiện có: Có ảnh đo bo tay
+  Hồ sơ còn thiếu: Thành phần xơ; khổ bo; độ co giãn; mã màu; mã lô; test
+  Tiêu chí kiểm soát: Độ giãn; phục hồi; bền màu; kích thước; sọc/màu
+  Trạng thái phê duyệt: Chờ NCC
+- Mã NPL: NPL-FAB-JACKET-01
+  Nhóm NPL: Vải áo khoác
+  Tên NPL: Vải ngoài áo khoác
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Áo khoác
+  Màu: Theo màu trường
+  ĐVT: m/kg
+  Lead time: ~10 ngày NPL + SX
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: TDS; thành phần; khổ; định lượng; test; mã lô
+  Tiêu chí kiểm soát: Độ bền; co; bền màu; ngoại quan
+  Trạng thái phê duyệt: Chưa làm
+  Ghi chú: Phải khóa trước SX
+- Mã NPL: NPL-RIB-JACKET-01
+  Nhóm NPL: Bo cổ/tay/gấu
+  Tên NPL: Bo áo khoác
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Áo khoác
+  Định lượng: N/A
+  Màu: Theo màu trường
+  ĐVT: m/cái
+  Lead time: ~10 ngày
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: Thành phần; khổ; độ co giãn; test; mã lô
+  Tiêu chí kiểm soát: Độ giãn; phục hồi; bền màu; kích thước
+  Trạng thái phê duyệt: Chưa làm
+- Mã NPL: NPL-FAB-SPORT-01
+  Nhóm NPL: Vải thể thao
+  Tên NPL: Vải quần/áo thể thao
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Quần thể thao; áo thể dục
+  Màu: Theo màu trường
+  ĐVT: m/kg
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: TDS; thành phần; khổ; định lượng; test; mã lô
+  Tiêu chí kiểm soát: Co giãn; phục hồi; bền màu; xù lông; ngoại quan
+  Trạng thái phê duyệt: Chưa làm
+- Mã NPL: NPL-ELASTIC-WAIST-01
+  Nhóm NPL: Chun/dây
+  Tên NPL: Chun cạp
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: THTM / TH1 / mở rộng
+  Sản phẩm áp dụng: Quần kaki; quần thể thao; juyp
+  Định lượng: N/A
+  Màu: Theo SP
+  ĐVT: m
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: Thành phần; bản chun; độ giãn; test; mã lô
+  Tiêu chí kiểm soát: Độ giãn; phục hồi; kích thước; ổn định sau giặt
+  Trạng thái phê duyệt: Chưa làm
+  Ghi chú: Tây Mỗ lưu ý vòng chun
+- Mã NPL: NPL-LINING-BL-01
+  Nhóm NPL: Lót
+  Tên NPL: Lót Blazer
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: TH1 / TH2 / TH3 / DH / CV
+  Sản phẩm áp dụng: Blazer; Gilê
+  Màu: Theo thiết kế
+  ĐVT: m
+  Hồ sơ còn thiếu: TDS; thành phần; gsm; khổ; test; mã lô
+  Tiêu chí kiểm soát: Co; bền màu; trơn; ngoại quan
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NPL: NPL-FUSING-BL-01
+  Nhóm NPL: Keo dựng
+  Tên NPL: Keo dựng Blazer
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: TH1 / TH2 / TH3 / DH / CV
+  Sản phẩm áp dụng: Blazer; Gilê
+  Màu: Trắng/Đen
+  ĐVT: m
+  Hồ sơ còn thiếu: TDS; nhiệt ép; áp lực/thời gian ép
+  Tiêu chí kiểm soát: Độ bám; bong rộp; co nhăn; biến màu
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NPL: NPL-BUTTON-BL-15
+  Nhóm NPL: Cúc
+  Tên NPL: Cúc Blazer Ø1.5 cm
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: C1LQD / TH1
+  Sản phẩm áp dụng: Blazer nữ size 1–3
+  Khổ/Bản: Ø1.5 cm
+  Định lượng: N/A
+  Màu: Theo thiết kế
+  ĐVT: cái
+  Hồ sơ hiện có: Theo mẫu duyệt
+  Hồ sơ còn thiếu: Thông số vật liệu/mạ/màu
+  Tiêu chí kiểm soát: Kích thước; màu; độ bền; cạnh sắc
+  Trạng thái phê duyệt: Theo mẫu
+  Ghi chú: C1LQD
+- Mã NPL: NPL-BUTTON-BL-18
+  Nhóm NPL: Cúc
+  Tên NPL: Cúc Blazer Ø1.7–1.8 cm
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: C1LQD / TH1
+  Sản phẩm áp dụng: Blazer nữ size 4–7
+  Khổ/Bản: Ø1.7–1.8 cm
+  Định lượng: N/A
+  Màu: Theo thiết kế
+  ĐVT: cái
+  Hồ sơ hiện có: Theo mẫu duyệt
+  Hồ sơ còn thiếu: Thông số vật liệu/mạ/màu
+  Tiêu chí kiểm soát: Kích thước; màu; độ bền; cạnh sắc
+  Trạng thái phê duyệt: Theo mẫu
+  Ghi chú: C1LQD
+- Mã NPL: NPL-THREAD-SEW-01
+  Nhóm NPL: Chỉ may
+  Tên NPL: Chỉ may công nghiệp
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: Tất cả sản phẩm may
+  Thành phần: Polyester/Chờ xác nhận
+  Khổ/Bản: Theo cỡ chỉ
+  Định lượng: N/A
+  Màu: Theo màu vải
+  ĐVT: cuộn
+  Hồ sơ còn thiếu: TDS/thông số NCC; mã màu; lô
+  Tiêu chí kiểm soát: Độ bền; bền màu; tương thích vải; không co rúm
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NPL: NPL-THREAD-EMB-01
+  Nhóm NPL: Chỉ thêu
+  Tên NPL: Chỉ thêu logo
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: SP có logo/thêu
+  Khổ/Bản: Theo cỡ chỉ
+  Định lượng: N/A
+  Màu: Theo logo
+  ĐVT: cuộn
+  Hồ sơ hiện có: Theo mẫu thêu
+  Hồ sơ còn thiếu: Thông số; mã màu; lô
+  Tiêu chí kiểm soát: Bền màu; độ bóng; không đứt; đúng màu
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NPL: NPL-ZIP-JACKET-01
+  Nhóm NPL: Khóa kéo
+  Tên NPL: Khóa áo khoác
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: MN / TH1 / TH2 / TH3 / DH / CV
+  Sản phẩm áp dụng: Áo khoác
+  Khổ/Bản: Theo size áo
+  Định lượng: N/A
+  Màu: Theo thiết kế
+  ĐVT: cái
+  Hồ sơ còn thiếu: Vật liệu; kích thước; màu; NCC; mẫu chuẩn
+  Tiêu chí kiểm soát: Vận hành trơn; không sắc; màu; độ bền
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NPL: NPL-LABEL-SIZE-01
+  Nhóm NPL: Nhãn mác
+  Tên NPL: Tem size
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: Tất cả SP may
+  Thành phần: Theo mẫu duyệt
+  Khổ/Bản: Theo thiết kế
+  Định lượng: N/A
+  Màu: Theo nhận diện
+  ĐVT: cái
+  Hồ sơ hiện có: Có yêu cầu C1LQD
+  Hồ sơ còn thiếu: Mẫu duyệt; nội dung; vật liệu
+  Tiêu chí kiểm soát: Đúng size; bền; không kích ứng; đúng vị trí
+  Trạng thái phê duyệt: Theo mẫu
+- Mã NPL: NPL-LABEL-CARE-01
+  Nhóm NPL: Nhãn mác
+  Tên NPL: Tem sườn/Care label
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: Tất cả SP may
+  Thành phần: Theo mẫu duyệt
+  Khổ/Bản: Theo thiết kế
+  Định lượng: N/A
+  Màu: Theo nhận diện
+  ĐVT: cái
+  Hồ sơ hiện có: Có yêu cầu C1LQD
+  Hồ sơ còn thiếu: Mẫu duyệt; nội dung; vật liệu
+  Tiêu chí kiểm soát: Nội dung đúng; bền giặt; vị trí chuẩn
+  Trạng thái phê duyệt: Theo mẫu
+- Mã NPL: NPL-LABEL-BRAND-01
+  Nhóm NPL: Nhãn mác
+  Tên NPL: Tem thương hiệu
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: Tất cả SP may
+  Thành phần: Theo mẫu Giabaco
+  Khổ/Bản: Theo thiết kế
+  Định lượng: N/A
+  Màu: Theo nhận diện
+  ĐVT: cái
+  Hồ sơ hiện có: Có yêu cầu C1LQD
+  Hồ sơ còn thiếu: Mẫu duyệt; nội dung; vật liệu
+  Tiêu chí kiểm soát: Đúng nhận diện; bền; đúng vị trí
+  Trạng thái phê duyệt: Theo mẫu
+- Mã NPL: NPL-LABEL-WASH-01
+  Nhóm NPL: Nhãn mác
+  Tên NPL: Tem hướng dẫn sử dụng/Washcare
+  NCC: NCC tương ứng
+  Dự án/Phân khúc: Tất cả phân khúc
+  Sản phẩm áp dụng: Tất cả SP may
+  Thành phần: Theo mẫu duyệt
+  Khổ/Bản: Theo thiết kế
+  Định lượng: N/A
+  Màu: Theo nhận diện
+  ĐVT: cái
+  Hồ sơ hiện có: Có yêu cầu C1LQD
+  Hồ sơ còn thiếu: Mẫu duyệt; nội dung hướng dẫn
+  Tiêu chí kiểm soát: Nội dung đúng; dễ đọc; bền giặt
+  Trạng thái phê duyệt: Theo mẫu
+suppliers:
+- Mã NCC: SUP-FAB-001
+  Tên NCC/Đối tác: SAN A
+  Đầu mối: Mr Trần
+  Nhóm cung cấp: Vải chính Blazer
+  NPL/Dịch vụ chính: C168-29; C168-24; C168-19; CK216; B203; B207
+  Xuất xứ/Khu vực: Trung Quốc
+  Dự án/Phân khúc áp dụng: C1LQD; TH1; Blazer/Gilê; G-Blazer
+  Hồ sơ hiện có: Có mẫu/ảnh, trao đổi kỹ thuật và giao mẫu
+  Hồ sơ còn thiếu: TDS; thành phần xơ; khổ; định lượng; formaldehyt; amin thơm azo; COA/CQ; mã lô; xác nhận cấu trúc giữa các màu
+  Tiêu chí đánh giá chính: Chất lượng vải; ổn định màu/lô; hồ sơ kỹ thuật; giá; MOQ; lead time; khả năng phục vụ 100 trường
+  Trạng thái phê duyệt: Chờ bổ sung hồ sơ
+  Ghi chú: NCC chiến lược cho Blazer
+- Mã NCC: SUP-FAB-002
+  Tên NCC/Đối tác: Tổng Công ty CP Dệt May Nam Định
+  Nhóm cung cấp: Vải dệt thoi
+  NPL/Dịch vụ chính: Vải sơ mi; kaki 8688PC Navy
+  Xuất xứ/Khu vực: Việt Nam
+  Dự án/Phân khúc áp dụng: THTM; TH1; mở rộng TH2-TH3-DH-CV
+  Lead time: ~20 ngày nếu thiếu vải
+  Hồ sơ hiện có: Có hóa đơn/ghi chú kỹ thuật một số mã
+  Hồ sơ còn thiếu: TDS chính thức; mã vải; thành phần xơ; định lượng; khổ; formaldehyt/azo; mã lô; độ co; bền màu
+  Tiêu chí đánh giá chính: Ổn định chất lượng; hồ sơ nguồn gốc; khả năng cung ứng; lead time; MOQ
+  Trạng thái phê duyệt: Đang bổ sung
+  Ghi chú: Vải đại diện sơ mi/kaki THTM
+- Mã NCC: SUP-FAB-003
+  Tên NCC/Đối tác: Phương Tiên
+  Nhóm cung cấp: Vải dệt kim & bo
+  NPL/Dịch vụ chính: Cá sấu USA; Tici 30 4C; bo cổ; bo tay
+  Xuất xứ/Khu vực: Việt Nam/Chờ xác nhận
+  Dự án/Phân khúc áp dụng: THTM; TH1; Polo
+  Hồ sơ hiện có: Thông tin NCC, ảnh bo, dữ liệu kỹ thuật do Giabaco cung cấp
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; NSX; xuất xứ; test formaldehyt/azo; thành phần xơ; hồ sơ bo
+  Tiêu chí đánh giá chính: Thành phần/gsm đúng; màu ổn định; bo đàn hồi; hồ sơ kỹ thuật; giá; tiến độ
+  Trạng thái phê duyệt: Chờ bổ sung hồ sơ
+  Ghi chú: Cần tách rõ hồ sơ Phương Tiên và Song King
+- Mã NCC: SUP-FAB-004
+  Tên NCC/Đối tác: Song King
+  Nhóm cung cấp: Vải dệt kim
+  NPL/Dịch vụ chính: Cá sấu TC 4C; Poly 2 da
+  Xuất xứ/Khu vực: Việt Nam
+  Dự án/Phân khúc áp dụng: THTM; TH1; Polo; thể dục; áo khoác nếu dùng
+  Hồ sơ hiện có: Có báo giá và thông tin thành phần/định lượng một số mã
+  Hồ sơ còn thiếu: TDS; mã màu; mã lô; formaldehyt/azo; thành phần xơ; COA/CQ nếu có
+  Tiêu chí đánh giá chính: Đúng thành phần/gsm; bền màu; co rút; xù lông; tiến độ; hồ sơ
+  Trạng thái phê duyệt: Chờ bổ sung hồ sơ
+- Mã NCC: SUP-ACC-001
+  Tên NCC/Đối tác: NCC phụ liệu Blazer
+  Nhóm cung cấp: Phụ liệu Blazer
+  NPL/Dịch vụ chính: Lót; keo dựng; cúc; chỉ; nhãn
+  Dự án/Phân khúc áp dụng: TH1-TH2-TH3-DH-CV; Blazer/Gilê
+  Hồ sơ hiện có: Có mẫu duyệt một số phụ liệu
+  Hồ sơ còn thiếu: TDS; vật liệu; kích thước; điều kiện ép; màu; mã lô; xuất xứ
+  Tiêu chí đánh giá chính: Phù hợp mẫu; độ bền; an toàn; độ ổn định; hồ sơ; lead time
+  Trạng thái phê duyệt: Cần phê duyệt
+  Ghi chú: Tách thành NCC cụ thể khi có dữ liệu pháp lý
+- Mã NCC: SUP-ACC-002
+  Tên NCC/Đối tác: NCC phụ liệu áo khoác/thể thao
+  Nhóm cung cấp: Phụ liệu may
+  NPL/Dịch vụ chính: Bo áo khoác; khóa kéo; chun; dây rút
+  Dự án/Phân khúc áp dụng: MN-TH1-TH2-TH3-DH-CV
+  Lead time: ~10 ngày với một số phụ liệu
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: Thành phần; bản/kích thước; độ giãn; màu; mã lô; TDS/xác nhận NCC
+  Tiêu chí đánh giá chính: Độ giãn/phục hồi; vận hành; độ bền; màu; tiến độ
+  Trạng thái phê duyệt: Chưa làm
+- Mã NCC: SUP-LABEL-001
+  Tên NCC/Đối tác: NCC nhãn mác
+  Nhóm cung cấp: Nhãn mác
+  NPL/Dịch vụ chính: Tem size; care label; tem thương hiệu; washcare
+  Xuất xứ/Khu vực: Việt Nam/Chờ xác nhận
+  Dự án/Phân khúc áp dụng: Tất cả phân khúc
+  Hồ sơ hiện có: Có yêu cầu 4 loại nhãn từ C1LQD
+  Hồ sơ còn thiếu: Tên pháp lý; mẫu duyệt; vật liệu; thông số; báo giá; lead time
+  Tiêu chí đánh giá chính: Đúng nội dung; bền giặt; đúng vị trí; nhận diện; tiến độ
+  Trạng thái phê duyệt: Cần phê duyệt
+- Mã NCC: SUP-EMB-001
+  Tên NCC/Đối tác: Hải
+  Đầu mối: Hải
+  Nhóm cung cấp: Dịch vụ thêu
+  NPL/Dịch vụ chính: Thêu logo/chữ G/chi tiết nhận diện
+  Xuất xứ/Khu vực: Hà Nội
+  Dự án/Phân khúc áp dụng: G-UNIFORM; Blazer; Polo; Sơ mi; quà tặng
+  MOQ: Theo đơn
+  Lead time: Theo kế hoạch SX
+  Hồ sơ hiện có: Đầu mối đã xác định trong Core Team
+  Hồ sơ còn thiếu: Hồ sơ năng lực; bảng giá; tiêu chuẩn mẫu; năng lực/ngày; biên bản đánh giá
+  Tiêu chí đánh giá chính: Độ chính xác; màu chỉ; độ bền; tiến độ; tỷ lệ lỗi
+  Trạng thái phê duyệt: Đang sử dụng
+- Mã NCC: SUP-FUSE-001
+  Tên NCC/Đối tác: Vũ
+  Đầu mối: Vũ
+  Nhóm cung cấp: Dịch vụ ép
+  NPL/Dịch vụ chính: Ép keo/dựng, các công đoạn ép theo sản phẩm
+  Xuất xứ/Khu vực: Hà Nội
+  Dự án/Phân khúc áp dụng: Blazer; sản phẩm cần ép
+  MOQ: Theo đơn
+  Lead time: Theo kế hoạch SX
+  Hồ sơ hiện có: Đầu mối đã xác định trong Core Team
+  Hồ sơ còn thiếu: Hồ sơ năng lực; thông số máy; nhiệt/áp lực/thời gian; năng lực/ngày
+  Tiêu chí đánh giá chính: Độ bám; bong rộp; co nhăn; ổn định thông số; tiến độ
+  Trạng thái phê duyệt: Đang sử dụng
+- Mã NCC: SUP-PACK-001
+  Tên NCC/Đối tác: NCC bao bì/đóng gói
+  Nhóm cung cấp: Bao bì
+  NPL/Dịch vụ chính: Túi, hộp, tem đóng gói, thùng carton
+  Dự án/Phân khúc áp dụng: Tất cả phân khúc; BaoBao
+  Hồ sơ hiện có: Chưa đủ hồ sơ
+  Hồ sơ còn thiếu: Quy cách; vật liệu; mẫu; giá; MOQ; lead time; hồ sơ NCC
+  Tiêu chí đánh giá chính: Đúng quy cách; độ bền; sạch; nhận diện; tiến độ
+  Trạng thái phê duyệt: Chưa làm
+products:
+- Mã SP nền: GU-MN-SM-NT-N
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-SM-NT-NU
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-PL-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Polo
+  Tên sản phẩm: Áo Polo
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-QA-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki dài
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-QS-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki sooc
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-QTT-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần thể thao
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-AK-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-AO-TD-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Áo thể dục mầm non
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-QD-TD-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần đùi thể dục mầm non
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-MN-AK-MN-01
+  Mã phân khúc: MN
+  Phân khúc: Mầm non
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác mầm non
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size mầm non
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh phù hợp mầm non
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-SM-NT-N
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-SM-NT-NU
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-SM-DT-N
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-SM-DT-NU
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-PL-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Polo
+  Tên sản phẩm: Áo Polo
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-QA-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki dài
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-QS-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki sooc
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-JP-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Juyp/Chân váy
+  Tên sản phẩm: Juyp/Chân váy
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; dáng; ly; gấu; thông số
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-QTT-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần thể thao
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-AK-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 1
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-BL-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Blazer
+  Tên sản phẩm: Blazer tiểu học
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 1–7
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Ve/cổ; vai; tay; túi; cúc/khuy; lót; vạt; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH1-GL-01
+  Mã phân khúc: TH1
+  Phân khúc: Cấp 1 / Tiểu học
+  Nhóm SP: Gilê
+  Tên sản phẩm: Gilê tiểu học
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 1–7
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; nách; thân; gấu; form; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Danh mục Tây Mỗ làm chuẩn đại diện Cấp 1; bổ sung Blazer/Gilê theo C1LQD
+  Vai trò trong Master: Chuẩn Master
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-SM-NT-N
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-SM-NT-NU
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-SM-DT-N
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-SM-DT-NU
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-PL-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Polo
+  Tên sản phẩm: Áo Polo
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-QA-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki dài
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-QS-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki sooc
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-JP-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Juyp/Chân váy
+  Tên sản phẩm: Juyp/Chân váy
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; dáng; ly; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-QTT-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần thể thao
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-AK-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 2
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-BL-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Blazer
+  Tên sản phẩm: Blazer THCS
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 6 size
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Ve/cổ; vai; tay; túi; cúc/khuy; lót; vạt; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH2-GL-01
+  Mã phân khúc: TH2
+  Phân khúc: Cấp 2 / THCS
+  Nhóm SP: Gilê
+  Tên sản phẩm: Gilê THCS
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 6 size
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; nách; thân; gấu; form; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-SM-NT-N
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-SM-NT-NU
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi ngắn tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-SM-DT-N
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nam
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-SM-DT-NU
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi dài tay nữ
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-PL-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Polo
+  Tên sản phẩm: Áo Polo
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-QA-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki dài
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-QS-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Quần kaki
+  Tên sản phẩm: Quần kaki sooc
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ống; gấu; vòng chun; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-JP-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Juyp/Chân váy
+  Tên sản phẩm: Juyp/Chân váy
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; dáng; ly; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-QTT-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần thể thao
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-AK-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size Cấp 3
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-BL-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Blazer
+  Tên sản phẩm: Blazer THPT
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 5 size
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Ve/cổ; vai; tay; túi; cúc/khuy; lót; vạt; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-TH3-GL-01
+  Mã phân khúc: TH3
+  Phân khúc: Cấp 3 / THPT
+  Nhóm SP: Gilê
+  Tên sản phẩm: Gilê THPT
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: 5 size
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; nách; thân; gấu; form; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc danh mục Cấp 1, điều chỉnh form/size theo độ tuổi
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-PL-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Polo
+  Tên sản phẩm: Áo Polo sinh viên
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-QTT-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Thể thao
+  Tên sản phẩm: Quần thể thao sinh viên
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Vòng chun; co giãn; đường may; ống/gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-BL-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Blazer
+  Tên sản phẩm: Blazer sinh viên
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Ve/cổ; vai; tay; túi; cúc/khuy; lót; vạt; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-SM-CV-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi sinh viên/công sở
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-QA-CV-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Quần âu
+  Tên sản phẩm: Quần âu sinh viên
+  Giới tính: Nam
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ly; ống; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-JP-CV-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Juyp/Chân váy
+  Tên sản phẩm: Chân váy sinh viên
+  Giới tính: Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; dáng; ly; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-DH-AK-DH-01
+  Mã phân khúc: DH
+  Phân khúc: Đại học/Cao đẳng
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác sinh viên
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: Theo bảng size SV / XS–3XL tùy sản phẩm
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc Cấp 1 + G-Blazer/SV
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-BL-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Blazer
+  Tên sản phẩm: Blazer công sở
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Ve/cổ; vai; tay; túi; cúc/khuy; lót; vạt; thông số; hoàn thiện
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-SM-CV-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Sơ mi
+  Tên sản phẩm: Sơ mi công sở
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-QA-CV-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Quần âu
+  Tên sản phẩm: Quần âu công sở
+  Giới tính: Nam
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; túi; ly; ống; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-JP-CV-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Juyp/Chân váy
+  Tên sản phẩm: Chân váy công sở
+  Giới tính: Nữ
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Cạp; khóa; dáng; ly; gấu; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-PL-CV-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Polo
+  Tên sản phẩm: Polo công sở
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Bo cổ; bo tay; vai; sườn; gấu; logo; thông số; ngoại quan
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+- Mã SP nền: GU-CV-AK-CV-01
+  Mã phân khúc: CV
+  Phân khúc: Công sở
+  Nhóm SP: Áo khoác
+  Tên sản phẩm: Áo khoác công sở
+  Giới tính: Nam/Nữ
+  Dải cỡ chuẩn: XS–3XL / theo bảng size công sở
+  Mô hình SX: CM/FOB
+  Tiêu chí QC chính: Khóa; túi; bo; lót; độ rộng thân; đường may; thông số
+  Cơ sở xây dựng danh mục: Nhân rộng từ cấu trúc chuẩn + dòng công sở
+  Vai trò trong Master: Mở rộng
+  Trạng thái áp dụng: Kích hoạt theo nhu cầu/đơn hàng
+facilities:
+- Mã cơ sở: GUF-CM-001
+  Tên cơ sở/đối tác: Cơ sở Chị Chín
+  Đầu mối: Chị Chín
+  Mô hình: CM
+  Nhóm sản phẩm: Quần âu; Juyp/Chân váy; Quần sooc
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: Giabaco cấp NPL/BTP; cơ sở may theo mẫu/bảng thông số; Giabaco QC cuối, hoàn thiện, đóng gói
+  Tiêu chí QC trọng tâm: Cạp; khóa; túi; ống/gấu; vòng chun; thông số size
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-CM-002
+  Tên cơ sở/đối tác: Cơ sở Chị Vui
+  Đầu mối: Chị Vui
+  Mô hình: CM
+  Nhóm sản phẩm: Sơ mi học sinh; Sơ mi công sở
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: Giabaco cấp NPL/BTP; cơ sở may theo mẫu/bảng thông số; Giabaco QC cuối, hoàn thiện
+  Tiêu chí QC trọng tâm: Cổ; vai; tay; nẹp; khuy/khuyết; đường may; thông số
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-CM-003
+  Tên cơ sở/đối tác: Cơ sở Chị Hương
+  Đầu mối: Chị Hương
+  Mô hình: CM
+  Nhóm sản phẩm: Polo
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: Giabaco cấp NPL/BTP; cơ sở may theo mẫu; Giabaco QC cuối, hoàn thiện, đóng gói
+  Tiêu chí QC trọng tâm: Bo cổ; bo tay; vai; sườn; gấu; độ cân đối; size
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-CM-004
+  Tên cơ sở/đối tác: Cơ sở Chị Bình
+  Đầu mối: Chị Bình
+  Mô hình: CM
+  Nhóm sản phẩm: Áo khoác
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: Giabaco cấp NPL/BTP; cơ sở thực hiện may/lắp ráp; Giabaco QC cuối
+  Tiêu chí QC trọng tâm: Khóa; túi; bo; lót; đường may; độ rộng thân; size
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-CM-005
+  Tên cơ sở/đối tác: Cơ sở Chị Minh
+  Đầu mối: Chị Minh
+  Mô hình: CM
+  Nhóm sản phẩm: Áo khoác
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: Giabaco cấp NPL/BTP; cơ sở may theo lệnh sản xuất và thông số; Giabaco QC cuối
+  Tiêu chí QC trọng tâm: Khóa; túi; bo; đường may; thông số; ngoại quan
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-CM-006
+  Tên cơ sở/đối tác: HTX Vân Từ
+  Đầu mối: Nam
+  Mô hình: CM/Gia công theo lệnh
+  Nhóm sản phẩm: Blazer; sản phẩm may theo kế hoạch G-UNIFORM
+  Công đoạn chính: May/lắp ráp
+  Phạm vi trách nhiệm: May theo lệnh sản xuất, mẫu duyệt, bảng thông số; phạm vi NPL/cắt theo từng lệnh
+  Tiêu chí QC trọng tâm: Ve/cổ; tay; túi; cúc/khuy; lót; thông số; tiến độ
+  Trạng thái hợp tác: Đang sử dụng
+- Mã cơ sở: GUF-FOB-001
+  Tên cơ sở/đối tác: Công ty An Dương
+  Đầu mối: Chị Thảo
+  Mô hình: FOB/R&D
+  Nhóm sản phẩm: Blazer; Gilê
+  Công đoạn chính: R&D; mẫu; sản xuất theo phạm vi hợp đồng
+  Phạm vi trách nhiệm: Thiết kế/R&D, mẫu hoặc sản xuất theo phạm vi hợp đồng; yêu cầu bàn giao đủ tài liệu kỹ thuật/bảng size/hồ sơ vật liệu
+  Tiêu chí QC trọng tâm: Tài liệu kỹ thuật; bảng size; mẫu duyệt; vật liệu; thay đổi thiết kế; hồ sơ bàn giao
+  Trạng thái hợp tác: Tạm dừng/Không ưu tiên hợp tác
+- Mã cơ sở: GUF-FOB-002
+  Tên cơ sở/đối tác: Cơ sở Linh – Thùy
+  Đầu mối: Linh / Thùy
+  Mô hình: FOB/Theo đơn
+  Nhóm sản phẩm: Sơ mi; Polo; Blazer
+  Công đoạn chính: R&D; sản xuất
+  Phạm vi trách nhiệm: Thực hiện theo phạm vi đơn; nếu CM phải tách rõ phần Giabaco cấp và phần cơ sở thực hiện
+  Tiêu chí QC trọng tâm: Phạm vi CM/FOB; NPL; size; tiến độ; truy xuất hồ sơ
+  Trạng thái hợp tác: Đang đánh giá
+- Mã cơ sở: GUF-FOB-003
+  Tên cơ sở/đối tác: Cơ sở Toan Hạnh
+  Mô hình: FOB
+  Nhóm sản phẩm: Sơ mi nam/nữ học sinh; Sơ mi công sở
+  Công đoạn chính: Sản xuất
+  Phạm vi trách nhiệm: Sản xuất theo hợp đồng/đơn đặt hàng; chịu trách nhiệm phần việc, vật liệu và chất lượng thuộc phạm vi ký
+  Tiêu chí QC trọng tâm: Vật liệu; màu; cổ/nẹp/tay; thông số; tiến độ; nguồn gốc NPL
+  Trạng thái hợp tác: Đang đánh giá
+- Mã cơ sở: GUF-OPS-001
+  Tên cơ sở/đối tác: Cơ sở Tam Hiệp Greensense
+  Mô hình: Nội bộ/Liên kết
+  Nhóm sản phẩm: Cắt; Ép; vận chuyển nội bộ; lắp ghép; QC hoàn thiện; đóng gói; giao hàng
+  Công đoạn chính: Cắt; ép; QC; logistics
+  Phạm vi trách nhiệm: Thực hiện công đoạn hỗ trợ chuỗi G-UNIFORM theo lệnh sản xuất và tiêu chuẩn nội bộ
+  Tiêu chí QC trọng tâm: Nhận diện bó hàng; cắt; ép; thất thoát NPL; nhầm size/đơn; QC hoàn thiện; đóng gói
+  Trạng thái hợp tác: Đang sử dụng
