@@ -14,6 +14,10 @@ import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SurveyRouteImport } from './routes/survey'
 import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminMasterDataRouteImport } from './routes/_admin/master-data'
+import { Route as AdminProductionRouteImport } from './routes/_admin/production'
+import { Route as FacilityIndexRouteImport } from './routes/facility.index'
+import { Route as FacilityLoginRouteImport } from './routes/facility.login'
 import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ParentParentRouteImport } from './routes/parent/_parent'
 import { Route as ParentForgotRouteImport } from './routes/parent/forgot'
@@ -27,6 +31,7 @@ import { Route as AdminCatalogProductIdRouteImport } from './routes/_admin/catal
 import { Route as AdminCatalogNewRouteImport } from './routes/_admin/catalog.new'
 import { Route as AdminOrdersIndexRouteImport } from './routes/_admin/orders/index'
 import { Route as AdminOrdersOrderIdRouteImport } from './routes/_admin/orders/$orderId'
+import { Route as AdminSettingsSchoolsRouteImport } from './routes/_admin/settings.schools'
 import { Route as AdminStudentsIndexRouteImport } from './routes/_admin/students/index'
 import { Route as AdminStudentsStudentIdRouteImport } from './routes/_admin/students/$studentId'
 import { Route as AdminStudentsNewRouteImport } from './routes/_admin/students/new'
@@ -57,6 +62,26 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminMasterDataRoute = AdminMasterDataRouteImport.update({
+  id: '/master-data',
+  path: '/master-data',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProductionRoute = AdminProductionRouteImport.update({
+  id: '/production',
+  path: '/production',
+  getParentRoute: () => AdminRoute,
+} as any)
+const FacilityIndexRoute = FacilityIndexRouteImport.update({
+  id: '/facility/',
+  path: '/facility/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FacilityLoginRoute = FacilityLoginRouteImport.update({
+  id: '/facility/login',
+  path: '/facility/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PTokenRoute = PTokenRouteImport.update({
   id: '/p/$token',
@@ -124,6 +149,11 @@ const AdminOrdersOrderIdRoute = AdminOrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSettingsSchoolsRoute = AdminSettingsSchoolsRouteImport.update({
+  id: '/settings/schools',
+  path: '/settings/schools',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStudentsIndexRoute = AdminStudentsIndexRouteImport.update({
   id: '/students/',
   path: '/students/',
@@ -161,16 +191,21 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/survey': typeof SurveyRoute
   '/dashboard': typeof AdminDashboardRoute
+  '/master-data': typeof AdminMasterDataRoute
+  '/production': typeof AdminProductionRoute
+  '/facility/login': typeof FacilityLoginRoute
   '/p/$token': typeof PTokenRoute
   '/parent': typeof ParentParentRouteWithChildren
   '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
   '/parent/reset': typeof ParentResetRoute
+  '/facility/': typeof FacilityIndexRoute
   '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/catalog/new': typeof AdminCatalogNewRoute
   '/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/settings/schools': typeof AdminSettingsSchoolsRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
   '/campaigns/': typeof AdminCampaignsIndexRoute
@@ -186,15 +221,20 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/survey': typeof SurveyRoute
   '/dashboard': typeof AdminDashboardRoute
+  '/master-data': typeof AdminMasterDataRoute
+  '/production': typeof AdminProductionRoute
+  '/facility/login': typeof FacilityLoginRoute
   '/p/$token': typeof PTokenRoute
   '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
   '/parent/reset': typeof ParentResetRoute
+  '/facility': typeof FacilityIndexRoute
   '/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/catalog/new': typeof AdminCatalogNewRoute
   '/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/settings/schools': typeof AdminSettingsSchoolsRoute
   '/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/students/new': typeof AdminStudentsNewRoute
   '/campaigns': typeof AdminCampaignsIndexRoute
@@ -212,16 +252,21 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/survey': typeof SurveyRoute
   '/_admin/dashboard': typeof AdminDashboardRoute
+  '/_admin/master-data': typeof AdminMasterDataRoute
+  '/_admin/production': typeof AdminProductionRoute
+  '/facility/login': typeof FacilityLoginRoute
   '/p/$token': typeof PTokenRoute
   '/parent/_parent': typeof ParentParentRouteWithChildren
   '/parent/forgot': typeof ParentForgotRoute
   '/parent/login': typeof ParentLoginRoute
   '/parent/register': typeof ParentRegisterRoute
   '/parent/reset': typeof ParentResetRoute
+  '/facility/': typeof FacilityIndexRoute
   '/_admin/campaigns/$campaignId': typeof AdminCampaignsCampaignIdRoute
   '/_admin/catalog/$productId': typeof AdminCatalogProductIdRoute
   '/_admin/catalog/new': typeof AdminCatalogNewRoute
   '/_admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/_admin/settings/schools': typeof AdminSettingsSchoolsRoute
   '/_admin/students/$studentId': typeof AdminStudentsStudentIdRoute
   '/_admin/students/new': typeof AdminStudentsNewRoute
   '/_admin/campaigns/': typeof AdminCampaignsIndexRoute
@@ -239,16 +284,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/survey'
     | '/dashboard'
+    | '/master-data'
+    | '/production'
+    | '/facility/login'
     | '/p/$token'
     | '/parent'
     | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
     | '/parent/reset'
+    | '/facility/'
     | '/campaigns/$campaignId'
     | '/catalog/$productId'
     | '/catalog/new'
     | '/orders/$orderId'
+    | '/settings/schools'
     | '/students/$studentId'
     | '/students/new'
     | '/campaigns/'
@@ -264,15 +314,20 @@ export interface FileRouteTypes {
     | '/login'
     | '/survey'
     | '/dashboard'
+    | '/master-data'
+    | '/production'
+    | '/facility/login'
     | '/p/$token'
     | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
     | '/parent/reset'
+    | '/facility'
     | '/campaigns/$campaignId'
     | '/catalog/$productId'
     | '/catalog/new'
     | '/orders/$orderId'
+    | '/settings/schools'
     | '/students/$studentId'
     | '/students/new'
     | '/campaigns'
@@ -289,16 +344,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/survey'
     | '/_admin/dashboard'
+    | '/_admin/master-data'
+    | '/_admin/production'
+    | '/facility/login'
     | '/p/$token'
     | '/parent/_parent'
     | '/parent/forgot'
     | '/parent/login'
     | '/parent/register'
     | '/parent/reset'
+    | '/facility/'
     | '/_admin/campaigns/$campaignId'
     | '/_admin/catalog/$productId'
     | '/_admin/catalog/new'
     | '/_admin/orders/$orderId'
+    | '/_admin/settings/schools'
     | '/_admin/students/$studentId'
     | '/_admin/students/new'
     | '/_admin/campaigns/'
@@ -315,12 +375,14 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   SurveyRoute: typeof SurveyRoute
+  FacilityLoginRoute: typeof FacilityLoginRoute
   PTokenRoute: typeof PTokenRoute
   ParentParentRoute: typeof ParentParentRouteWithChildren
   ParentForgotRoute: typeof ParentForgotRoute
   ParentLoginRoute: typeof ParentLoginRoute
   ParentRegisterRoute: typeof ParentRegisterRoute
   ParentResetRoute: typeof ParentResetRoute
+  FacilityIndexRoute: typeof FacilityIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -359,6 +421,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/_admin/master-data': {
+      id: '/_admin/master-data'
+      path: '/master-data'
+      fullPath: '/master-data'
+      preLoaderRoute: typeof AdminMasterDataRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/production': {
+      id: '/_admin/production'
+      path: '/production'
+      fullPath: '/production'
+      preLoaderRoute: typeof AdminProductionRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/facility/': {
+      id: '/facility/'
+      path: '/facility'
+      fullPath: '/facility/'
+      preLoaderRoute: typeof FacilityIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/facility/login': {
+      id: '/facility/login'
+      path: '/facility/login'
+      fullPath: '/facility/login'
+      preLoaderRoute: typeof FacilityLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/p/$token': {
       id: '/p/$token'
@@ -451,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOrdersOrderIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/settings/schools': {
+      id: '/_admin/settings/schools'
+      path: '/settings/schools'
+      fullPath: '/settings/schools'
+      preLoaderRoute: typeof AdminSettingsSchoolsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/students/': {
       id: '/_admin/students/'
       path: '/students'
@@ -498,10 +595,13 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminMasterDataRoute: typeof AdminMasterDataRoute
+  AdminProductionRoute: typeof AdminProductionRoute
   AdminCampaignsCampaignIdRoute: typeof AdminCampaignsCampaignIdRoute
   AdminCatalogProductIdRoute: typeof AdminCatalogProductIdRoute
   AdminCatalogNewRoute: typeof AdminCatalogNewRoute
   AdminOrdersOrderIdRoute: typeof AdminOrdersOrderIdRoute
+  AdminSettingsSchoolsRoute: typeof AdminSettingsSchoolsRoute
   AdminStudentsStudentIdRoute: typeof AdminStudentsStudentIdRoute
   AdminStudentsNewRoute: typeof AdminStudentsNewRoute
   AdminCampaignsIndexRoute: typeof AdminCampaignsIndexRoute
@@ -512,10 +612,13 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminMasterDataRoute: AdminMasterDataRoute,
+  AdminProductionRoute: AdminProductionRoute,
   AdminCampaignsCampaignIdRoute: AdminCampaignsCampaignIdRoute,
   AdminCatalogProductIdRoute: AdminCatalogProductIdRoute,
   AdminCatalogNewRoute: AdminCatalogNewRoute,
   AdminOrdersOrderIdRoute: AdminOrdersOrderIdRoute,
+  AdminSettingsSchoolsRoute: AdminSettingsSchoolsRoute,
   AdminStudentsStudentIdRoute: AdminStudentsStudentIdRoute,
   AdminStudentsNewRoute: AdminStudentsNewRoute,
   AdminCampaignsIndexRoute: AdminCampaignsIndexRoute,
@@ -547,12 +650,14 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   SurveyRoute: SurveyRoute,
+  FacilityLoginRoute: FacilityLoginRoute,
   PTokenRoute: PTokenRoute,
   ParentParentRoute: ParentParentRouteWithChildren,
   ParentForgotRoute: ParentForgotRoute,
   ParentLoginRoute: ParentLoginRoute,
   ParentRegisterRoute: ParentRegisterRoute,
   ParentResetRoute: ParentResetRoute,
+  FacilityIndexRoute: FacilityIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

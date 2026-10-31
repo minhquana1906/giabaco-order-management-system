@@ -1,6 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { CalendarRange, ChartColumn, LogOut, Menu, Package, ShoppingBag, Users } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { CalendarRange, ChartColumn, ChevronDown, Factory, LogOut, Menu, Package, Settings, ShoppingBag, Users } from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useLogout, useMe } from '@/features/auth/hooks'
@@ -11,15 +11,29 @@ const NAV_ITEM =
 const NAV_LEAF = `${NAV_ITEM} pl-[46px] text-[13px]`
 const NAV_ACTIVE =
   "bg-white/[0.14] hover:bg-white/[0.14] text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-brass before:content-['']"
-const NAV_GROUP_LABEL = 'flex items-center gap-2.5 px-[22px] py-3 font-semibold text-sidebar-foreground lg:py-2.5'
 const NAV_TREE =
   "relative flex flex-col before:absolute before:bottom-2 before:left-[29px] before:top-0 before:w-px before:bg-white/20 before:content-['']"
 
-function NavGroup({ header, children }: { header: ReactNode; children: ReactNode }) {
+function NavGroup({ icon, label, active, children }: { icon: ReactNode; label: string; active: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState<boolean | null>(null)
+  const expanded = open ?? active
+  const id = useId()
   return (
     <li className="mt-2 first:mt-0">
-      {header}
-      <ul className={NAV_TREE}>{children}</ul>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={id}
+        onClick={() => setOpen(!expanded)}
+        className={cn(NAV_ITEM, 'w-full font-semibold', active && 'text-white')}
+      >
+        {icon}
+        <span className="flex-1 text-left">{label}</span>
+        <ChevronDown className={cn('size-4 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
+      </button>
+      <ul id={id} hidden={!expanded} className={NAV_TREE}>
+        {children}
+      </ul>
     </li>
   )
 }
@@ -31,7 +45,7 @@ function Wordmark({ inline = false }: { inline?: boolean }) {
         <p className="text-base font-bold tracking-[0.5px] text-white">
           G<span className="text-brass">-</span>UNIFORM
         </p>
-        <p className="-mt-0.5 text-[9px] font-medium tracking-[1.2px] text-[#c9d0de]">
+        <p className="-mt-0.5 text-[11px] font-medium tracking-[1px] text-[#c9d0de]">
           by GIABACO · EDUCHIC
         </p>
       </div>
@@ -43,7 +57,7 @@ function Wordmark({ inline = false }: { inline?: boolean }) {
       <p className="text-xl font-bold tracking-[0.5px] text-white">
         G<span className="text-brass">-</span>UNIFORM
       </p>
-      <p className="-mt-0.5 text-[10px] font-medium tracking-[1.4px] text-[#c9d0de]">
+      <p className="-mt-0.5 text-[11px] font-medium tracking-[1.2px] text-[#c9d0de]">
         by GIABACO · EDUCHIC
       </p>
     </div>
@@ -65,13 +79,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Điều hướng chính">
       <ul className="flex flex-col">
-        <NavGroup
-          header={
-            <p className={cn(NAV_GROUP_LABEL, onStudents && 'text-white')}>
-              <Users className="size-4" aria-hidden="true" /> Học sinh
-            </p>
-          }
-        >
+        <NavGroup icon={<Users className="size-4" aria-hidden="true" />} label="Học sinh" active={onStudents}>
           <li>
             <Link
               to="/students/new"
@@ -137,6 +145,42 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             <ShoppingBag className="size-4" aria-hidden="true" /> Đơn hàng
           </Link>
         </li>
+        <li>
+          <Link
+            to="/production"
+            onClick={onNavigate}
+            aria-current={pathname.startsWith('/production') ? 'page' : undefined}
+            className={cn(NAV_ITEM, 'font-semibold', pathname.startsWith('/production') && NAV_ACTIVE)}
+          >
+            <Factory className="size-4" aria-hidden="true" /> Tiến độ đợt sản xuất
+          </Link>
+        </li>
+        <NavGroup
+          icon={<Settings className="size-4" aria-hidden="true" />}
+          label="Cấu hình"
+          active={pathname.startsWith('/settings') || pathname.startsWith('/master-data')}
+        >
+          <li>
+            <Link
+              to="/settings/schools"
+              onClick={onNavigate}
+              aria-current={pathname.startsWith('/settings/schools') ? 'page' : undefined}
+              className={cn(NAV_LEAF, pathname.startsWith('/settings/schools') && NAV_ACTIVE)}
+            >
+              Trường và lớp
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/master-data"
+              onClick={onNavigate}
+              aria-current={pathname.startsWith('/master-data') ? 'page' : undefined}
+              className={cn(NAV_LEAF, pathname.startsWith('/master-data') && NAV_ACTIVE)}
+            >
+              Danh mục gốc
+            </Link>
+          </li>
+        </NavGroup>
       </ul>
     </nav>
   )
@@ -179,11 +223,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         Bỏ qua đến nội dung
       </a>
 
-      <aside className="sticky top-0 hidden h-dvh w-[220px] flex-none border-r-[3px] border-piping bg-navy lg:block">
+      <aside className="sticky top-0 hidden h-dvh w-[220px] flex-none border-r border-piping bg-navy lg:block">
         <SidebarBody />
       </aside>
 
-      <header className="on-navy sticky top-0 z-30 flex h-14 items-center justify-between border-b-[3px] border-piping bg-navy pl-0 pr-2 lg:hidden">
+      <header className="on-navy sticky top-0 z-30 flex h-14 items-center justify-between border-b border-piping bg-navy pl-0 pr-2 lg:hidden">
         <Wordmark inline />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -199,7 +243,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SheetContent
             side="left"
             showCloseButton={false}
-            className="w-[260px] max-w-[85vw] gap-0 border-r-[3px] border-piping bg-navy p-0"
+            className="w-[260px] max-w-[85vw] gap-0 border-r border-piping bg-navy p-0"
           >
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <SheetDescription className="sr-only">Điều hướng G-UNIFORM</SheetDescription>
