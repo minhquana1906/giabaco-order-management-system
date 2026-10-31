@@ -81,6 +81,7 @@ async def _clean() -> AsyncIterator[None]:
             )
         )
         await s.execute(text("DELETE FROM products WHERE code NOT IN ('blazer', 'gile')"))
+        await s.execute(text("DELETE FROM measurement_types"))
         await s.commit()
 
 

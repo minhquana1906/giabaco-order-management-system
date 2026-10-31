@@ -1,35 +1,31 @@
-import struct
+import io
 import uuid
 from pathlib import Path
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from PIL import Image, ImageChops, ImageDraw
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.features.catalog import images
 from app.features.catalog.models import Product, ProductImage
+from app.features.master_data.models import MasterRecord
 from app.features.students.models import Fit, FittingTrial
 from app.main import app
 from tests.features.conftest import MakeStudent
 
-PNG = (
-    b"\x89PNG\r\n\x1a\n"
-    + struct.pack(">I", 13)
-    + b"IHDR"
-    + struct.pack(">II", 30, 40)
-    + b"\x08\x06\x00\x00\x00"
-)
-WEBP = (
-    b"RIFF"
-    + struct.pack("<I", 22)
-    + b"WEBPVP8X"
-    + struct.pack("<I", 10)
-    + b"\x00" * 4
-    + ((63).to_bytes(3, "little") + (79).to_bytes(3, "little"))
-)
+
+def encoded(fmt: str, size: tuple[int, int], mode: str = "RGB", **save: Any) -> bytes:
+    out = io.BytesIO()
+    Image.new(mode, size, "white").save(out, fmt, **save)
+    return out.getvalue()
+
+
+PNG = encoded("PNG", (30, 40))
+WEBP = encoded("WEBP", (64, 80))
 GUIDE = [
     {
         "size_label": "1",
@@ -95,6 +91,76 @@ async def test_create_and_list_product(client: AsyncClient, session: AsyncSessio
     listed = (await client.get("/api/products")).json()
     assert "quan_sooc" in [p["code"] for p in listed]
     assert await audit_actions(session) == ["product.create"]
+
+
+async def make_type(client: AsyncClient, label: str, **extra: Any) -> dict[str, Any]:
+    response = await client.post("/api/measurement-types", json={"label": label, **extra})
+    assert response.status_code == 201, response.text
+    return response.json()  # type: ignore[no-any-return]
+
+
+def field(kind: dict[str, Any], instruction: str = "Đo quanh ngực") -> dict[str, Any]:
+    return {
+        "key": kind["key"],
+        "label": kind["label"],
+        "instruction": instruction,
+        "required": True,
+    }
+
+
+async def test_measurement_type_gets_generated_key_and_rejects_normalized_duplicates(
+    client: AsyncClient,
+) -> None:
+    created = await make_type(client, "Vòng ngực")
+    assert created["key"].startswith("sd_")
+    duplicate = await client.post("/api/measurement-types", json={"label": "  VÒNG   NGỰC  "})
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "duplicate_measurement"
+
+
+async def test_similar_measurement_name_needs_confirmation(client: AsyncClient) -> None:
+    await make_type(client, "Vòng ngực")
+    similar = await client.post("/api/measurement-types", json={"label": "Vong nguc."})
+    assert similar.status_code == 409
+    assert similar.json()["error"]["code"] == "similar_measurement"
+    await make_type(client, "Vong nguc.", confirm_similar=True)
+
+
+async def test_product_measurements_come_from_catalog(client: AsyncClient) -> None:
+    kind = await make_type(client, "Vòng ngực")
+    fields = [field(kind)]
+    product = await make_product(client, tailor_measurements=fields)
+    assert product["tailor_measurements"] == fields
+    response = await client.patch(f"/api/products/{product['id']}", json=update_body(product))
+    assert response.status_code == 200
+    assert response.json()["tailor_measurements"] == fields
+    response = await client.patch(
+        f"/api/products/{product['id']}", json=update_body(product, tailor_measurements=fields * 2)
+    )
+    assert response.status_code == 422
+    unknown = [{**fields[0], "key": "khong_co"}]
+    response = await client.patch(
+        f"/api/products/{product['id']}", json=update_body(product, tailor_measurements=unknown)
+    )
+    assert response.status_code == 422
+
+
+async def test_rename_updates_product_labels_and_rejects_duplicates(client: AsyncClient) -> None:
+    kind = await make_type(client, "Vòng ngực")
+    product = await make_product(client, tailor_measurements=[field(kind)])
+    renamed = await client.patch(
+        f"/api/measurement-types/{kind['key']}", json={"label": "Chu vi ngực"}
+    )
+    assert renamed.status_code == 200
+    assert renamed.json() == {"key": kind["key"], "label": "Chu vi ngực"}
+    refreshed = (await client.get(f"/api/products/{product['id']}")).json()
+    assert refreshed["tailor_measurements"][0]["label"] == "Chu vi ngực"
+    assert refreshed["tailor_measurements"][0]["instruction"] == "Đo quanh ngực"
+    other = await make_type(client, "Dài tay")
+    clash = await client.patch(
+        f"/api/measurement-types/{other['key']}", json={"label": "chu  VI ngực"}
+    )
+    assert clash.status_code == 409
 
 
 @pytest.mark.parametrize(
@@ -186,7 +252,7 @@ async def test_upload_replace_delete_and_audit(client: AsyncClient, session: Asy
     body = first.json()
     assert (body["width"], body["height"]) == (30, 40)
     assert body["url"].startswith("/media/products/lqd/")
-    assert body["url"].endswith(".png")
+    assert body["url"].endswith(".webp")
     assert (Path(get_settings().media_dir) / body["url"].removeprefix("/media/")).is_file()
 
     second = await client.post(url, **upload(school["id"], content=WEBP, name="b.webp"))
@@ -260,7 +326,7 @@ async def test_media_served_with_immutable_cache(client: AsyncClient) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as anon:
         r = await anon.get(url)
         assert r.status_code == 200
-        assert r.content == PNG
+        assert r.content[:4] == b"RIFF" and r.content[8:12] == b"WEBP"
         assert r.headers["cache-control"] == "public, max-age=31536000, immutable"
         assert (await anon.get("/media/../../etc/passwd")).status_code == 404
         assert (await anon.get("/media/products/none.png")).status_code == 404
@@ -301,6 +367,22 @@ async def test_patch_requires_explicit_active(client: AsyncClient) -> None:
     assert (await client.patch(f"/api/products/{product['id']}", json=body)).status_code == 422
 
 
+async def test_master_product_link_must_be_a_base_product(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    base, material = [
+        str(await session.scalar(select(MasterRecord.id).where(MasterRecord.kind == kind).limit(1)))
+        for kind in ("products", "materials")
+    ]
+    product = await make_product(client, master_product_id=base)
+    assert product["master_product_id"] == base
+    url = f"/api/products/{product['id']}"
+    wrong = await client.patch(url, json=update_body(product, master_product_id=material))
+    assert wrong.status_code == 422
+    cleared = await client.patch(url, json=update_body(product, master_product_id=None))
+    assert cleared.json()["master_product_id"] is None
+
+
 async def test_media_rejects_null_byte_and_directories(client: AsyncClient) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as anon:
         assert (await anon.get("/media/products%00.png")).status_code == 404
@@ -308,20 +390,107 @@ async def test_media_rejects_null_byte_and_directories(client: AsyncClient) -> N
         assert (await anon.get("/media/%2e%2e/%2e%2e/etc/passwd")).status_code == 404
 
 
-def jpeg(width: int, height: int) -> bytes:
-    sof = b"\xff\xc0" + struct.pack(">HBHHB", 11, 8, height, width, 1) + b"\x01\x11\x00"
-    return b"\xff\xd8\xff\xe0" + struct.pack(">H", 4) + b"\x00\x00" + sof
+def test_optimize_converts_and_limits_long_edge() -> None:
+    jpg = images.optimize(encoded("JPEG", (3200, 1600)))
+    assert jpg is not None and (jpg.width, jpg.height) == (1600, 800)
+    assert jpg.data[:4] == b"RIFF" and jpg.data[8:12] == b"WEBP"
+    small = images.optimize(PNG)
+    assert small is not None and (small.width, small.height) == (30, 40)
+    with Image.open(io.BytesIO(small.data)) as img:
+        assert (img.format, img.size) == ("WEBP", (30, 40))
 
 
-def test_sniff_reads_dimensions_and_rejects_truncated_or_empty() -> None:
-    from app.features.catalog.images import sniff
+def test_optimize_keeps_optimised_webp_and_resizes_oversized_webp() -> None:
+    kept = images.optimize(WEBP)
+    assert kept is not None and kept.data is WEBP and (kept.width, kept.height) == (64, 80)
+    big = images.optimize(encoded("WEBP", (2000, 500)))
+    assert big is not None and (big.width, big.height) == (1600, 400)
 
-    assert (sniff(PNG).ext, sniff(PNG).width, sniff(PNG).height) == ("png", 30, 40)  # type: ignore[union-attr]
-    assert (sniff(WEBP).ext, sniff(WEBP).width, sniff(WEBP).height) == ("webp", 64, 80)  # type: ignore[union-attr]
-    info = sniff(jpeg(50, 70))
-    assert info is not None and (info.ext, info.width, info.height) == ("jpg", 50, 70)
-    assert sniff(PNG[:20]) is None
-    assert sniff(jpeg(50, 70)[:12]) is None
-    assert sniff(jpeg(0, 70)) is None
-    assert sniff(b"") is None
-    assert sniff(b"GIF89a" + b"\x00" * 40) is None
+
+def test_optimize_keeps_text_sharp_for_png() -> None:
+    chart = Image.new("RGB", (400, 300), "white")
+    ImageDraw.Draw(chart).text((20, 20), "Size 140 - 152 cm", fill="black")
+    out = io.BytesIO()
+    chart.save(out, "PNG")
+    result = images.optimize(out.getvalue())
+    assert result is not None
+    with Image.open(io.BytesIO(result.data)) as img:
+        assert ImageChops.difference(img.convert("RGB"), chart).getbbox() is None
+
+
+def test_optimize_rejects_bad_input_and_decompression_bombs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert images.optimize(b"") is None
+    assert images.optimize(b"GIF89a" + b"\x00" * 40) is None
+    assert images.optimize(PNG[:20]) is None
+    assert images.optimize(PNG[: len(PNG) // 2]) is None
+    assert images.optimize(encoded("GIF", (10, 10))) is None
+    assert images.optimize(encoded("BMP", (10, 10))) is None
+    monkeypatch.setattr(images, "MAX_PIXELS", 1000)
+    assert images.optimize(PNG) is None
+
+
+async def test_upload_stores_converted_size_in_db(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    school = (await client.post("/api/schools", json={"name": "Trường Q", "code": "LQD"})).json()
+    product = await make_product(client)
+    url = f"/api/products/{product['id']}/images"
+    r = await client.post(
+        url, **upload(school["id"], content=encoded("JPEG", (2400, 1200)), name="a.jpg")
+    )
+    assert r.status_code == 201, r.text
+    assert (r.json()["width"], r.json()["height"]) == (1600, 800)
+    row = await session.scalar(select(ProductImage))
+    assert row is not None and (row.width, row.height) == (1600, 800)
+    with Image.open(Path(get_settings().media_dir) / row.path) as img:
+        assert img.size == (1600, 800)
+
+    bomb = await client.post(
+        url, **upload(school["id"], content=encoded("PNG", (6000, 5000)), name="b.png")
+    )
+    assert bomb.status_code == 422
+    assert "file" in bomb.json()["error"]["fields"]
+
+
+async def test_optimize_media_script_dry_run_then_commit(
+    client: AsyncClient, session: AsyncSession, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from scripts.optimize_media import run
+
+    school = (await client.post("/api/schools", json={"name": "Trường Q", "code": "LQD"})).json()
+    product = await make_product(client)
+    relative = f"products/legacy_{uuid.uuid4().hex[:8]}.jpg"
+    original = Path(get_settings().media_dir) / relative
+    original.parent.mkdir(parents=True, exist_ok=True)
+    original.write_bytes(encoded("JPEG", (3000, 2000), quality=100))
+    session.add(
+        ProductImage(
+            school_id=uuid.UUID(school["id"]),
+            product_id=uuid.UUID(product["id"]),
+            gender="MALE",
+            colour="ghi",
+            path=relative,
+            width=3000,
+            height=2000,
+        )
+    )
+    await session.commit()
+
+    assert await run(commit=False) == 0
+    assert "[DRY RUN] scanned=1 converted=1" in capsys.readouterr().out
+    row = (await session.scalars(select(ProductImage))).one()
+    assert (row.path, row.width, row.height) == (relative, 3000, 2000)
+
+    assert await run(commit=True) == 0
+    assert "[COMMIT] scanned=1 converted=1" in capsys.readouterr().out
+    await session.refresh(row)
+    assert row.path != relative and row.path.endswith(".webp")
+    assert (row.width, row.height) == (1600, 1067)
+    assert original.is_file()
+    assert (Path(get_settings().media_dir) / row.path).is_file()
+
+    assert await run(commit=True) == 0
+    assert "converted=0" in capsys.readouterr().out
+    assert (await audit_actions(session)).count("product_image.optimize") == 1

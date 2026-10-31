@@ -103,7 +103,7 @@ export function CatalogPage() {
               </TableCell>
               <TableCell>
                 {p.active ? (
-                  <Badge variant="secondary">Đang dùng</Badge>
+                  <Badge variant="info">Đang dùng</Badge>
                 ) : (
                   <Badge variant="outline">Đã ẩn</Badge>
                 )}

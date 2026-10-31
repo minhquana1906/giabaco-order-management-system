@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.security import require_admin
-from app.features.catalog import handler
+from app.features.catalog import handler, measurements
 from app.features.catalog.colours import COLOUR_HEX, COLOURS
 from app.features.catalog.images import MAX_IMAGE_BYTES
 from app.features.catalog.schemas import (
@@ -16,6 +16,9 @@ from app.features.catalog.schemas import (
     ClassOut,
     ColourOut,
     ImageGender,
+    MeasurementTypeCreate,
+    MeasurementTypeOut,
+    MeasurementTypeRename,
     ProductImageOut,
     ProductIn,
     ProductOut,
@@ -30,6 +33,25 @@ from app.features.students.size_guide import suggest
 router = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
 Session = Annotated[AsyncSession, Depends(get_session)]
 Actor = Annotated[str, Depends(require_admin)]
+
+
+@router.get("/measurement-types", response_model=list[MeasurementTypeOut])
+async def get_measurement_types(session: Session) -> list[MeasurementTypeOut]:
+    return await measurements.list_types(session)
+
+
+@router.post("/measurement-types", response_model=MeasurementTypeOut, status_code=201)
+async def post_measurement_type(
+    payload: MeasurementTypeCreate, session: Session, actor: Actor
+) -> MeasurementTypeOut:
+    return await measurements.create_type(session, payload, actor)
+
+
+@router.patch("/measurement-types/{key}", response_model=MeasurementTypeOut)
+async def patch_measurement_type(
+    key: str, payload: MeasurementTypeRename, session: Session, actor: Actor
+) -> MeasurementTypeOut:
+    return await measurements.rename_type(session, key, payload, actor)
 
 
 @router.get("/products", response_model=list[ProductOut])

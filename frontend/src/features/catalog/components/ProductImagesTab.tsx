@@ -49,7 +49,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
       toast.error(
         error instanceof ApiError
           ? (error.fields?.file ?? error.message)
-          : "Không tải được ảnh lên.",
+          : "Chưa tải được ảnh lên. Kiểm tra định dạng và dung lượng ảnh rồi thử lại.",
       );
     } finally {
       if (input.current) input.current.value = "";
@@ -58,7 +58,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
 
   return (
     <li
-      className="flex flex-col gap-2 rounded-md border border-hairline bg-card p-3"
+      className="flex min-w-0 flex-col gap-2 rounded-md border border-hairline bg-card p-3"
       aria-label={label}
     >
       <p className="text-sm font-semibold">{label}</p>
@@ -69,7 +69,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
       {image ? null : (
         <p className="text-sm text-muted-foreground">Chưa có ảnh</p>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <input
           ref={input}
           type="file"
@@ -82,6 +82,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
           type="button"
           variant="outline"
           size="sm"
+          className="max-sm:min-h-11"
           disabled={upload.isPending}
           onClick={() => input.current?.click()}
         >
@@ -92,6 +93,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
             type="button"
             variant="ghost"
             size="sm"
+            className="max-sm:min-h-11"
             disabled={remove.isPending}
             aria-label={`Xóa ảnh ${label}`}
             onClick={() =>
@@ -100,7 +102,7 @@ function Cell({ product, schoolId, gender, colour, colourLabel }: CellProps) {
                   toast.error(
                     error instanceof ApiError
                       ? error.message
-                      : "Không xóa được ảnh.",
+                      : "Chưa xóa được ảnh. Vui lòng thử lại sau ít phút.",
                   ),
               })
             }
@@ -158,7 +160,7 @@ export function ProductImagesTab({ product }: { product: Product }) {
           className="flex flex-col gap-2"
         >
           <h3 className="text-base font-semibold">{g.label}</h3>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="grid items-start gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))]">
             {product.colours.map((colour) => (
               <Cell
                 key={colour}

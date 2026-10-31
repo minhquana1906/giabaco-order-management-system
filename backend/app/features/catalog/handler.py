@@ -1,5 +1,8 @@
 """Catalog queries and mutations."""
 
+import asyncio
+import io
+import logging
 import re
 import uuid
 from collections.abc import Sequence
@@ -7,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
 from sqlalchemy import exists, func, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +19,8 @@ from app.core import audit
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.features.campaigns.models import OPEN, Campaign, CampaignItem, school_products
-from app.features.catalog.images import MAX_IMAGE_BYTES, MEDIA_URL_PREFIX, sniff
+from app.features.catalog.images import MAX_IMAGE_BYTES, MAX_PIXELS, MEDIA_URL_PREFIX, optimize
+from app.features.catalog.measurements import resolve_for_product
 from app.features.catalog.models import Product, ProductImage, School, SchoolClass
 from app.features.catalog.schemas import (
     ClassIn,
@@ -28,8 +33,11 @@ from app.features.catalog.schemas import (
     SchoolListOut,
     SchoolUpdate,
 )
+from app.features.master_data.models import MasterRecord
 from app.features.orders.models import OrderLine
 from app.features.students.models import FittingTrial
+
+logger = logging.getLogger("app.catalog")
 
 GENDER_SLUG = {"MALE": "nam", "FEMALE": "nu"}
 DEFAULT_CLASSES_PER_GRADE = 10
@@ -46,7 +54,9 @@ async def list_products(session: AsyncSession, include_inactive: bool = False) -
 async def _get_product(session: AsyncSession, product_id: uuid.UUID) -> Product:
     product = await session.get(Product, product_id)
     if product is None:
-        raise ApiError(404, "not_found", "Không tìm thấy sản phẩm")
+        raise ApiError(
+            404, "not_found", "Sản phẩm này không tồn tại hoặc đã bị xóa. Quay lại danh mục."
+        )
     return product
 
 
@@ -57,13 +67,15 @@ def _snapshot(product: Product) -> dict[str, Any]:
         "description": product.description,
         "sizes": product.sizes,
         "size_guide": product.size_guide,
+        "tailor_measurements": product.tailor_measurements,
         "colours": product.colours,
         "gender_target": product.gender_target,
+        "master_product_id": str(product.master_product_id) if product.master_product_id else None,
         "active": product.active,
     }
 
 
-def _image_snapshot(image: ProductImage) -> dict[str, Any]:
+def image_snapshot(image: ProductImage) -> dict[str, Any]:
     return {
         "school_id": str(image.school_id),
         "product_id": str(image.product_id),
@@ -92,8 +104,10 @@ async def products_out(session: AsyncSession, products: Sequence[Product]) -> li
             description=p.description,
             sizes=p.sizes,
             size_guide=p.size_guide,
+            tailor_measurements=p.tailor_measurements,
             colours=p.colours,
             gender_target=p.gender_target,
+            master_product_id=p.master_product_id,
             active=p.active,
             has_size_guide=bool(p.size_guide),
             school_image_counts=counts.get(p.id, {}),
@@ -111,7 +125,21 @@ def _guide(body: ProductBody) -> list[dict[str, Any]] | None:
     return [row.model_dump() for row in body.size_guide] if body.size_guide else None
 
 
+async def _check_master_product(session: AsyncSession, body: ProductBody) -> None:
+    if body.master_product_id is None:
+        return
+    record = await session.get(MasterRecord, body.master_product_id)
+    if record is None or record.kind != "products":
+        raise ApiError(
+            422,
+            "validation_error",
+            "Sản phẩm gốc đã chọn không hợp lệ. Chọn lại mã sản phẩm gốc.",
+            {"master_product_id": "Không tìm thấy sản phẩm gốc"},
+        )
+
+
 async def create_product(session: AsyncSession, payload: ProductIn, actor: str) -> ProductOut:
+    await _check_master_product(session, payload)
     position = await session.scalar(select(func.coalesce(func.max(Product.position), -1) + 1))
     product = Product(
         code=payload.code,
@@ -119,8 +147,10 @@ async def create_product(session: AsyncSession, payload: ProductIn, actor: str) 
         description=payload.description,
         sizes=payload.sizes,
         size_guide=_guide(payload),
+        tailor_measurements=await resolve_for_product(session, payload),
         colours=payload.colours,
         gender_target=payload.gender_target,
+        master_product_id=payload.master_product_id,
         active=True,
         position=position or 0,
     )
@@ -129,11 +159,14 @@ async def create_product(session: AsyncSession, payload: ProductIn, actor: str) 
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        raise ApiError(409, "duplicate_product", f"Mã sản phẩm {payload.code} đã tồn tại") from None
+        raise ApiError(
+            409, "duplicate_product", "Mã sản phẩm này đã tồn tại. Chọn mã khác."
+        ) from None
     await audit.record(
         session, actor, "product.create", "product", product.id, None, _snapshot(product)
     )
     await session.commit()
+    logger.info("catalog.product_created", extra={"ctx": {"product_id": str(product.id)}})
     return (await products_out(session, [product]))[0]
 
 
@@ -157,7 +190,15 @@ async def _ensure_not_in_use(
             session, OrderLine.product_id == product.id, OrderLine.size_label.in_(removed_sizes)
         )
     ):
-        raise ApiError(409, "in_use", "Có cỡ đang được dùng, không thể bỏ")
+        logger.warning(
+            "catalog.size_in_use",
+            extra={"ctx": {"product_id": str(product.id), "sizes": sorted(removed_sizes)}},
+        )
+        raise ApiError(
+            409,
+            "in_use",
+            "Cỡ này đã được đặt hoặc đang nằm trong đợt đăng ký nên chưa thể xóa.",
+        )
     if removed_colours and (
         await _used(
             session, CampaignItem.product_id == product.id, CampaignItem.colour.in_(removed_colours)
@@ -166,7 +207,11 @@ async def _ensure_not_in_use(
             session, OrderLine.product_id == product.id, OrderLine.colour.in_(removed_colours)
         )
     ):
-        raise ApiError(409, "in_use", "Có màu đang được dùng, không thể bỏ")
+        logger.warning(
+            "catalog.colour_in_use",
+            extra={"ctx": {"product_id": str(product.id), "colours": sorted(removed_colours)}},
+        )
+        raise ApiError(409, "in_use", "Màu này đang dùng trong đợt đăng ký nên chưa thể xóa.")
 
 
 async def update_product(
@@ -174,13 +219,17 @@ async def update_product(
 ) -> ProductOut:
     product = await _get_product(session, product_id)
     await _ensure_not_in_use(session, product, payload)
+    await _check_master_product(session, payload)
     before = _snapshot(product)
     product.name = payload.name
     product.description = payload.description
     product.sizes = payload.sizes
     product.size_guide = _guide(payload)
+    if payload.tailor_measurements is not None:
+        product.tailor_measurements = await resolve_for_product(session, payload)
     product.colours = payload.colours
     product.gender_target = payload.gender_target
+    product.master_product_id = payload.master_product_id
     product.updated_at = datetime.now(UTC)
     hiding = product.active and not payload.active
     product.active = payload.active
@@ -194,6 +243,10 @@ async def update_product(
         _snapshot(product),
     )
     await session.commit()
+    logger.info(
+        "catalog.product_hidden" if hiding else "catalog.product_updated",
+        extra={"ctx": {"product_id": str(product.id)}},
+    )
     return (await products_out(session, [product]))[0]
 
 
@@ -231,6 +284,17 @@ def _file_error(message: str) -> ApiError:
     return ApiError(422, "validation_error", "Dữ liệu không hợp lệ", {"file": message})
 
 
+def _reject_reason(data: bytes) -> str:
+    """Why optimize() refused the file; reads the header only."""
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            return "pixels" if img.width * img.height > MAX_PIXELS else "format"
+    except Image.DecompressionBombError:
+        return "pixels"
+    except Exception:
+        return "format"
+
+
 async def add_image(
     session: AsyncSession,
     product_id: uuid.UUID,
@@ -243,22 +307,34 @@ async def add_image(
     product = await _get_product(session, product_id)
     school = await _get_school(session, school_id)
     if colour not in product.colours:
-        raise ApiError(
-            422, "validation_error", "Dữ liệu không hợp lệ", {"colour": "Màu không thuộc sản phẩm"}
-        )
+        message = "Màu đã chọn không thuộc sản phẩm này."
+        raise ApiError(422, "validation_error", message, {"colour": message})
     if len(data) > MAX_IMAGE_BYTES:
-        raise _file_error("Ảnh vượt quá 5 MB")
-    info = sniff(data)
-    if info is None:
-        raise _file_error("Chỉ nhận ảnh WebP, JPEG hoặc PNG")
+        raise _file_error("Ảnh lớn hơn 5 MB. Chọn ảnh nhỏ hơn rồi thử lại.")
+    # Pillow decode and encode are CPU-bound; keep them off the event loop.
+    image_file = await asyncio.to_thread(optimize, data)
+    if image_file is None:
+        logger.warning(
+            "catalog.image_rejected",
+            extra={
+                "ctx": {
+                    "product_id": str(product_id),
+                    "reason": _reject_reason(data),
+                    "bytes": len(data),
+                }
+            },
+        )
+        raise _file_error(
+            "Chỉ nhận ảnh WebP, JPEG hoặc PNG, tối đa 25 megapixel. Chọn ảnh khác rồi thử lại."
+        )
     school_slug = re.sub(r"[^a-z0-9_-]", "_", school.code.lower())
     relative = (
         f"products/{school_slug}/{product.code}_{GENDER_SLUG[gender]}_{colour}"
-        f"_{uuid.uuid4().hex[:8]}.{info.ext}"
+        f"_{uuid.uuid4().hex[:8]}.webp"
     )
     target = media_root() / relative
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(data)
+    target.write_bytes(image_file.data)
     try:
         old = await session.scalar(
             select(ProductImage).where(
@@ -274,7 +350,7 @@ async def add_image(
             await session.flush()
             await audit.record(
                 session, actor, "product_image.replace", "product_image", old.id,
-                _image_snapshot(old), None,
+                image_snapshot(old), None,
             )  # fmt: skip
         image = ProductImage(
             school_id=school_id,
@@ -282,23 +358,39 @@ async def add_image(
             gender=gender,
             colour=colour,
             path=relative,
-            width=info.width,
-            height=info.height,
+            width=image_file.width,
+            height=image_file.height,
         )
         session.add(image)
         await session.flush()
         await audit.record(
             session, actor, "product_image.create", "product_image", image.id,
-            None, _image_snapshot(image),
+            None, image_snapshot(image),
         )  # fmt: skip
         await session.commit()
     except IntegrityError:
         await session.rollback()
         target.unlink(missing_ok=True)
-        raise ApiError(409, "conflict", "Ảnh vừa được thay bởi người khác, thử lại") from None
+        logger.warning(
+            "catalog.image_conflict",
+            extra={"ctx": {"product_id": str(product_id), "colour": colour}},
+        )
+        raise ApiError(
+            409, "conflict", "Ảnh vừa được cập nhật ở nơi khác. Tải lại trang rồi thử lại."
+        ) from None
     except Exception:
         target.unlink(missing_ok=True)
         raise
+    logger.info(
+        "catalog.image_replaced" if old is not None else "catalog.image_uploaded",
+        extra={
+            "ctx": {
+                "product_id": str(product_id),
+                "colour": colour,
+                "bytes": len(image_file.data),
+            }
+        },
+    )
     return image_out(image)
 
 
@@ -307,13 +399,17 @@ async def delete_image(
 ) -> None:
     image = await session.get(ProductImage, image_id)
     if image is None or image.product_id != product_id or image.deleted_at is not None:
-        raise ApiError(404, "not_found", "Không tìm thấy ảnh")
+        raise ApiError(404, "not_found", "Ảnh này đã bị xóa. Tải lại trang.")
     image.deleted_at = datetime.now(UTC)
     await audit.record(
         session, actor, "product_image.delete", "product_image", image.id,
-        _image_snapshot(image), None,
+        image_snapshot(image), None,
     )  # fmt: skip
     await session.commit()
+    logger.info(
+        "catalog.image_deleted",
+        extra={"ctx": {"product_id": str(product_id), "colour": image.colour}},
+    )
 
 
 async def list_schools(session: AsyncSession) -> list[SchoolListOut]:
@@ -338,7 +434,7 @@ async def create_school(session: AsyncSession, payload: SchoolIn) -> School:
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise ApiError(409, "duplicate_school", f"Mã trường {payload.code} đã tồn tại") from None
+        raise ApiError(409, "duplicate_school", "Mã trường này đã tồn tại. Chọn mã khác.") from None
     return school
 
 
@@ -350,7 +446,7 @@ async def school_products_out(session: AsyncSession, school_id: uuid.UUID) -> li
 async def _get_school(session: AsyncSession, school_id: uuid.UUID) -> School:
     school = await session.get(School, school_id)
     if school is None:
-        raise ApiError(404, "not_found", "Không tìm thấy trường")
+        raise ApiError(404, "not_found", "Trường này không còn trong hệ thống. Tải lại trang.")
     return school
 
 
@@ -374,7 +470,9 @@ async def create_class(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise ApiError(409, "duplicate_class", f"Lớp {payload.name} đã tồn tại") from None
+        raise ApiError(
+            409, "duplicate_class", "Lớp này đã có trong trường. Đổi tên lớp khác."
+        ) from None
     return school_class
 
 
@@ -392,12 +490,14 @@ async def update_class(
 ) -> SchoolClass:
     school_class = await session.get(SchoolClass, class_id)
     if school_class is None or school_class.school_id != school_id:
-        raise ApiError(404, "not_found", "Không tìm thấy lớp")
+        raise ApiError(404, "not_found", "Lớp này không còn trong hệ thống. Tải lại trang.")
     school_class.grade = payload.grade
     school_class.name = payload.name
     try:
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise ApiError(409, "duplicate_class", f"Lớp {payload.name} đã tồn tại") from None
+        raise ApiError(
+            409, "duplicate_class", "Lớp này đã có trong trường. Đổi tên lớp khác."
+        ) from None
     return school_class

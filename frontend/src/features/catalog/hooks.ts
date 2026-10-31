@@ -8,6 +8,7 @@ export const catalogKeys = {
   products: () => [...catalogKeys.all, 'products'] as const,
   adminProducts: () => [...catalogKeys.all, 'admin-products'] as const,
   colours: () => [...catalogKeys.all, 'colours'] as const,
+  measurementTypes: () => [...catalogKeys.all, 'measurement-types'] as const,
   images: (productId: string, schoolId: string) => [...catalogKeys.all, 'images', productId, schoolId] as const,
   schools: () => [...catalogKeys.all, 'schools'] as const,
   schoolProducts: (schoolId: string) => [...catalogKeys.all, 'school-products', schoolId] as const,
@@ -119,6 +120,37 @@ export function useColours() {
     queryKey: catalogKeys.colours(),
     queryFn: ({ signal }) => catalogApi.colours(signal),
     staleTime: Infinity,
+  })
+}
+
+export function useMeasurementTypes() {
+  return useQuery({
+    queryKey: catalogKeys.measurementTypes(),
+    queryFn: ({ signal }) => catalogApi.measurementTypes(signal),
+  })
+}
+
+export function useCreateMeasurementType() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: catalogApi.createMeasurementType,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.measurementTypes() }),
+  })
+}
+
+export function useRenameMeasurementType() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ key, label }: { key: string; label: string }) =>
+      catalogApi.renameMeasurementType(key, label),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
+  })
+}
+
+export function useBaseProducts() {
+  return useQuery({
+    queryKey: ['master-data', 'list', 'products'],
+    queryFn: ({ signal }) => catalogApi.baseProducts(signal),
   })
 }
 

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ErrorState } from "@/components/ErrorState";
 import { LoadingRows } from "@/components/LoadingRows";
 import { PageHeader } from "@/components/PageHeader";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminProducts, useUpdateProduct } from "../hooks";
 import { formFromProduct } from "../productFormLogic";
 import { ProductForm } from "./ProductForm";
@@ -36,7 +36,10 @@ export function EditProduct({ productId, tab, onTabChange }: EditProductProps) {
         onRetry={() => void products.refetch()}
       />
     );
-  if (!product) return <ErrorState message="Không tìm thấy sản phẩm." />;
+  if (!product)
+    return (
+      <ErrorState message="Sản phẩm này không tồn tại hoặc đã bị xóa. Quay lại danh mục." />
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,33 +50,15 @@ export function EditProduct({ productId, tab, onTabChange }: EditProductProps) {
         <ChevronLeft className="size-4" /> Sản phẩm
       </Link>
       <PageHeader title={product.name} />
-      <div
-        role="tablist"
-        aria-label="Sản phẩm"
-        className="flex gap-1 border-b border-hairline"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            role="tab"
-            id={`tab-${t.value}`}
-            aria-selected={tab === t.value}
-            aria-controls={`panel-${t.value}`}
-            onClick={() => onTabChange(t.value)}
-            className={cn(
-              "-mb-px min-h-10 border-b-2 px-4 text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              tab === t.value
-                ? "border-navy text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "info" ? (
+      <Tabs value={tab} onValueChange={(next) => onTabChange(next as CatalogTab)}>
+        <TabsList aria-label="Sản phẩm">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="info">
           <ProductForm
             key={product.id}
             mode="edit"
@@ -86,10 +71,11 @@ export function EditProduct({ productId, tab, onTabChange }: EditProductProps) {
               toast.success("Đã lưu sản phẩm");
             }}
           />
-        ) : (
+        </TabsContent>
+        <TabsContent value="images">
           <ProductImagesTab product={product} />
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

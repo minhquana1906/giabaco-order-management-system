@@ -24,21 +24,35 @@ describe('validateForm', () => {
     const form = { ...valid(), colours: [], sizes: [emptySizeRow('1'), emptySizeRow('1')] }
     const errors = validateForm(form, 'create')
     expect(errors.colours).toBeDefined()
-    expect(errors['size-1']).toBe('Cỡ bị trùng')
+    expect(errors['size-1']).toBe('Tên cỡ này đã dùng ở dòng khác. Đổi tên để tiếp tục.')
   })
 
   it.each([
-    [{ heightMin: '120' }, 'Nhập chiều cao và cân nặng tối thiểu'],
+    [{ heightMin: '120' }, 'Nhập chiều cao và cân nặng tối thiểu của cỡ này.'],
     [{ heightMin: '120', weightMin: '20', heightMax: '120' }, 'Chiều cao tối đa phải lớn hơn tối thiểu'],
     [{ heightMin: '120', weightMin: '20', weightMax: '19' }, 'Cân nặng tối đa phải lớn hơn tối thiểu'],
-    [{ heightMin: '120', weightMin: '20', weightMax: '301' }, 'Giá trị phải là số từ 0 đến 300'],
-    [{ heightMin: 'abc', weightMin: '20' }, 'Giá trị phải là số từ 0 đến 300'],
+    [{ heightMin: '120', weightMin: '20', weightMax: '301' }, 'Số đo phải là số từ 0 đến 300.'],
+    [{ heightMin: 'abc', weightMin: '20' }, 'Số đo phải là số từ 0 đến 300.'],
   ])('rejects guide row %j', (patch, message) => {
     expect(validateForm(withRow(patch), 'create')['size-0']).toBe(message)
   })
 
   it('accepts an open upper bound', () => {
     expect(validateForm(withRow({ heightMin: '165', weightMin: '45,5' }), 'create')).toEqual({})
+  })
+
+  it('validates measurement keys and labels', () => {
+    const form = valid()
+    form.tailorMeasurements = [
+      { key: 'vong_nguc', label: 'Vòng ngực', instruction: '', required: true },
+      { key: 'vong_nguc', label: 'Ngực', instruction: '', required: false },
+    ]
+    expect(validateForm(form, 'edit')['measurement-1']).toBe('Loại số đo này đã chọn ở dòng khác. Chọn loại khác để tiếp tục.')
+    form.tailorMeasurements[1] = { key: 'eo', label: ' ', instruction: '', required: false }
+    expect(validateForm(form, 'edit')['measurement-1']).toBe('Nhập tên cho số đo này.')
+    form.tailorMeasurements[1] = { key: '', label: '', instruction: '', required: false }
+    expect(validateForm(form, 'edit')['measurement-1']).toBe('Chọn loại số đo cho dòng này.')
+    expect(toBody(form).tailor_measurements[0]?.key).toBe('vong_nguc')
   })
 })
 
