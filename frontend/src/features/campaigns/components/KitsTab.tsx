@@ -56,13 +56,13 @@ function KitPreview({
           <li key={index} className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="shrink-0 text-muted-foreground">
-                {slot.label || 'Slot'} × {slot.qty}
+                {slot.label || 'Món'} × {slot.qty}
               </span>
               {slot.product_ids.length > 1 ? (
                 <NativeSelect
                   className="h-9 md:h-9"
                   value={productId}
-                  aria-label={`Phương án cho ${slot.label || 'slot'}`}
+                  aria-label={`Phương án cho ${slot.label || 'món'}`}
                   onChange={(e) => setChosen((c) => ({ ...c, [index]: e.target.value }))}
                 >
                   {slot.product_ids.map((id) => (
@@ -128,7 +128,7 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
     return (
       <EmptyState
         title="Chưa có sản phẩm trong đợt"
-        description="Thêm sản phẩm ở tab “Sản phẩm & giá” trước, rồi quay lại định nghĩa bộ."
+        description="Thêm sản phẩm ở mục “Sản phẩm và giá” trước, rồi quay lại định nghĩa bộ."
         className="rounded-md border border-dashed border-hairline"
       />
     )
@@ -141,7 +141,7 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
     <div className="flex flex-col gap-4">
       <LockedNotice status={campaign.status} />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span id="preview-gender-label">Xem trước cho</span>
           <ToggleGroup
             type="single"
@@ -150,8 +150,8 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
             value={gender ?? ''}
             onValueChange={(v) => setGender(v === 'MALE' || v === 'FEMALE' ? v : null)}
           >
-            <ToggleGroupItem value="MALE" className="px-4">Nam</ToggleGroupItem>
-            <ToggleGroupItem value="FEMALE" className="px-4">Nữ</ToggleGroupItem>
+            <ToggleGroupItem value="MALE" className="px-4 max-md:min-h-11">Nam</ToggleGroupItem>
+            <ToggleGroupItem value="FEMALE" className="px-4 max-md:min-h-11">Nữ</ToggleGroupItem>
           </ToggleGroup>
         </div>
         <Button
@@ -166,14 +166,14 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
       {kits.length === 0 ? (
         <EmptyState
           title="Chưa có bộ nào"
-          description="Bộ gồm các slot (ví dụ Áo, Quần/Váy), mỗi slot có một hoặc nhiều phương án sản phẩm."
+          description="Bộ gồm các món (ví dụ Áo, Quần/Váy), mỗi món có một hoặc nhiều phương án sản phẩm."
           className="rounded-md border border-dashed border-hairline"
         />
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid items-start gap-4 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
         {kits.map((kit, kitIndex) => (
-          <section key={kit.code} className="flex flex-col gap-3 rounded-md border border-hairline bg-card p-3 sm:p-4">
+          <section key={kit.code} className="flex min-w-0 flex-col gap-3 rounded-md border border-hairline bg-card p-3 sm:p-4">
             <div className="flex items-end gap-2">
               <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-muted-foreground">
                 Tên bộ
@@ -196,10 +196,10 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
             </div>
             {kit.slots.map((slot, slotIndex) => (
               <fieldset key={slotIndex} className="flex flex-col gap-2 rounded-md border border-hairline p-3">
-                <legend className="px-1 text-sm font-medium">Slot {slotIndex + 1}</legend>
+                <legend className="px-1 text-sm font-medium">Món {slotIndex + 1}</legend>
                 <div className="flex items-end gap-2">
                   <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-muted-foreground">
-                    Tên slot
+                    Tên món
                     <Input
                       value={slot.label}
                       disabled={locked}
@@ -222,7 +222,7 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
                     variant="ghost"
                     size="icon-lg"
                     disabled={locked || kit.slots.length === 1}
-                    aria-label={`Xóa slot ${slotIndex + 1}`}
+                    aria-label={`Xóa món ${slotIndex + 1}`}
                     onClick={() => patchKit(kitIndex, (k) => ({ ...k, slots: k.slots.filter((_, i) => i !== slotIndex) }))}
                   >
                     <Trash2 />
@@ -245,7 +245,7 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
                             })
                           }
                           className={cn(
-                            'min-h-10 rounded-md border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
+                            'min-h-11 max-w-full break-words rounded-md border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:min-h-10',
                             on ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-accent',
                           )}
                         >
@@ -264,7 +264,7 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
                 disabled={locked || kit.slots.length >= 10}
                 onClick={() => patchKit(kitIndex, (k) => ({ ...k, slots: [...k.slots, { label: '', qty: 1, product_ids: [] }] }))}
               >
-                <Plus /> Thêm slot
+                <Plus /> Thêm món
               </Button>
             </div>
             <KitPreview kit={kit} prices={prices} genders={genders} names={names} gender={gender} />
@@ -272,8 +272,8 @@ export function KitsTab({ campaign }: { campaign: Campaign }) {
         ))}
       </div>
 
-      <div className="flex items-center justify-end gap-3">
-        {invalid ? <span className="text-sm text-muted-foreground">Mỗi bộ, slot cần có tên và ít nhất một phương án.</span> : null}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {invalid ? <span className="text-sm text-muted-foreground">Mỗi món cần có tên và ít nhất một phương án.</span> : null}
         <Button disabled={locked || !dirty || invalid || save.isPending} onClick={submit}>
           Lưu bộ
         </Button>

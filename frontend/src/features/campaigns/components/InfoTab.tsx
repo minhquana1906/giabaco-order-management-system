@@ -21,22 +21,25 @@ import { fromInputDateTime, toInputDateTime } from '../logic'
 
 const ACTIONS: Record<
   CampaignAction,
-  { label: string; title: string; description: string; from: Campaign['status'] }
+  { label: string; done: string; title: string; description: string; from: Campaign['status'] }
 > = {
   open: {
     label: 'Mở đợt',
+    done: 'Đã mở đợt.',
     title: 'Mở đợt đăng ký?',
     description: 'Phụ huynh của trường sẽ thấy danh mục và đặt hàng được. Mỗi trường chỉ có một đợt đang mở.',
     from: 'DRAFT',
   },
   lock: {
     label: 'Khóa đợt',
+    done: 'Đã khóa đợt.',
     title: 'Khóa đợt đăng ký?',
     description: 'Phụ huynh vẫn xem được đơn nhưng không sửa được nữa. Không thể sửa sản phẩm, giá, bộ cho đến khi mở lại.',
     from: 'OPEN',
   },
   reopen: {
     label: 'Mở lại đợt',
+    done: 'Đã mở lại đợt.',
     title: 'Mở lại đợt đăng ký?',
     description: 'Phụ huynh có thể đặt và sửa đơn trở lại.',
     from: 'LOCKED',
@@ -55,7 +58,7 @@ function TransitionButton({ campaign }: { campaign: Campaign }) {
     transition.mutate(action, {
       onSuccess: () => {
         setPending(null)
-        toast.success(`${meta.label} thành công`)
+        toast.success(meta.done)
       },
       onError: (error) => {
         setPending(null)
@@ -111,16 +114,19 @@ export function InfoTab({ campaign }: { campaign: Campaign }) {
       {
         onSuccess: () => toast.success('Đã lưu thông tin đợt'),
         onError: (error) => {
-          if (error instanceof ApiError && error.fields) setErrors(error.fields)
-          else toast.error(campaignErrorMessage(error))
+          if (error instanceof ApiError && error.fields) {
+            const { '': general, ...byField } = error.fields
+            setErrors(byField)
+            if (general) toast.error(general)
+          } else toast.error(campaignErrorMessage(error))
         },
       },
     )
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <form onSubmit={submit}>
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <form onSubmit={submit} className="min-w-0">
         <FormSection title="Thông tin đợt">
           <p className="text-sm text-muted-foreground">Trường: {school?.name ?? '—'}</p>
           <Field id="info-name" label="Tên đợt" error={errors.name}>
@@ -129,13 +135,13 @@ export function InfoTab({ campaign }: { campaign: Campaign }) {
           <Field id="info-year" label="Năm học" error={errors.school_year}>
             {(control) => <Input {...control} value={schoolYear} onChange={(e) => setSchoolYear(e.target.value)} />}
           </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
             <Field id="info-opens" label="Mở từ" error={errors.opens_at}>
               {(control) => (
                 <Input {...control} type="datetime-local" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} />
               )}
             </Field>
-            <Field id="info-closes" label="Hạn đăng ký (hiển thị cho phụ huynh)" error={errors.closes_at ?? errors['']}>
+            <Field id="info-closes" label="Hạn đăng ký (hiển thị cho phụ huynh)" error={errors.closes_at}>
               {(control) => (
                 <Input {...control} type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
               )}

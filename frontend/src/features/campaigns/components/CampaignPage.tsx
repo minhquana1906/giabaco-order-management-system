@@ -45,7 +45,7 @@ export function CampaignPage({ campaignId, tab, onTabChange }: CampaignPageProps
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as CampaignTab)}>
         <TabsList>
           <TabsTrigger value="info">Thông tin</TabsTrigger>
-          <TabsTrigger value="items">Sản phẩm &amp; giá</TabsTrigger>
+          <TabsTrigger value="items">Sản phẩm và giá</TabsTrigger>
           <TabsTrigger value="kits">Bộ</TabsTrigger>
         </TabsList>
         <TabsContent value="info">

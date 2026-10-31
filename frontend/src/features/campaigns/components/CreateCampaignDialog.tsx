@@ -61,7 +61,7 @@ export function CreateCampaignDialog({ schools, defaultSchoolId }: { schools: Sc
       }}
     >
       <DialogTrigger asChild>
-        <Button disabled={schools.length === 0}>
+        <Button className="h-11 md:h-9" disabled={schools.length === 0}>
           <Plus /> Tạo đợt đăng ký
         </Button>
       </DialogTrigger>
