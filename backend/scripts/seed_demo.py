@@ -8,7 +8,7 @@ OPEN campaign. Refuses non-local databases.
 
 import asyncio
 import random
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 from urllib.parse import urlparse
@@ -16,14 +16,19 @@ from urllib.parse import urlparse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import record
 from app.core.config import get_settings
 from app.core.db import SessionLocal, engine
 from app.features.campaigns.handler import create_campaign, replace_items, transition
 from app.features.campaigns.models import Campaign
 from app.features.campaigns.schemas import CampaignIn, ItemIn, ItemsIn
 from app.features.catalog.handler import create_class, create_school, list_classes, list_schools
-from app.features.catalog.models import Product
+from app.features.catalog.models import Product, School
 from app.features.catalog.schemas import ClassIn, SchoolIn
+from app.features.master_data.models import Facility
+from app.features.orders.models import SUBMITTED, Order, OrderLine
+from app.features.production.models import Assignment, CampaignStep
+from app.features.production.router import DEFAULT_NAMES, record_progress, snapshot
 from app.features.students.handler import create_student, delete_student
 from app.features.students.models import Fit, Student
 from app.features.students.schemas import StudentIn, TrialIn
@@ -31,6 +36,8 @@ from app.features.students.schemas import StudentIn, TrialIn
 ACTOR = "seed"
 SEED = 20261018
 REFERENCE_DATE = date(2026, 10, 18)
+INTERNAL_ASSIGNEES = {1: "Phòng Kinh doanh", 2: "Phòng Thiết kế"}
+INTERNAL_STEPS = INTERNAL_ASSIGNEES.keys()
 LOCAL_HOSTS = {"127.0.0.1", "localhost"}
 
 SCHOOLS: dict[tuple[str, str], list[tuple[int, str]]] = {
@@ -229,6 +236,113 @@ async def _ensure_campaigns(session: AsyncSession, products: list[Product]) -> N
             await transition(session, campaign.id, "open", ACTOR)
 
 
+async def _ensure_production(session: AsyncSession, products: list[Product]) -> None:
+    """Timeline deadlines and partner assignments for the LQD campaign; skipped once any exist."""
+    campaign = await session.scalar(
+        select(Campaign)
+        .join(School, School.id == Campaign.school_id)
+        .where(School.code == "LQD")
+        .order_by(Campaign.created_at)
+    )
+    if not campaign or await session.scalar(
+        select(Assignment.id).where(Assignment.campaign_id == campaign.id).limit(1)
+    ):
+        return
+    facilities = list((await session.scalars(select(Facility).order_by(Facility.code))).all())
+    facilities = [f for f in facilities if f.active][:3]
+    for number in range(len(facilities), 3):
+        facility = Facility(
+            code=f"GUF-DEMO-{number + 1}",
+            data={
+                "Mã cơ sở": f"GUF-DEMO-{number + 1}",
+                "Tên cơ sở/đối tác": f"Đối tác demo {number + 1}",
+                "Trạng thái hợp tác": "Đang sử dụng",
+            },
+        )
+        session.add(facility)
+        facilities.append(facility)
+    await session.flush()
+    steps = {
+        step.position: step
+        for step in await session.scalars(
+            select(CampaignStep).where(CampaignStep.campaign_id == campaign.id)
+        )
+    }
+    for position, name in enumerate(DEFAULT_NAMES, 1):
+        step = steps.get(position)
+        if step is None:
+            step = CampaignStep(
+                campaign_id=campaign.id,
+                position=position,
+                name=name,
+                deadline=REFERENCE_DATE + timedelta(days=7 * position),
+            )
+            session.add(step)
+        if position in INTERNAL_STEPS and step.mode != "internal":
+            before_mode = step.mode or "partners"
+            step.mode = "internal"
+            await record(
+                session,
+                ACTOR,
+                "update",
+                "production_timeline",
+                campaign.id,
+                {"position": position, "mode": before_mode},
+                {"position": position, "mode": "internal"},
+            )
+    await session.commit()
+    blazer, gile = (next(p for p in products if p.code == code) for code in ("blazer", "gile"))
+    first, second, third = facilities
+    ordered = {
+        pid: int(qty)
+        for pid, qty in await session.execute(
+            select(OrderLine.product_id, func.sum(OrderLine.qty))
+            .join(Order, Order.id == OrderLine.order_id)
+            .where(
+                Order.campaign_id == campaign.id,
+                Order.status == SUBMITTED,
+                Order.deleted_at.is_(None),
+            )
+            .group_by(OrderLine.product_id)
+        )
+    }
+    blazer_total, gile_total = ordered.get(blazer.id, 0), ordered.get(gile.id, 0)
+    blazer_first = blazer_total * 6 // 10 or 60
+    blazer_second = blazer_total - blazer_first if blazer_total else 40
+    gile_part = gile_total // 2 or 100
+    plan: list[tuple[int, Facility | None, Product | None, int | None, str]] = [
+        (1, None, None, None, "completed"),
+        (2, None, None, None, "completed"),
+        (4, first, None, None, "completed"),
+        (6, first, blazer, blazer_first, "in_progress"),
+        (6, second, blazer, blazer_second, "pending"),
+        (6, third, gile, gile_part, "in_progress"),
+        (7, second, None, None, "pending"),
+        (8, third, None, None, "pending"),
+        (9, first, None, None, "pending"),
+    ]
+    for position, partner, product, quantity, status in plan:
+        row = Assignment(
+            campaign_id=campaign.id,
+            step_position=position,
+            facility_id=partner.id if partner else None,
+            assignee=INTERNAL_ASSIGNEES.get(position) if partner is None else None,
+            product_id=product.id if product else None,
+            quantity=quantity,
+        )
+        session.add(row)
+        await session.flush()
+        created = snapshot(row)
+        await record(session, ACTOR, "create", "production_assignment", row.id, None, created)
+        if status != "pending":
+            row.status = status
+            if status == "completed":
+                row.actual_at = datetime.combine(REFERENCE_DATE, time(10), UTC)
+            await record_progress(session, ACTOR, row.id, created, snapshot(row))
+        await session.commit()
+    await session.commit()
+
+
 async def main() -> None:
     host = urlparse(get_settings().database_url).hostname
     if host not in LOCAL_HOSTS:
@@ -245,6 +359,7 @@ async def main() -> None:
             raise SystemExit("Catalog missing blazer/gile; run `make setup` first")
         refs = await _ensure_catalog(session)
         await _ensure_campaigns(session, products)
+        await _ensure_production(session, products)
         if await session.scalar(select(func.count()).select_from(Student)):
             print("students already exist, skipping student seed")
             return

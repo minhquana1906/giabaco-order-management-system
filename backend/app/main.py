@@ -1,5 +1,6 @@
 """FastAPI application factory and SPA hosting."""
 
+import logging
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.responses import FileResponse, Response
 from fastapi.routing import APIRoute
 from sqlalchemy import text
+from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import get_settings
@@ -24,15 +26,19 @@ from app.features.auth.router import router as auth_router
 from app.features.campaigns.router import router as campaigns_router
 from app.features.catalog.router import router as catalog_router
 from app.features.exports.router import router as exports_router
+from app.features.master_data.router import router as master_data_router
 from app.features.orders.router import router as orders_router
 from app.features.parent_accounts.router import admin_router as parent_links_router
 from app.features.parent_accounts.router import router as parent_accounts_router
 from app.features.parent_portal.router import account_router as parent_children_router
 from app.features.parent_portal.router import router as parent_portal_router
+from app.features.production.router import router as production_router
 from app.features.realtime.router import router as realtime_router
 from app.features.stats.router import router as stats_router
 from app.features.students.router import router as students_router
 from app.features.surveys.router import router as surveys_router
+
+logger = logging.getLogger("app.main")
 
 ROUTERS = (
     auth_router,
@@ -40,6 +46,8 @@ ROUTERS = (
     campaigns_router,
     orders_router,
     students_router,
+    master_data_router,
+    production_router,
     parent_accounts_router,
     parent_links_router,
     parent_portal_router,
@@ -105,7 +113,9 @@ def _admin_api_matcher(routers: Sequence[APIRouter]) -> Callable[[str], bool]:
     ]
 
     def matches(path: str) -> bool:
-        return path.startswith("/api/auth/") or any(p.match(path) for p in patterns)
+        return path.startswith(("/api/auth/", "/api/production/")) or any(
+            p.match(path) for p in patterns
+        )
 
     return matches
 
@@ -124,18 +134,30 @@ def create_app() -> FastAPI:
         same_site="lax",
         https_only=settings.cookie_secure,
     )
+    # Multipart bodies are spooled before auth dependencies run; 8 MB covers the 5 MB file caps.
+    app.add_middleware(RequestBodyLimitMiddleware, max_body_size=8 * 1024 * 1024)
     app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(RequestLogMiddleware)
     if settings.cookie_secure:
         app.add_middleware(HttpsRedirectMiddleware)
+    logger.info(
+        "app_started",
+        extra={
+            "ctx": {
+                "cookie_secure": settings.cookie_secure,
+                "host_split": bool(settings.admin_host),
+                "spa": bool(settings.spa_dir),
+            }
+        },
+    )
 
     @app.get("/api/healthz")
     async def healthz() -> dict[str, str]:
         try:
             async with SessionLocal() as session:
                 await session.execute(text("SELECT 1"))
-        except Exception:
-            raise ApiError(503, "unavailable", "Database không khả dụng") from None
+        except Exception as exc:
+            logger.error("healthz_db_failed", extra={"ctx": {"error_type": type(exc).__name__}})
+            raise ApiError(503, "unavailable", "Cơ sở dữ liệu không khả dụng") from None
         return {"status": "ok"}
 
     for router in ROUTERS:
@@ -148,6 +170,8 @@ def create_app() -> FastAPI:
             public_base_url=settings.public_base_url,
             is_admin_api=_admin_api_matcher(ROUTERS),
         )
+    # Outermost, so redirects and cross-host 404s also get a request id and log line.
+    app.add_middleware(RequestLogMiddleware)
 
     _mount_media(app, Path(settings.media_dir))
 

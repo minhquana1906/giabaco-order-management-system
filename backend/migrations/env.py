@@ -11,6 +11,8 @@ from app.core.config import get_settings
 from app.core.db import Base
 from app.features.auth import models as _auth  # noqa: F401
 from app.features.catalog import models as _catalog  # noqa: F401
+from app.features.master_data import models as _master_data  # noqa: F401
+from app.features.production import models as _production  # noqa: F401
 from app.features.students import models as _students  # noqa: F401
 
 target_metadata = Base.metadata
